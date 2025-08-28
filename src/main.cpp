@@ -256,9 +256,6 @@ static std::vector<LeafKey> gFlatKeys;
 static std::vector<std::string> gFlatNames;
 static int gSelectedFlat = 0;
 
-static bool saveParamsXML(const char* path);
-static bool loadParamsXML(const char* path);
-
 static void rebuildFlatKeys() {
     gFlatKeys.clear(); gFlatNames.clear();
     for (size_t ti = 0; ti < gPlant.tillers.size(); ++ti) {
