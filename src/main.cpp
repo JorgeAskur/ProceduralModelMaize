@@ -1,9 +1,5 @@
-﻿// plant_viewer_deboor_editable.cpp
-// Plant viewer with editable per-leaf B-spline control points.
-// FreeGLUT + ImGui + tinyxml2
-
-#include <GL/freeglut.h>
-#include <GL/glu.h>  // (needed for gluBuild2DMipmaps on some setups)
+﻿#include <GL/freeglut.h>
+#include <GL/glu.h>  
 #include <vector>
 #include <string>
 #include <cmath>
@@ -17,7 +13,7 @@
 #include "imgui_impl_opengl2.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include "stb_image/stb_image.h"
+#include "stb_image.h"
 // tinyxml2
 #include "tinyxml2.h"
 using namespace tinyxml2;
@@ -38,6 +34,19 @@ static inline Vec3 cross(Vec3 a, Vec3 b) { return { a.y * b.z - a.z * b.y, a.z *
 static inline float len(Vec3 a) { return std::sqrt(std::max(0.f, dot(a, a))); }
 static inline Vec3  norm(Vec3 a) { float L = len(a); return (L > 1e-8f) ? a * (1.f / L) : Vec3{ 1,0,0 }; }
 static inline float clampf(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
+
+static inline Vec3 projectOntoPlane(Vec3 v, Vec3 n_unit) {
+    return v - n_unit * dot(v, n_unit);
+}
+
+// Find θ such that rotateAroundAxis(B, T, θ) aligns with target (radial r).
+static float autoRollTheta(Vec3 B, Vec3 T, Vec3 target) {
+    // Maximize dot(B', target) over θ where B' = B cosθ + (T×B) sinθ + T (T·B)(1−cosθ).
+    // Because target ⟂ T for a cylinder normal, the last term vanishes. The optimum is:
+    float x = dot(B, target);
+    float y = dot(cross(T, B), target);
+    return std::atan2(y, x); // rotate B about T by θ
+}
 
 // --- Texture state ---
 static GLuint gLeafTex = 0;
@@ -185,7 +194,7 @@ static void rebuildFlatKeys();
 static int   gWinW = 1280, gWinH = 860;
 static float gYaw = 30.f, gPitch = 18.f, gDist = 3.5f;
 
-static std::string gXmlPath = "plantTestSorghum.xml";
+static char gXmlPath[256] = "maizeDebug.xml";
 static PlantDesc   gPlant;
 
 static float gLeafLength = 1.00f;
@@ -209,8 +218,16 @@ static float gWiggleAmt = 0.002f; // random noise to add to ctrl pts
 static float gWiggleWaves = 2.5f;    // number of ripples along the leaf length
 static bool gShowSelectedLeaf = false;
 
+static float gAttachFrac = 0.10f;  // 0..1 length of leaf to conform to stem
+static float gAttachFeather = 0.04f;  // softness of the blend
+static float gAttachEpsilon = 0.0015f;// push outward to avoid z-fighting
+static bool  gBaseTangentProject = true; // see section C, optional
+
 static char gParamPath[256] = "leaf_params.xml";
 static bool gSaveOK = false, gSaveFail = false, gLoadOK = false, gLoadFail = false;
+
+static bool  gAutoRollTangency = true;
+
 
 // --- texture + stem color matching ---
 static GLuint gLeafTexID = 0;
@@ -282,7 +299,7 @@ static std::vector<Vec3> makeLeafCtrl(Vec3 base, Vec3 stemUp, Vec3 dir, float L)
 static bool saveParamsXML(const char* path) {
     XMLDocument doc;
     XMLElement* root = doc.NewElement("leaf_params");
-    root->SetAttribute("source_xml", gXmlPath.c_str());
+	root->SetAttribute("source_xml", gXmlPath);
     doc.InsertFirstChild(root);
 
     // Globals
@@ -501,53 +518,91 @@ static void rebuildGeometry() {
 
             // roll (+ twist) about tangent
             std::vector<Vec3> N2 = N, B2 = B;
-            const float baseRoll = gRollOffsetD * float(M_PI / 180.0f);
+            float baseRoll = gRollOffsetD * (float)M_PI / 180.f;
+
+            // --- auto-roll to match cylinder tangency at s=0 ---
+            if (gAutoRollTangency) {
+                // 'r' is already computed earlier for this leaf:
+                float theta0 = autoRollTheta(B[0], T[0], r); // radians
+                baseRoll += theta0;
+            }
+
             for (int i = 0; i < samples; ++i) {
-                float s = (samples == 1) ? 0.f : float(i) / (samples - 1);
-                float twist = gTwistOn ? (gTwistMaxD * float(M_PI / 180.0f)) * std::pow(s, gTwistPow) : 0.f;
+                float s = (samples == 1) ? 0.f : (float)i / (samples - 1);
+                float twist = gTwistOn ? (gTwistMaxD * (float)M_PI / 180.f) * std::pow(s, gTwistPow) : 0.f;
                 float theta = baseRoll + twist;
                 N2[i] = rotateAroundAxis(N[i], T[i], theta);
                 B2[i] = rotateAroundAxis(B[i], T[i], theta);
             }
 
+
             // build strip
-            LeafGeom G; G.ctrl = ctrl; G.strip.reserve(2 * samples); G.uv.reserve(2 * samples);
+            LeafGeom G; G.ctrl = ctrl;
+            G.strip.reserve(2 * samples);
+            G.uv.reserve(2 * samples); // if using UVs
+
+            // Precompute azimuthal direction around the cylinder:
+            Vec3 azim = norm(cross(Vec3{ 0,1,0 }, r)); // tangent around stem
+
             for (int i = 0; i < samples; ++i) {
-                float s01 = (samples == 1) ? 0.f : float(i) / (samples - 1);
+                float s01 = (samples == 1) ? 0.f : (float)i / (samples - 1);
                 float w = widthParabola(s01, gLeafWmax);
-                Vec3 C = mid[i];
+                Vec3  C = mid[i];
 
-                // static droop on centerline
+                // --- base conformity blend ---
+                float tAttach = 0.f;
+                if (gAttachFrac > 0.f) {
+                    // Smoothly go from 1 at the base to 0 at s = gAttachFrac
+                    float a0 = 0.f, a1 = std::max(1e-4f, gAttachFrac);
+                    float x = clampf((s01 - a0) / (a1 - a0), 0.f, 1.f);
+                    // smoothstep then invert (1 - smoothstep)
+                    tAttach = 1.f - (x * x * (3.f - 2.f * x));
+                }
+
+                // Target centerline point on cylinder at same height (push outward a hair)
+                Vec3 Ccyl = r * (td.radius + gAttachEpsilon) + Vec3{ 0.f, C.y, 0.f };
+                // Blend midrib toward cylinder near base
+                C = C * (1.f - tAttach) + Ccyl * tAttach;
+
+                // Blend width direction toward azimuthal (so edges wrap around stem)
+                Vec3 Nblend = norm(N2[i] * (1.f - tAttach) + azim * tAttach);
+                Vec3 Bblend = norm(cross(T[i], Nblend));
+
+                // --- droop (keep your current axis: y) ---
                 if (gDroop) C.y -= gDroopMax * s01 * s01;
-                const float halfW = 0.5f * w;
-                Vec3 Lp = C + N2[i] * halfW;
-                Vec3 Rp = C - N2[i] * halfW;
 
+                // --- ramp leaf width near base to avoid exploding from stem ---
+                float baseRamp = 1.f;
+                {
+                    float bw0 = 0.f, bw1 = std::max(1e-4f, 0.08f); // ~first 8% of the leaf
+                    float xb = clampf((s01 - bw0) / (bw1 - bw0), 0.f, 1.f);
+                    baseRamp = xb * xb * (3.f - 2.f * xb); // smoothstep up from 0 to 1
+                }
+                float halfW = 0.5f * w * baseRamp;
+
+                Vec3 Lp = C + Nblend * halfW;
+                Vec3 Rp = C - Nblend * halfW;
+
+                // --- wiggle corrugation like before (but use Bblend) ---
                 if (doWiggle) {
-                    float leafPhase = twoPi * hash01(int(ti) * 131071 + int(li) * 31337);
-
-                    // Envelope: fade-in near sheath, fade-out to zero near tip,
-                    // and scale by local width so the final tip is never deformed.
-                    float widthFrac = (gLeafWmax > 1e-6f) ? (w / gLeafWmax) : 0.f;           // 0 at tip and base
-                    float fadeIn = smoothstepf(0.10f, 0.25f, s01);                           // start ~10% up the blade
-                    float fadeOut = 1.f - smoothstepf(0.88f, 0.98f, s01);                     // go to 0 in last ~10–12%
+                    float leafPhase = twoPi * hash01((int)ti * 131071 + (int)li * 31337);
+                    float widthFrac = (gLeafWmax > 1e-6f) ? (w / gLeafWmax) : 0.f;
+                    float fadeIn = smoothstepf(0.10f, 0.25f, s01);
+                    float fadeOut = 1.f - smoothstepf(0.88f, 0.98f, s01);
                     float env = widthFrac * fadeIn * fadeOut;
-
                     float phase = leafPhase + twoPi * gWiggleWaves * s01;
                     float dB = gWiggleAmt * env * std::sinf(phase);
-
-                    // Guarantee exact zero at the very tip
                     if (i == samples - 1) dB = 0.f;
-
-                    // Up/down corrugation: opposite sign on edges along binormal
-                    Lp = Lp + B2[i] * (+dB);
-                    Rp = Rp + B2[i] * (-dB);
+                    Lp = Lp + Bblend * (+dB);
+                    Rp = Rp + Bblend * (-dB);
                 }
-                float v = gTexVRepeat * s01;
-                G.uv.push_back({ 0.0f * gTexURepeat, v }); // left edge
-                G.uv.push_back({ 1.0f * gTexURepeat, v }); // right edge
 
                 G.strip.push_back(Lp); G.strip.push_back(Rp);
+
+                // If you’re texturing:
+                float v = s01;
+                G.uv.push_back({ 0.0f, v }); // left edge
+                G.uv.push_back({ 1.0f, v }); // right edge
             }
             gLeafGeoms.push_back(std::move(G));
         }
@@ -734,13 +789,20 @@ static void display() {
     drawGridXZ();
     drawPlant();
 
-    ImGui::Begin("Plant Viewer – Editable Leaves");
+	if (gLeafTexW == 0 && gLeafTexH == 0) {
+        loadLeafTexture(gLeafTexPath);
+	}
+
+    ImGui::Begin("Plant Viewer - Editable Leaves");
     static bool needReload = false, needRebuild = false;
 
-    ImGui::Text("XML: %s", gXmlPath.c_str());
-    if (ImGui::Button("Reload XML")) needReload = true;
+    ImGui::Text("XML: %s", gXmlPath);
+    if (ImGui::Button("Load XML")) needReload = true;
     ImGui::SameLine();
-    if (ImGui::Button("Use maizeDebug.xml")) { gXmlPath = "maizeDebug.xml"; needReload = true; }
+	ImGui::InputText("Path", gXmlPath, IM_ARRAYSIZE(gXmlPath));
+
+
+
 
     if (needReload) {
         PlantDesc tmp;
@@ -755,7 +817,7 @@ static void display() {
         needReload = false;
     }
     if (ImGui::BeginPopup("Load error")) {
-        ImGui::Text("Failed to load XML at:\n%s", gXmlPath.c_str());
+        ImGui::Text("Failed to load XML at:\n%s", gXmlPath);
         ImGui::EndPopup();
     }
 
@@ -802,28 +864,11 @@ static void display() {
     ImGui::SliderFloat("Wire width", &gWireWidth, 1.0f, 5.0f, "%.1f");
 
     ImGui::SeparatorText("Wiggle");
-    ImGui::Checkbox("Enable wiggle", &gWiggleOn);
     if (gWiggleOn) {
         needRebuild |= ImGui::SliderFloat("Amount (m)", &gWiggleAmt, 0.0f, 0.05f, "%.3f");
         // Period (seconds per cycle)
         needRebuild |= ImGui::SliderFloat("Frequency (#)", &gWiggleWaves, 0.0f, 20.0f, "%.1f");
     }
-
-    ImGui::SeparatorText("Leaf texture");
-    ImGui::Checkbox("Use texture", &gUseLeafTex);
-    ImGui::InputText("Texture file", gLeafTexPath, IM_ARRAYSIZE(gLeafTexPath));
-    ImGui::SameLine();
-    if (ImGui::Button("Load")) {
-        if (loadLeafTexture(gLeafTexPath)) { gTexOK = true; gTexFail = false; }
-        else { gTexOK = false; gTexFail = true; }
-    }
-    if (gTexOK) { ImGui::SameLine(); ImGui::TextColored(ImVec4(0, 0.6f, 0, 1), "Loaded."); }
-    if (gTexFail) { ImGui::SameLine(); ImGui::TextColored(ImVec4(0.8f, 0.2f, 0, 1), "Load failed."); }
-
-    bool uvChanged = false;
-    uvChanged |= ImGui::SliderFloat("U repeat", &gTexURepeat, 0.1f, 8.0f, "%.1f");
-    uvChanged |= ImGui::SliderFloat("V repeat", &gTexVRepeat, 0.1f, 8.0f, "%.1f");
-    if (uvChanged) { rebuildGeometry(); }  // UVs are baked with geometry
 
     ImGui::SeparatorText("Leaf Editor (per-leaf)");
 	ImGui::Checkbox("Hide selected leaf", &gShowSelectedLeaf);
