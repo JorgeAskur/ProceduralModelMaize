@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plant>
+    <species name="maize">
+        <tiller type="main" radius="0.025" alpha="0" beta="180">
+            <leaves number="4">
+                <leaf id="0" distance="0.1" alpha="30" spines="3"/>
+                <leaf id="1" distance="0.20000002" alpha="30" spines="3"/>
+                <leaf id="2" distance="0.30000001" alpha="30" spines="3"/>
+                <leaf id="3" distance="0.39999998" alpha="30" spines="3"/>
+            </leaves>
+        </tiller>
+    </species>
+</plant>

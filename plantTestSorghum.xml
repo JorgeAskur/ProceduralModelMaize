@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plant>
+    <species name="maize">
+        <tiller type="main" radius="0.025" alpha="0" beta="180">
+            <leaves number="9">
+                <leaf id="0" distance="0.2" alpha="15" spines="65"/>
+                <leaf id="1" distance="0.050000653" alpha="15" spines="60"/>
+                <leaf id="2" distance="0.050000012" alpha="15" spines="55"/>
+                <leaf id="3" distance="0.049999952" alpha="15" spines="50"/>
+                <leaf id="4" distance="0.05000025" alpha="15" spines="45"/>
+                <leaf id="5" distance="0.050000191" alpha="15" spines="40"/>
+                <leaf id="6" distance="0.049999952" alpha="15" spines="35"/>
+                <leaf id="7" distance="0.1500001" alpha="45" spines="20"/>
+                <leaf id="8" distance="0.29999745" alpha="45" spines="15"/>
+            </leaves>
+        </tiller>
+    </species>
+</plant>
