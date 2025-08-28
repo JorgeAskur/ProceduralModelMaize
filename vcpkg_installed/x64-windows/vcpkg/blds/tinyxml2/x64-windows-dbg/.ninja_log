@@ -1,0 +1,5 @@
+# ninja log v6
+6	100	7781104958562337	CMakeFiles/tinyxml2.dir/tinyxml2.cpp.obj	67d6bd8f3a9b171d
+101	251	7781104960777660	tinyxml2.dll	1c81aa137421f4ca
+101	251	7781104960777660	tinyxml2.lib	1c81aa137421f4ca
+251	321	7781104960964060	CMakeFiles/install.util	2ef6a66d7bcba4b5
