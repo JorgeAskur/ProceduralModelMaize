@@ -1,33 +1,4 @@
 <leaf_params source_xml="maizeDebug.xml">
-    <globals length_m="1" max_width_m="0.18000001" samples_min="100" droop_on="1" droop_max_m="0.059999999" twist_on="1" twist_max_deg="30.6" twist_pow="1.4" roll_deg="0.80000001" wiggle_on="1" wiggle_amount_m="0.016000001" wiggle_waves="2.5"/>
-    <edits>
-        <leaf tIdx="0" lIdx="0" pinC0ToStem="1">
-            <cp x="-0.0099999998" y="0.085000001" z="0"/>
-            <cp x="0.14" y="0.34999999" z="0"/>
-            <cp x="0.31299999" y="0.41499999" z="0"/>
-            <cp x="0.51800001" y="0.41" z="0"/>
-            <cp x="0.61299998" y="0.27500001" z="0"/>
-        </leaf>
-        <leaf tIdx="0" lIdx="1" pinC0ToStem="1">
-            <cp x="-0.16500001" y="0.31" z="-0.07"/>
-            <cp x="-0.125" y="0.55000001" z="-2.4898673e-08"/>
-            <cp x="-0.278" y="0.67500001" z="-5.1397294e-08"/>
-            <cp x="-0.47799999" y="0.66500002" z="-7.4110403e-08"/>
-            <cp x="-0.583" y="0.505" z="-8.5466958e-08"/>
-        </leaf>
-        <leaf tIdx="0" lIdx="2" pinC0ToStem="1">
-            <cp x="0.025" y="0.60000002" z="4.371139e-09"/>
-            <cp x="0.145" y="0.85000002" z="4.9797347e-08"/>
-            <cp x="0.32800001" y="0.95999998" z="1.0279459e-07"/>
-            <cp x="0.55299997" y="0.98500001" z="1.4822081e-07"/>
-            <cp x="0.65799999" y="0.86500001" z="1.7093392e-07"/>
-        </leaf>
-        <leaf tIdx="0" lIdx="3" pinC0ToStem="1">
-            <cp x="0.045000002" y="0.97000003" z="-5.9624405e-10"/>
-            <cp x="-0.059999999" y="1.05" z="-6.7925936e-09"/>
-            <cp x="-0.103" y="1.095" z="-1.4021667e-08"/>
-            <cp x="-0.35800001" y="1.1" z="-2.0218017e-08"/>
-            <cp x="-0.54799998" y="1.025" z="-2.3316193e-08"/>
-        </leaf>
-    </edits>
+    <globals length_m="1" max_width_m="0.18000001" samples_min="100" droop_on="1" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" roll_deg="-180" wiggle_on="1" wiggle_amount_m="0.0020000001" wiggle_waves="2.5"/>
+    <edits/>
 </leaf_params>

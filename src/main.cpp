@@ -185,6 +185,20 @@ struct PlantDesc {
 };
 struct Vec2 { float u, v; };
 
+// --- Sheath (leaf collar) ---
+struct SheathGeom {
+    std::vector<Vec3> band;   // cylinder band (one triangle strip)
+    std::vector<Vec3> blend;  // transition from cylinder band to leaf cross-section (one strip)
+};
+static std::vector<SheathGeom> gSheathGeoms;
+
+static bool  gSheathOn = true;
+static float gSheathLenFrac = 0.05f;     // height of sheath along stem, as fraction of leaf length
+static float gSheathWrapDeg = 28.0f;     // half-angle of arc around the stem (e.g., 28° each side)
+static int   gSheathUSteps = 18;        // segments across arc
+static float gSheathBlendS = 0.06f;     // 's' along leaf where we attach to the blade (0=base, 1=tip)
+static float gSheathEps = 0.0015f;   // push outward to avoid z-fighting
+static Vec3  gSheathColor = { 0.12f, 0.35f, 0.12f }; // draw color; you can also use gStemColor
 
 // forward decls so loadParamsXML can call them
 static void rebuildGeometry();
@@ -205,7 +219,7 @@ static float gDroopMax = 0.06f;
 static bool  gTwistOn = true;
 static float gTwistMaxD = 20.f;
 static float gTwistPow = 1.4f;
-static float gRollOffsetD = 90.0f; // rotate blade +90° about tangent to face "up"
+static float gRollOffsetD = 180.0f; // rotate blade +90° about tangent to face "up"
 
 static bool  gShowCtrlPts = true;
 static bool  gShowCtrlPoly = true;
@@ -474,6 +488,8 @@ static bool loadLeafTexture(const char* path) {
 /* ----------------------- mesh rebuild (core) ---------------------- */
 static void rebuildGeometry() {
     gLeafGeoms.clear();
+	gSheathGeoms.clear();
+
     const Vec3 stemAxis = { 0,1,0 };
     const bool doWiggle = gWiggleOn && gWiggleAmt > 0.f;
     const float twoPi = 2.f * float(M_PI);
@@ -523,6 +539,78 @@ static void rebuildGeometry() {
                 float theta0 = autoRollTheta(B[0], T[0], r); // radians
                 baseRoll += theta0;
             }
+
+            // ----- tiny sheath (collar) mesh -----
+            if (gSheathOn) {
+                SheathGeom S;
+
+                const float wrap = gSheathWrapDeg * (float)M_PI / 180.0f;
+                const int   nu = std::max(2, gSheathUSteps);
+                const float R = td.radius + gSheathEps;
+
+                // Base/Top heights: top should match the leaf cross-section height
+                const float y0 = base.y;
+
+                // Which cross-section of the leaf to connect to?
+                float sBlend = clampf(gSheathBlendS, 0.01f, 2.25f);
+                int   iCross = (samples <= 1) ? 0 : (int)std::round(sBlend * (samples - 1));
+                iCross = std::min(std::max(iCross, 0), samples - 1);
+
+                // Leaf cross-section (match droop!)
+                float s01 = (samples == 1) ? 0.f : (float)iCross / (float)(samples - 1);
+                float w = widthParabola(s01, gLeafWmax);
+                Vec3  C = mid[iCross];
+                if (gDroop) C.y -= gDroopMax * s01 * s01;   // same droop as leaf
+                const float y1 = C.y;                       // <-- top ring height equals leaf section height
+
+                // Cylinder band (short vertical ring from y0 -> y1 over an arc)
+                S.band.reserve((nu + 1) * 2);
+                for (int j = 0; j <= nu; ++j) {
+                    float t = (float)j / (float)nu;
+                    float a = (t - 0.5f) * 2.0f;
+                    float ang = phi + a * wrap;
+                    float cx = std::cos(ang) * R;
+                    float cz = std::sin(ang) * R;
+                    S.band.push_back({ cx, y0, cz });
+                    S.band.push_back({ cx, y1, cz });
+                }
+
+                // Leaf cross-section endpoints
+                Vec3 Nw = N2[iCross];         // leaf width direction at that section
+                float halfW = 0.5f * w;
+                Vec3 Lleaf = C + Nw * (+halfW);  // left edge point
+                Vec3 Rleaf = C + Nw * (-halfW);  // right edge point
+
+                // Cylinder endpoints (angles left/right around stem)
+                float angL = phi - wrap;
+                float angR = phi + wrap;
+                Vec3  CylL = { std::cos(angL) * R, y1, std::sin(angL) * R };
+                Vec3  CylR = { std::cos(angR) * R, y1, std::sin(angR) * R };
+
+                // Pick the pairing that keeps the strip from twisting:
+                // (Lleaf↔CylL, Rleaf↔CylR) vs (Lleaf↔CylR, Rleaf↔CylL)
+                float pairA = len(Lleaf - CylL) + len(Rleaf - CylR);
+                float pairB = len(Lleaf - CylR) + len(Rleaf - CylL);
+                if (pairB < pairA) { std::swap(angL, angR); std::swap(CylL, CylR); }
+
+                // Build the blend triangle strip from cylinder arc to the leaf section
+                //S.blend.reserve((nu + 1) * 2);
+                //for (int j = 0; j <= nu; ++j) {
+                //    float t = (float)j / (float)nu;                  // 0..1 across width
+                //    float ang = angL * (1.f - t) + angR * t;         // interpolate angle
+                //    Vec3 Pcyl = { std::cos(ang) * R, y1, std::sin(ang) * R };
+
+                //    Vec3 Pleaf = Lleaf * (1.f - t) + Rleaf * t;      // straight line across the leaf
+                //    S.blend.push_back(Pcyl);
+                //    S.blend.push_back(Pleaf);
+                //}
+
+                gSheathGeoms.push_back(std::move(S));
+            }
+            else {
+                gSheathGeoms.push_back(SheathGeom{});
+            }
+
 
             for (int i = 0; i < samples; ++i) {
                 float s = (samples == 1) ? 0.f : (float)i / (samples - 1);
@@ -679,11 +767,43 @@ static void drawPlant() {
         }
     }
 
+    // draw sheaths BEFORE leaves
+    if (gSheathOn) {
+        glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_COLOR_BUFFER_BIT | GL_POLYGON_BIT);
+
+        glDisable(GL_TEXTURE_2D);
+        glDisable(GL_BLEND);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        // pick a color (or gStemColor)
+		glColor3f(gStemColor.x, gStemColor.y, gStemColor.z);
+
+        for (const auto& S : gSheathGeoms) {
+            if (!S.band.empty()) {
+                glBegin(GL_TRIANGLE_STRIP);
+                for (auto& v : S.band) glVertex3f(v.x, v.y, v.z);
+                glEnd();
+            }
+            if (!S.blend.empty()) {
+                glBegin(GL_TRIANGLE_STRIP);
+                for (auto& v : S.blend) glVertex3f(v.x, v.y, v.z);
+                glEnd();
+            }
+        }
+		glColor3f(1.0f, 1.0f, 1.0f);
+
+        glPopAttrib(); // restores texture/blend/etc to what they were before
+    }
+
+
     for (const auto& G : gLeafGeoms) {
         glBegin(GL_TRIANGLE_STRIP);
         for (size_t i = 0; i < G.strip.size(); ++i) {
             if (!gWireframe && gUseLeafTex && gLeafTex) {
+                glColor3f(1.0f, 1.0f, 1.0f);
                 glTexCoord2f(G.uv[i].u, G.uv[i].v);
+            }
+            else {
+				glColor3f(0.04f, 0.55f, 0.06f);
             }
             const Vec3& v = G.strip[i];
             glVertex3f(v.x, v.y, v.z);
@@ -849,6 +969,20 @@ static void display() {
         needRebuild |= ImGui::SliderFloat("Twist power", &gTwistPow, 0.5f, 3.0f, "%.2f");
     }
     needRebuild |= ImGui::SliderFloat("Roll offset (deg)", &gRollOffsetD, -180.f, 180.f, "%.1f");
+
+    ImGui::SeparatorText("Sheath / Collar");
+    bool sheathChanged = false;
+    sheathChanged |= ImGui::Checkbox("Enable sheath", &gSheathOn);
+    sheathChanged |= ImGui::SliderFloat("Height (leaf frac)", &gSheathLenFrac, 0.01f, 0.15f, "%.3f");
+    sheathChanged |= ImGui::SliderFloat("Wrap half-angle (deg)", &gSheathWrapDeg, 5.0f, 360.0f, "%.1f");
+    sheathChanged |= ImGui::SliderInt("Arc segments", &gSheathUSteps, 6, 64);
+    sheathChanged |= ImGui::SliderFloat("Attach s", &gSheathBlendS, 0.01f, 2.20f, "%.3f");
+    sheathChanged |= ImGui::SliderFloat("Offset eps", &gSheathEps, 0.0f, 0.01f, "%.4f");
+
+    // Color doesn't require rebuild (it’s used at draw time), but rebuild won’t hurt:
+    sheathChanged |= ImGui::ColorEdit3("Sheath color", &gSheathColor.x);
+
+    needRebuild |= sheathChanged;
 
     ImGui::SeparatorText("Control points (view)");
     ImGui::Checkbox("Show points", &gShowCtrlPts); ImGui::SameLine();
