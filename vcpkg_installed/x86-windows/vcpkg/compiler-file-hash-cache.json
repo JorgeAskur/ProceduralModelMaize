@@ -10,5 +10,17 @@
     "hash" : "fdf1dfa2ae7ed8b52781348ff753700cd1391bfc",
     "size" : 853576,
     "timestamp" : 1749079130
+  },
+  "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe" : 
+  {
+    "hash" : "545372c8dfdf9588e8ce7f57b6b1e15c8a1df04b",
+    "size" : 677496,
+    "timestamp" : 1755575652
+  },
+  "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x86/cl.exe" : 
+  {
+    "hash" : "7db573ed2fb40cae639a46e67c1ac75c091140b4",
+    "size" : 677968,
+    "timestamp" : 1755575653
   }
 }

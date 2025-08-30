@@ -3,13 +3,13 @@
   "spdxVersion": "SPDX-2.2",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "documentNamespace": "https://spdx.org/spdxdocs/tinyxml2-x86-windows-9.0.0#2-d2c6125b-553d-4ad9-81cb-5e0fdc4c5f52",
-  "name": "tinyxml2:x86-windows@9.0.0#2 927dba239ab7297e3d2958280b2011ff385ce2bda62ca0b74fc30c0ae042ec0c",
+  "documentNamespace": "https://spdx.org/spdxdocs/tinyxml2-x86-windows-9.0.0#2-85570110-b87c-43b4-aadf-f81b169b3ed6",
+  "name": "tinyxml2:x86-windows@9.0.0#2 521322d2f8b0d94bec3a3ba7401a7d0691023cdff45f869c1c3bc7b83cfdfcc4",
   "creationInfo": {
     "creators": [
       "Tool: vcpkg-2025-06-02-145689e84b7637525510e2c9b4ee603fda046b56"
     ],
-    "created": "2025-08-07T01:02:47Z"
+    "created": "2025-08-28T21:45:28Z"
   },
   "relationships": [
     {
@@ -84,7 +84,7 @@
     {
       "name": "tinyxml2:x86-windows",
       "SPDXID": "SPDXRef-binary",
-      "versionInfo": "927dba239ab7297e3d2958280b2011ff385ce2bda62ca0b74fc30c0ae042ec0c",
+      "versionInfo": "521322d2f8b0d94bec3a3ba7401a7d0691023cdff45f869c1c3bc7b83cfdfcc4",
       "downloadLocation": "NONE",
       "licenseConcluded": "Zlib",
       "licenseDeclared": "NOASSERTION",

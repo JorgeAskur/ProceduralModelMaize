@@ -35,18 +35,21 @@ static inline float len(Vec3 a) { return std::sqrt(std::max(0.f, dot(a, a))); }
 static inline Vec3  norm(Vec3 a) { float L = len(a); return (L > 1e-8f) ? a * (1.f / L) : Vec3{ 1,0,0 }; }
 static inline float clampf(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
 
-static inline Vec3 projectOntoPlane(Vec3 v, Vec3 n_unit) {
-    return v - n_unit * dot(v, n_unit);
-}
+static inline Vec3 projectOntoPlane(Vec3 v, Vec3 n_unit) { return v - n_unit * dot(v, n_unit); }
 
 // Find θ such that rotateAroundAxis(B, T, θ) aligns with target (radial r).
-static float autoRollTheta(Vec3 B, Vec3 T, Vec3 target) {
-    // Maximize dot(B', target) over θ where B' = B cosθ + (T×B) sinθ + T (T·B)(1−cosθ).
-    // Because target ⟂ T for a cylinder normal, the last term vanishes. The optimum is:
-    float x = dot(B, target);
-    float y = dot(cross(T, B), target);
-    return std::atan2(y, x); // rotate B about T by θ
-}
+static float autoRollTheta(Vec3 B, Vec3 T, Vec3 target) { float x = dot(B, target); float y = dot(cross(T, B), target); return std::atan2(y, x); }
+static inline float radiansf(float d) { return d * 3.14159265358979323846f / 180.f; }
+static inline float smooth01(float x) {x = clampf(x, 0.f, 1.f); return x * x * (3.f - 2.f * x); }
+static inline float mixf(float a, float b, float t) { return a + (b - a) * t; }
+static inline float lerpf(float a, float b, float t) { return a + (b - a) * t; }
+static inline Vec3  lerp3(const Vec3& a, const Vec3& b, float t) { return { lerpf(a.x,b.x,t), lerpf(a.y,b.y,t), lerpf(a.z,b.z,t) }; }
+static inline Vec3  add3(const Vec3& a, const Vec3& b) { return { a.x + b.x,a.y + b.y,a.z + b.z }; }
+static inline Vec3  sub3(const Vec3& a, const Vec3& b) { return { a.x - b.x,a.y - b.y,a.z - b.z }; }
+static inline Vec3  mul3(const Vec3& a, float s) { return { a.x * s,a.y * s,a.z * s }; }
+static inline Vec3  cross3(const Vec3& a, const Vec3& b) { return { a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x }; }
+static inline float dot3(const Vec3& a, const Vec3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
+static inline Vec3  norm3(const Vec3& v) { float L = sqrtf(dot3(v, v)) + 1e-20f; return { v.x / L,v.y / L,v.z / L }; }
 
 // --- Texture state ---
 static GLuint gLeafTex = 0;
@@ -122,6 +125,30 @@ static std::vector<Vec3> resampleMidrib(const std::vector<Vec3>& ctrl, int N) {
     return mid;
 }
 
+// Sample midrib & frames at a fractional arc-length position s in [0,1]
+static inline void sampleMidFrame(float s,
+    const std::vector<Vec3>& mid,
+    const std::vector<Vec3>& T,
+    const std::vector<Vec3>& N2,
+    const std::vector<Vec3>& B2,
+    Vec3& C, Vec3& Tout, Vec3& Nout, Vec3& Bout)
+{
+    int n = (int)mid.size();
+    if (n <= 1) { C = mid.empty() ? Vec3{ 0,0,0 } : mid[0]; Tout = { 1,0,0 }; Nout = { 0,1,0 }; Bout = { 0,0,1 }; return; }
+
+    s = clampf(s, 0.f, 1.f);
+    float f = s * (float)(n - 1);
+    int   i0 = (int)std::floor(f);
+    int   i1 = std::min(i0 + 1, n - 1);
+    float a = f - (float)i0;
+
+    C = lerp3(mid[i0], mid[i1], a);
+    Tout = norm(lerp3(T[i0], T[i1], a));
+    Nout = norm(lerp3(N2[i0], N2[i1], a));
+    Bout = norm(lerp3(B2[i0], B2[i1], a));
+}
+
+
 // parallel-transport frames along polyline mid[]
 static void buildPTFrames(const std::vector<Vec3>& mid,
     std::vector<Vec3>& T, std::vector<Vec3>& N, std::vector<Vec3>& B) {
@@ -144,6 +171,14 @@ static void buildPTFrames(const std::vector<Vec3>& mid,
         else { N[i] = N[i - 1]; B[i] = B[i - 1]; }
     }
     for (int i = 0; i < n; ++i) { B[i] = norm(cross(T[i], N[i])); N[i] = norm(cross(B[i], T[i])); }
+}
+
+// Single, shared surface radius for ring + lip + blade attach
+static inline float sheathSurfaceRadius(float stemR,
+    float attachEps) {
+    float pad = attachEps;
+    pad = std::max(pad, 0.0005f);   // keep off the stem to avoid z-fighting
+    return stemR + pad;
 }
 
 static inline float widthParabola(float s, float wMax) { return wMax * 4.f * s * (1.f - s); }
@@ -192,13 +227,26 @@ struct SheathGeom {
 };
 static std::vector<SheathGeom> gSheathGeoms;
 
-static bool  gSheathOn = true;
-static float gSheathLenFrac = 0.05f;     // height of sheath along stem, as fraction of leaf length
-static float gSheathWrapDeg = 28.0f;     // half-angle of arc around the stem (e.g., 28° each side)
-static int   gSheathUSteps = 18;        // segments across arc
-static float gSheathBlendS = 0.06f;     // 's' along leaf where we attach to the blade (0=base, 1=tip)
-static float gSheathEps = 0.0015f;   // push outward to avoid z-fighting
-static Vec3  gSheathColor = { 0.12f, 0.35f, 0.12f }; // draw color; you can also use gStemColor
+// ---- Curved sheath lip (grid) ----
+struct SheathLipGeom {
+    int cols = 0, rows = 0;                // grid size
+    std::vector<Vec3> pos;                 // rows*cols
+    std::vector<Vec2> uv;                  // rows*cols
+};
+static std::vector<SheathLipGeom> gSheathLips;
+
+// Controls for the curved lip
+static float gLipLenFrac = 0.08f;    // fraction of leaf length for the curved lip (0.03–0.12 works well)
+static int   gLipCols = 10;       // columns across width (>=6)
+static float gLipArc0Deg = 340.f;    // arc at the very base (near ring, <360 to avoid seam)
+static float gLipArc1Deg = 60.f;     // arc at the end of the lip section
+static float gLipLift = 0.0015f;  // push off stem to avoid z-fighting
+static float gLipFeather = 1.0f;     // 1=linear unfold; >1 slower start; <1 faster start
+
+// --- Sheath base ring (thin cylinder at leaf base) ---
+static float gSheathRingHeight = 0.015f;  // meters tall
+static int   gSheathRingSides = 48;      // tessellation (>=8)
+
 
 // forward decls so loadParamsXML can call them
 static void rebuildGeometry();
@@ -207,6 +255,7 @@ static void rebuildFlatKeys();
 /* -------------- globals (camera, UI, generation) ----------------- */
 static int   gWinW = 1280, gWinH = 860;
 static float gYaw = 30.f, gPitch = 18.f, gDist = 3.5f;
+static Vec3 gCamTarget = { 0.5f, 0.25f, 0.0f }; // center of interest
 
 static char gXmlPath[256] = "maizeDebug.xml";
 static PlantDesc   gPlant;
@@ -488,7 +537,8 @@ static bool loadLeafTexture(const char* path) {
 /* ----------------------- mesh rebuild (core) ---------------------- */
 static void rebuildGeometry() {
     gLeafGeoms.clear();
-	gSheathGeoms.clear();
+    gSheathGeoms.clear();   // rings
+    gSheathLips.clear();    // curved lips
 
     const Vec3 stemAxis = { 0,1,0 };
     const bool doWiggle = gWiggleOn && gWiggleAmt > 0.f;
@@ -504,172 +554,195 @@ static void rebuildGeometry() {
 
         for (size_t li = 0; li < td.leaves.size(); ++li) {
             const auto& L = td.leaves[li];
-            float phi = L.azimuthDeg * float(M_PI / 180.0f);
+            float phiDeg = L.azimuthDeg;
+            float phi = phiDeg * float(M_PI / 180.0f);
             float pitch = L.alphaDeg * float(M_PI / 180.0f);
 
             Vec3 r = { std::cos(phi), 0.f, std::sin(phi) };
             Vec3 base = r * td.radius + Vec3{ 0.f, yAt[li], 0.f };
             Vec3 dir = norm(r * std::cos(pitch) + stemAxis * std::sin(pitch));
 
-            // choose control points: custom (if set) or generated
+            // ctrl points
             LeafKey key{ (int)ti,(int)li };
             auto it = gEdits.find(key);
             std::vector<Vec3> ctrl =
                 (it != gEdits.end() && it->second.hasCustom && it->second.customCtrl.size() >= 4)
                 ? it->second.customCtrl : makeLeafCtrl(base, stemAxis, dir, gLeafLength);
-
-            // pin base if requested
-            if (it != gEdits.end() && it->second.hasCustom && it->second.pinC0ToStem) {
-                ctrl[0] = base;
-            }
+            if (it != gEdits.end() && it->second.hasCustom && it->second.pinC0ToStem) ctrl[0] = base;
 
             int samples = std::max(L.spines, gSamplesMin);
 
-            // sample midrib & frames
+            // midrib & frames
             auto mid = resampleMidrib(ctrl, samples);
             std::vector<Vec3> T, N, B; buildPTFrames(mid, T, N, B);
 
-            // roll (+ twist) about tangent
+            // roll + twist
             std::vector<Vec3> N2 = N, B2 = B;
             float baseRoll = gRollOffsetD * (float)M_PI / 180.f;
-
-            // --- auto-roll to match cylinder tangency at s=0 ---
             if (gAutoRollTangency) {
-                // 'r' is already computed earlier for this leaf:
-                float theta0 = autoRollTheta(B[0], T[0], r); // radians
+                float theta0 = autoRollTheta(B[0], T[0], r);
                 baseRoll += theta0;
             }
-
-            // ----- tiny sheath (collar) mesh -----
-            if (gSheathOn) {
-                SheathGeom S;
-
-                const float wrap = gSheathWrapDeg * (float)M_PI / 180.0f;
-                const int   nu = std::max(2, gSheathUSteps);
-                const float R = td.radius + gSheathEps;
-
-                // Base/Top heights: top should match the leaf cross-section height
-                const float y0 = base.y;
-
-                // Which cross-section of the leaf to connect to?
-                float sBlend = clampf(gSheathBlendS, 0.01f, 2.25f);
-                int   iCross = (samples <= 1) ? 0 : (int)std::round(sBlend * (samples - 1));
-                iCross = std::min(std::max(iCross, 0), samples - 1);
-
-                // Leaf cross-section (match droop!)
-                float s01 = (samples == 1) ? 0.f : (float)iCross / (float)(samples - 1);
-                float w = widthParabola(s01, gLeafWmax);
-                Vec3  C = mid[iCross];
-                if (gDroop) C.y -= gDroopMax * s01 * s01;   // same droop as leaf
-                const float y1 = C.y;                       // <-- top ring height equals leaf section height
-
-                // Cylinder band (short vertical ring from y0 -> y1 over an arc)
-                S.band.reserve((nu + 1) * 2);
-                for (int j = 0; j <= nu; ++j) {
-                    float t = (float)j / (float)nu;
-                    float a = (t - 0.5f) * 2.0f;
-                    float ang = phi + a * wrap;
-                    float cx = std::cos(ang) * R;
-                    float cz = std::sin(ang) * R;
-                    S.band.push_back({ cx, y0, cz });
-                    S.band.push_back({ cx, y1, cz });
-                }
-
-                // Leaf cross-section endpoints
-                Vec3 Nw = N2[iCross];         // leaf width direction at that section
-                float halfW = 0.5f * w;
-                Vec3 Lleaf = C + Nw * (+halfW);  // left edge point
-                Vec3 Rleaf = C + Nw * (-halfW);  // right edge point
-
-                // Cylinder endpoints (angles left/right around stem)
-                float angL = phi - wrap;
-                float angR = phi + wrap;
-                Vec3  CylL = { std::cos(angL) * R, y1, std::sin(angL) * R };
-                Vec3  CylR = { std::cos(angR) * R, y1, std::sin(angR) * R };
-
-                // Pick the pairing that keeps the strip from twisting:
-                // (Lleaf↔CylL, Rleaf↔CylR) vs (Lleaf↔CylR, Rleaf↔CylL)
-                float pairA = len(Lleaf - CylL) + len(Rleaf - CylR);
-                float pairB = len(Lleaf - CylR) + len(Rleaf - CylL);
-                if (pairB < pairA) { std::swap(angL, angR); std::swap(CylL, CylR); }
-
-                // Build the blend triangle strip from cylinder arc to the leaf section
-                //S.blend.reserve((nu + 1) * 2);
-                //for (int j = 0; j <= nu; ++j) {
-                //    float t = (float)j / (float)nu;                  // 0..1 across width
-                //    float ang = angL * (1.f - t) + angR * t;         // interpolate angle
-                //    Vec3 Pcyl = { std::cos(ang) * R, y1, std::sin(ang) * R };
-
-                //    Vec3 Pleaf = Lleaf * (1.f - t) + Rleaf * t;      // straight line across the leaf
-                //    S.blend.push_back(Pcyl);
-                //    S.blend.push_back(Pleaf);
-                //}
-
-                gSheathGeoms.push_back(std::move(S));
-            }
-            else {
-                gSheathGeoms.push_back(SheathGeom{});
-            }
-
-
             for (int i = 0; i < samples; ++i) {
                 float s = (samples == 1) ? 0.f : (float)i / (samples - 1);
                 float twist = gTwistOn ? (gTwistMaxD * (float)M_PI / 180.f) * std::pow(s, gTwistPow) : 0.f;
-                float theta = baseRoll + twist;
-                N2[i] = rotateAroundAxis(N[i], T[i], theta);
-                B2[i] = rotateAroundAxis(B[i], T[i], theta);
+                float th = baseRoll + twist;
+                N2[i] = rotateAroundAxis(N[i], T[i], th);
+                B2[i] = rotateAroundAxis(B[i], T[i], th);
             }
 
+            // ---------------- base ring (visual) ----------------
+            SheathGeom ring;
+            const int   sides = std::max(8, gSheathRingSides);
+            const float y0 = base.y - gLipLift;            // ↓ extend down by LipLift
+            const float y1 = base.y + gSheathRingHeight;   // top stays the seam
+            float Rsurf = sheathSurfaceRadius(td.radius, gAttachEpsilon);
+            for (int i = 0; i <= sides; ++i) {
+                float a = (float)i / sides * 2.f * (float)M_PI;
+                float cx = std::cos(a) * Rsurf, cz = std::sin(a) * Rsurf;
+                ring.band.push_back({ cx, y0, cz });
+                ring.band.push_back({ cx, y1, cz });
+            }
+            gSheathGeoms.push_back(std::move(ring));
 
-            // build strip
+            // ---------------- curved lip (grid) ----------------
+            bool  haveLipSeam = false;
+            Vec3  lipL_end{}, lipR_end{};
+            float dphiLipEndRad = radiansf(gLipArc1Deg);
+
+            int iStart = 0;
+            if (gLipLenFrac > 0.f) {
+                iStart = std::max(1, (int)std::ceil(gLipLenFrac * (samples - 1)));
+                int lipRows = iStart + 1;
+
+                const int cols = std::max(6, gLipCols);
+                SheathLipGeom M; M.cols = cols; M.rows = lipRows;
+                M.pos.resize((size_t)lipRows * cols);
+                M.uv.resize((size_t)lipRows * cols);
+                auto idxAt = [&](int i, int j) { return i * cols + j; };
+
+                const float Rsurf = sheathSurfaceRadius(td.radius, gAttachEpsilon);
+                const float yRingTop = base.y + gSheathRingHeight;
+                const float sLipEnd = (samples == 1) ? 0.f : (float)iStart / (samples - 1); // end s of the lip along midrib
+
+                for (int k = 0; k < lipRows; ++k) {
+                    // ---- feathered row s along the midrib (you already have this) ----
+                    float tRow = (lipRows == 1) ? 1.f : (float)k / (lipRows - 1);      // 0..1
+                    float tFeather = std::pow(tRow, gLipFeather);
+                    tFeather = clampf(tFeather, 0.f, 1.f);
+                    float s01 = tFeather * sLipEnd;
+
+                    // Sample mid/frames at fractional s01
+                    Vec3 C, Trow, Nrow, Brow;
+                    sampleMidFrame(s01, mid, T, N2, B2, C, Trow, Nrow, Brow);
+
+                    // First lip row sits right on ring top
+                    if (k == 0) C.y = yRingTop;
+
+                    // Conform centerline toward cylinder near base
+                    float tAttach = 0.f;
+                    if (gAttachFrac > 0.f) {
+                        float x = clampf(s01 / std::max(1e-4f, gAttachFrac), 0.f, 1.f);
+                        tAttach = 1.f - (x * x * (3.f - 2.f * x));
+                    }
+                    Vec3 Ccyl = r * Rsurf + Vec3{ 0.f, C.y, 0.f };
+                    C = C * (1.f - tAttach) + Ccyl * tAttach;
+
+                    Vec3 azim = norm(cross(Vec3{ 0,1,0 }, r));
+                    Vec3 Nblend = norm(Nrow * (1.f - tAttach) + azim * tAttach);
+
+                    if (gDroop) C.y -= gDroopMax * s01 * s01;
+
+                    float wLeaf = widthParabola(s01, gLeafWmax);
+                    float baseRamp = smooth01(s01 / std::max(1e-4f, 0.08f));
+                    float halfWLeaf = 0.5f * wLeaf * baseRamp;
+
+                    // Unfold amount across rows
+                    float b = tRow;                    // 0..1
+                    b = b * b * (3.f - 2.f * b);      // smoothstep
+
+                    // Arc this row uses while still hugging the cylinder
+                    float dphi = radiansf(mixf(gLipArc0Deg, gLipArc1Deg, b));
+
+                    // *** Anti-hourglass: blend width from cylinder chord → leaf width ***
+                    float halfChord = Rsurf * std::sinf(0.5f * dphi);
+                    float halfW = mixf(halfChord, halfWLeaf, b);
+
+                    for (int j = 0; j < cols; ++j) {
+                        float u = (cols == 1) ? 0.f : (float)j / (cols - 1);
+                        float phj = phi + (u - 0.5f) * dphi;
+
+                        // Cylinder point (keeps the nice wrap at b≈0)
+                        Vec3 Pcyl = { std::cos(phj) * Rsurf, C.y, std::sin(phj) * Rsurf };
+
+                        // Leaf point using the blended, non-pinching width
+                        Vec3 Pleaf = C + Nblend * ((u - 0.5f) * 2.f * halfW);
+
+                        // Interpolate cylinder → leaf
+                        Vec3 P = lerp3(Pcyl, Pleaf, b);
+
+                        int id = idxAt(k, j);
+                        M.pos[id] = P;
+                        M.uv[id] = { u * gTexURepeat, s01 * gTexVRepeat };
+                    }
+                }
+
+                // capture seam endpoints from last row (match blade L/R)
+                haveLipSeam = true;
+                int last = (lipRows - 1) * M.cols;
+                lipL_end = M.pos[last + (M.cols - 1)]; // u=1 -> +halfW -> blade's LEFT
+                lipR_end = M.pos[last + 0];            // u=0 -> -halfW -> blade's RIGHT
+                dphiLipEndRad = radiansf(gLipArc1Deg);
+
+                gSheathLips.push_back(std::move(M));
+            }
+
+            // ---------------- leaf strip (trimmed) ----------------
             LeafGeom G; G.ctrl = ctrl;
-            G.strip.reserve(2 * samples);
-            G.uv.reserve(2 * samples); // if using UVs
 
-            // Precompute azimuthal direction around the cylinder:
-            Vec3 azim = norm(cross(Vec3{ 0,1,0 }, r)); // tangent around stem
+            const int   startIdx = iStart;
+            const float s0 = (samples == 1) ? 0.f : (float)startIdx / (samples - 1);
 
-            for (int i = 0; i < samples; ++i) {
+            G.strip.reserve(2 * (samples - startIdx));
+            G.uv.reserve(2 * (samples - startIdx));
+
+            Vec3 azim = norm(cross(Vec3{ 0,1,0 }, r));
+            //float Rsurf = sheathSurfaceRadius(td.radius);
+
+            for (int i = startIdx; i < samples; ++i) {
                 float s01 = (samples == 1) ? 0.f : (float)i / (samples - 1);
                 float w = widthParabola(s01, gLeafWmax);
                 Vec3  C = mid[i];
 
-                // --- base conformity blend ---
                 float tAttach = 0.f;
                 if (gAttachFrac > 0.f) {
-                    // Smoothly go from 1 at the base to 0 at s = gAttachFrac
-                    float a0 = 0.f, a1 = std::max(1e-4f, gAttachFrac);
-                    float x = clampf((s01 - a0) / (a1 - a0), 0.f, 1.f);
-                    // smoothstep then invert (1 - smoothstep)
+                    float x = clampf(s01 / std::max(1e-4f, gAttachFrac), 0.f, 1.f);
                     tAttach = 1.f - (x * x * (3.f - 2.f * x));
                 }
-
-                // Target centerline point on cylinder at same height (push outward a hair)
-                Vec3 Ccyl = r * (td.radius + gAttachEpsilon) + Vec3{ 0.f, C.y, 0.f };
-                // Blend midrib toward cylinder near base
+                Vec3 Ccyl = r * (Rsurf)+Vec3{ 0.f, C.y, 0.f };
                 C = C * (1.f - tAttach) + Ccyl * tAttach;
 
-                // Blend width direction toward azimuthal (so edges wrap around stem)
                 Vec3 Nblend = norm(N2[i] * (1.f - tAttach) + azim * tAttach);
                 Vec3 Bblend = norm(cross(T[i], Nblend));
 
-                // --- droop (keep your current axis: y) ---
                 if (gDroop) C.y -= gDroopMax * s01 * s01;
 
-                // --- ramp leaf width near base to avoid exploding from stem ---
-                float baseRamp = 1.f;
-                {
-                    float bw0 = 0.f, bw1 = std::max(1e-4f, 0.08f); // ~first 8% of the leaf
-                    float xb = clampf((s01 - bw0) / (bw1 - bw0), 0.f, 1.f);
-                    baseRamp = xb * xb * (3.f - 2.f * xb); // smoothstep up from 0 to 1
-                }
+                float baseRamp = smooth01(s01 / std::max(1e-4f, 0.08f));
                 float halfW = 0.5f * w * baseRamp;
 
-                Vec3 Lp = C + Nblend * halfW;
-                Vec3 Rp = C - Nblend * halfW;
+                Vec3 Lleaf = C + Nblend * halfW;
+                Vec3 Rleaf = C - Nblend * halfW;
 
-                // --- wiggle corrugation like before (but use Bblend) ---
-                if (doWiggle) {
+                // start with blade edges
+                Vec3 Lp = Lleaf, Rp = Rleaf;
+
+                // (A) pin first row to lip seam, if present
+                if (haveLipSeam && i == startIdx) {
+                    Lp = lipL_end; Rp = lipR_end;
+                }
+
+                // wiggle (skip the seam row so it stays sealed to the lip)
+                if (doWiggle && i > startIdx) {
                     float leafPhase = twoPi * hash01((int)ti * 131071 + (int)li * 31337);
                     float widthFrac = (gLeafWmax > 1e-6f) ? (w / gLeafWmax) : 0.f;
                     float fadeIn = smoothstepf(0.10f, 0.25f, s01);
@@ -682,13 +755,11 @@ static void rebuildGeometry() {
                     Rp = Rp + Bblend * (-dB);
                 }
 
-                G.strip.push_back(Lp); G.strip.push_back(Rp);
 
-                // If you’re texturing:
-                float v = s01;
-                G.uv.push_back({ 0.0f, v }); // left edge
-                G.uv.push_back({ 1.0f, v }); // right edge
+                G.strip.push_back(Lp);  G.uv.push_back({ 0.0f * gTexURepeat, s01 * gTexVRepeat });
+                G.strip.push_back(Rp);  G.uv.push_back({ 1.0f * gTexURepeat, s01 * gTexVRepeat });
             }
+
             gLeafGeoms.push_back(std::move(G));
         }
     }
@@ -739,12 +810,86 @@ static void drawStem(float radius, float yTop) {
     glPopAttrib();
 }
 
+static void drawSheathRings() {
+    if (gSheathGeoms.empty()) return;
+
+    glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_COLOR_BUFFER_BIT | GL_POLYGON_BIT);
+    glDisable(GL_TEXTURE_2D);
+    glDisable(GL_BLEND);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    Vec3 c = gStemMatchTexture ? gStemColor : Vec3{ 0.15f, 0.45f, 0.15f };
+    c = c * gStemBrightness;
+    glColor3f(clampf(c.x, 0, 1), clampf(c.y, 0, 1), clampf(c.z, 0, 1));
+
+    for (const auto& S : gSheathGeoms) {
+        glBegin(GL_TRIANGLE_STRIP);
+        for (const Vec3& v : S.band) glVertex3f(v.x, v.y, v.z);
+        glEnd();
+    }
+    glPopAttrib();
+}
+
+static void drawSheathLips() {
+    if (gSheathLips.empty()) return;
+
+    if (gWireframe) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glLineWidth(gWireWidth);
+        glDisable(GL_TEXTURE_2D); glDisable(GL_BLEND);
+        glColor3f(0.0f, 0.35f, 0.0f);
+    }
+    else {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        if (gUseLeafTex && gLeafTex) {
+            glEnable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, gLeafTex);
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glColor3f(1, 1, 1);
+        }
+        else {
+            glDisable(GL_TEXTURE_2D);
+            glDisable(GL_BLEND);
+            glColor3f(0.04f, 0.55f, 0.06f);
+        }
+    }
+
+    for (const auto& M : gSheathLips) {
+        const int rows = M.rows, cols = M.cols;
+        for (int i = 0; i < rows - 1; ++i) {
+            glBegin(GL_TRIANGLE_STRIP);
+            for (int j = 0; j < cols; ++j) {
+                int i0 = i * cols + j;
+                int i1 = (i + 1) * cols + j;
+
+                if (!gWireframe && gUseLeafTex && gLeafTex) glTexCoord2f(M.uv[i0].u, M.uv[i0].v);
+                glVertex3f(M.pos[i0].x, M.pos[i0].y, M.pos[i0].z);
+
+                if (!gWireframe && gUseLeafTex && gLeafTex) glTexCoord2f(M.uv[i1].u, M.uv[i1].v);
+                glVertex3f(M.pos[i1].x, M.pos[i1].y, M.pos[i1].z);
+            }
+            glEnd();
+        }
+    }
+
+    if (gWireframe) { glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); glLineWidth(1.0f); }
+}
+
 static void drawPlant() {
     // stems: cumulative heights
-    for (const auto& td : gPlant.tillers) {
-        float stemHeight = 0.f; for (const auto& L : td.leaves) stemHeight += std::max(0.f, L.distance);
-        drawStem(td.radius, stemHeight);
-    }
+    //for (const auto& td : gPlant.tillers) {
+    //    float stemHeight = 0.f; for (const auto& L : td.leaves) stemHeight += std::max(0.f, L.distance);
+    //    drawStem(td.radius, stemHeight);
+    //}
+
+
+    // 2) draw the thin rings
+    drawSheathRings();
+
+    // 3) draw the curved lips
+    drawSheathLips();
+
     // leaves
     if (gWireframe) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -766,34 +911,6 @@ static void drawPlant() {
             glColor3f(0.04f, 0.55f, 0.06f); // solid green
         }
     }
-
-    // draw sheaths BEFORE leaves
-    if (gSheathOn) {
-        glPushAttrib(GL_ENABLE_BIT | GL_TEXTURE_BIT | GL_COLOR_BUFFER_BIT | GL_POLYGON_BIT);
-
-        glDisable(GL_TEXTURE_2D);
-        glDisable(GL_BLEND);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        // pick a color (or gStemColor)
-		glColor3f(gStemColor.x, gStemColor.y, gStemColor.z);
-
-        for (const auto& S : gSheathGeoms) {
-            if (!S.band.empty()) {
-                glBegin(GL_TRIANGLE_STRIP);
-                for (auto& v : S.band) glVertex3f(v.x, v.y, v.z);
-                glEnd();
-            }
-            if (!S.blend.empty()) {
-                glBegin(GL_TRIANGLE_STRIP);
-                for (auto& v : S.blend) glVertex3f(v.x, v.y, v.z);
-                glEnd();
-            }
-        }
-		glColor3f(1.0f, 1.0f, 1.0f);
-
-        glPopAttrib(); // restores texture/blend/etc to what they were before
-    }
-
 
     for (const auto& G : gLeafGeoms) {
         glBegin(GL_TRIANGLE_STRIP);
@@ -877,6 +994,21 @@ static void display() {
     if (!io.WantCaptureMouse && io.MouseWheel != 0.f) {
         gDist = clampf(gDist * (io.MouseWheel > 0.f ? 0.90f : 1.10f), 0.3f, 50.f);
     }
+    if (!io.WantCaptureMouse && io.MouseDown[1]) { // 0=LMB, 1=RMB, 2=MMB
+        const float PI = 3.1415926535f;
+        float cy = std::cos(gYaw * PI / 180.f), sy = std::sin(gYaw * PI / 180.f);
+        float cp = std::cos(gPitch * PI / 180.f), sp = std::sin(gPitch * PI / 180.f);
+
+        // camera direction (from target → eye)
+        Vec3 dir = { cp * sy, sp, cp * cy };
+        Vec3 fwd = norm(dir * -1.f);                  // eye→target
+        Vec3 right = norm(cross(fwd, { 0.f,1.f,0.f }));
+        Vec3 up = norm(cross(right, fwd));
+
+        float panScale = gDist * 0.0025f;               // tweak pan speed
+        gCamTarget = gCamTarget - right * (io.MouseDelta.x * panScale)
+            + up * (io.MouseDelta.y * panScale);
+    }
 
     glClearColor(0.98f, 0.98f, 1.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -888,11 +1020,17 @@ static void display() {
     gluPerspective(45.0, aspect, 0.01, 200.0);
 
     glMatrixMode(GL_MODELVIEW); glLoadIdentity();
-    const float PI = 3.1415926535f;
-    float cy = std::cos(gYaw * PI / 180.f), sy = std::sin(gYaw * PI / 180.f);
-    float cp = std::cos(gPitch * PI / 180.f), sp = std::sin(gPitch * PI / 180.f);
-    Vec3 eye = { gDist * cp * sy, gDist * sp, gDist * cp * cy };
-    gluLookAt(eye.x, eye.y, eye.z, 0.5, 0.25, 0.0, 0, 1, 0);
+
+    float cy = std::cos(gYaw * M_PI / 180.f), sy = std::sin(gYaw * M_PI / 180.f);
+    float cp = std::cos(gPitch * M_PI / 180.f), sp = std::sin(gPitch * M_PI / 180.f);
+
+    // eye offset around the target using yaw/pitch
+    Vec3 eyeOff = { gDist * cp * sy, gDist * sp, gDist * cp * cy };
+    Vec3 eye = gCamTarget + eyeOff;
+
+    gluLookAt(eye.x, eye.y, eye.z,
+        gCamTarget.x, gCamTarget.y, gCamTarget.z,
+        0, 1, 0);
 
     glDisable(GL_TEXTURE_2D);
     glDisable(GL_BLEND);
@@ -970,20 +1108,6 @@ static void display() {
     }
     needRebuild |= ImGui::SliderFloat("Roll offset (deg)", &gRollOffsetD, -180.f, 180.f, "%.1f");
 
-    ImGui::SeparatorText("Sheath / Collar");
-    bool sheathChanged = false;
-    sheathChanged |= ImGui::Checkbox("Enable sheath", &gSheathOn);
-    sheathChanged |= ImGui::SliderFloat("Height (leaf frac)", &gSheathLenFrac, 0.01f, 0.15f, "%.3f");
-    sheathChanged |= ImGui::SliderFloat("Wrap half-angle (deg)", &gSheathWrapDeg, 5.0f, 360.0f, "%.1f");
-    sheathChanged |= ImGui::SliderInt("Arc segments", &gSheathUSteps, 6, 64);
-    sheathChanged |= ImGui::SliderFloat("Attach s", &gSheathBlendS, 0.01f, 2.20f, "%.3f");
-    sheathChanged |= ImGui::SliderFloat("Offset eps", &gSheathEps, 0.0f, 0.01f, "%.4f");
-
-    // Color doesn't require rebuild (it’s used at draw time), but rebuild won’t hurt:
-    sheathChanged |= ImGui::ColorEdit3("Sheath color", &gSheathColor.x);
-
-    needRebuild |= sheathChanged;
-
     ImGui::SeparatorText("Control points (view)");
     ImGui::Checkbox("Show points", &gShowCtrlPts); ImGui::SameLine();
     ImGui::Checkbox("Show polygon", &gShowCtrlPoly); ImGui::SameLine();
@@ -1000,6 +1124,19 @@ static void display() {
         // Period (seconds per cycle)
         needRebuild |= ImGui::SliderFloat("Frequency (#)", &gWiggleWaves, 0.0f, 20.0f, "%.1f");
     }
+
+    ImGui::SeparatorText("Sheath ring");
+    needRebuild |= ImGui::SliderFloat("Ring height (m)", &gSheathRingHeight, 0.001f, 0.05f, "%.3f");
+    ImGui::SliderInt("Ring sides", &gSheathRingSides, 8, 128);
+
+    ImGui::SeparatorText("Curved Sheath Lip");
+    needRebuild |= ImGui::SliderFloat("Lip length frac", &gLipLenFrac, 0.02f, 0.20f, "%.3f");
+    needRebuild |= ImGui::SliderInt("Lip columns", &gLipCols, 6, 24);
+    needRebuild |= ImGui::SliderFloat("Arc at base Lip (deg)", &gLipArc0Deg, 200.f, 359.f, "%.0f");
+    needRebuild |= ImGui::SliderFloat("Arc at lip end (deg)", &gLipArc1Deg, 10.f, 200.f, "%.0f");
+    needRebuild |= ImGui::SliderFloat("Lip drop (m)", &gLipLift, 0.0000f, 1.00f, "%.2f");
+    ImGui::SliderFloat("Unfold feather", &gLipFeather, 0.4f, 3.0f, "%.2f");
+
 
     ImGui::SeparatorText("Leaf Editor (per-leaf)");
 	ImGui::Checkbox("Hide selected leaf", &gShowSelectedLeaf);

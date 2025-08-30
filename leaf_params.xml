@@ -1,4 +1,12 @@
 <leaf_params source_xml="maizeDebug.xml">
-    <globals length_m="1" max_width_m="0.18000001" samples_min="100" droop_on="1" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" roll_deg="-180" wiggle_on="1" wiggle_amount_m="0.0020000001" wiggle_waves="2.5"/>
-    <edits/>
+    <globals length_m="1" max_width_m="0.064000003" samples_min="100" droop_on="1" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" roll_deg="0" wiggle_on="1" wiggle_amount_m="0.0020000001" wiggle_waves="2.5"/>
+    <edits>
+        <leaf tIdx="0" lIdx="3" pinC0ToStem="1">
+            <cp x="-0.025" y="1" z="-5.9624405e-10"/>
+            <cp x="-0.035" y="1.075" z="-6.7925936e-09"/>
+            <cp x="-0.037999999" y="1.125" z="-1.4021667e-08"/>
+            <cp x="-0.043000001" y="1.1900001" z="-2.0218017e-08"/>
+            <cp x="-0.048" y="1.285" z="-2.3316193e-08"/>
+        </leaf>
+    </edits>
 </leaf_params>
