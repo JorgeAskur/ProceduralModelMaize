@@ -1,12 +1,20 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <plant>
     <species name="maize">
+        <params length_m="0.36000001" max_width_m="0.075000003" samples_min="200" droop_on="1" droop_max_m="0.169" twist_on="1" twist_max_deg="20" twist_pow="1.4" roll_deg="0" base_ramp_frac="0.02" attach_frac="0" attach_epsilon="0" lip_len_frac="0.1" lip_cols="40" lip_arc0_deg="120" lip_arc1_deg="90" collar_hold_frac="0" unwrap_mid="0.30000001" unwrap_sharpness="6" ring_drop_m="0.050000001" stem_layer_shrink="0.00039999999" stem_sides="48" override_base_radius="1" outermost_radius_m="0.0077" wave_amp_m="0.003" wave_cycles="3.5999999" wave_across="1" wave_fade_in="0.12" wave_fade_out="0.1"/>
         <tiller type="main" radius="0.025" alpha="0" beta="180">
             <leaves number="4">
-                <leaf id="0" distance="0.1" alpha="30" spines="3"/>
-                <leaf id="1" distance="0.20000002" alpha="30" spines="3"/>
-                <leaf id="2" distance="0.30000001" alpha="30" spines="3"/>
-                <leaf id="3" distance="0.39999998" alpha="30" spines="3"/>
+                <leaf id="0" distance="0.1" alpha="30" spines="3">
+                    <edit pinC0ToStem="0">
+                        <cp x="0.028999999" y="0.115" z="0"/>
+                        <cp x="0.082000002" y="0.17" z="0"/>
+                        <cp x="0.23624994" y="0.23500001" z="0"/>
+                        <cp x="0.3297807" y="0.25299999" z="0"/>
+                        <cp x="0.37654608" y="0.25480002" z="0"/>
+                    </edit>
+                </leaf>
+                <leaf id="1" distance="0.050000001" alpha="30" spines="3"/>
+                <leaf id="2" distance="0.079999998" alpha="30" spines="3"/>
+                <leaf id="3" distance="0.039999999" alpha="30" spines="3"/>
             </leaves>
         </tiller>
     </species>

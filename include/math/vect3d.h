@@ -1,7 +1,8 @@
-#ifndef __VECT3D_H__
+﻿#ifndef __VECT3D_H__
 #define __VECT3D_H__
 
 #include <memory.h>
+#include <cmath>
 
 class Vect3d
 {
@@ -56,7 +57,6 @@ public:
 	Vect3d GetNormalized() const;
 	
 	float Length() const;
-
 	
 	float SquaredLength() const
 	{return (v[0]*v[0])+(v[1]*v[1])+(v[2]*v[2]);}
@@ -70,6 +70,10 @@ public:
 	Vect3d GetRotatedZ(double angle) const;
 	void RotateAxis(double angle, const Vect3d & axis);
 	Vect3d GetRotatedAxis(double angle, const Vect3d & axis) const;
+	static Vect3d rotateAroundAxis(Vect3d v, Vect3d axis_unit, float angle) {
+		float c = std::cos(angle), s = std::sin(angle);
+		return v * c + axis_unit.Cross(v) * s + axis_unit * (axis_unit.Dot(v) * (1.f - c));
+	}
 
 	//pack to [0,1] for color
 	void Saturate();
@@ -81,6 +85,11 @@ public:
 
 	Vect3d QuadraticInterpolate(const Vect3d & v2, const Vect3d & v3, float factor) const
 	{return (*this)*(1.0f-factor)*(1.0f-factor)+2*v2*factor*(1.0f-factor)+v3*factor*factor;}
+
+	static inline Vect3d projectOntoPlane(Vect3d v, Vect3d n_unit) { return v - n_unit * v.Dot(n_unit); }
+
+	// Find θ such that rotateAroundAxis(B, T, θ) aligns with target (radial r).
+	static float autoRollTheta(Vect3d B, Vect3d T, Vect3d target) { float x = B.Dot(target); float y = target.Dot(T.Cross(B)); return std::atan2(y, x); }
 
 	//overloaded operators
 	//binary operators
