@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <map>
+#include <cstring>
 
 // ImGui
 #include "imgui.h"
@@ -59,14 +60,57 @@ struct LeafEdit {
     std::vector<Vect3d> customCtrl;   // world-space control points
 };
 
+/* --------------------- per-leaf parameter bundle ------------------ */
+struct LeafParams {
+    // shape / sampling
+    float length = 1.00f;
+    float wmax = 0.18f;
+    int   samplesMin = 16;
+
+    // droop / twist / roll
+    bool  droop = true;
+    float droopMax = 0.06f;
+    bool  twistOn = true;
+    float twistMaxD = 20.f;
+    float twistPow = 1.4f;
+    bool  autoRollTangency = true;
+
+    // waviness
+    float waveAmp = 0.0030f;
+    float waveCycles = 6.0f;
+    float waveAcross = 0.5f;
+    float waveFadeIn = 0.4f;   // internal envelope endpoints (UI hidden)
+    float waveFadeOut = 0.4f;
+
+    // width profile
+    float widthKnee = 0.66f;
+    float widthAtKnee = 0.45f;
+    float earlyPow = 0.70f;
+    float tipPow = 1.80f;
+    float baseRampFrac = 0.08f;
+
+    // attach + unwrap
+    float attachFrac = 0.10f;
+    float attachEps = 0.0015f;
+
+    float lipLenFrac = 0.08f;
+    int   lipCols = 11;      // odd enforced at use site
+    float lipArc0Deg = 340.f;
+    float lipArc1Deg = 40.f;
+    float unwrapMidFrac = 0.55f;
+    float unwrapSharpness = 2.50f;
+
+    // seam ring drop (affects weld height for THIS leaf)
+    float ringDrop = 0.010f;
+};
+
 /* ---------------------- generated geometry ----------------------- */
-// Whole-leaf parametric grid (rows x cols)
 struct LeafGeom {
-    int rows = 0, cols = 0;              // grid size
-    std::vector<Vect3d> pos;             // rows*cols positions
-    std::vector<Vec2>   uv;              // rows*cols texcoords
-    std::vector<Vect3d> ctrl;            // control points used
-    std::vector<Vect3d> nrm;             // per-vertex normals
+    int rows = 0, cols = 0;
+    std::vector<Vect3d> pos;
+    std::vector<Vec2>   uv;
+    std::vector<Vect3d> ctrl;
+    std::vector<Vect3d> nrm;
 };
 
 struct StemLayerGeom {
@@ -85,11 +129,10 @@ static inline float smoothstepf(float a, float b, float x) {
 }
 static inline float widthBaseMax(float s, float wMax,
     float knee, float wAtKnee, float earlyPow,
-    float tipPow, float tipRel) {
+    float tipPow) {
     s = clampf(s, 0.f, 1.f);
     const float k = clampf(knee, 0.40f, 0.90f);
     const float wk = clampf(wAtKnee, 0.05f, 0.95f);
-    const float w1 = clampf(tipRel, 0.00f, 0.40f);
     const float p0 = std::max(0.1f, earlyPow);
     const float p1 = std::max(0.1f, tipPow);
 
@@ -100,7 +143,7 @@ static inline float widthBaseMax(float s, float wMax,
     }
     else {
         float t = (1.f - k > 1e-6f) ? ((s - k) / (1.f - k)) : 1.f;
-        wr = lerpf(wk, w1, powf(t, p1));
+        wr = lerpf(wk, 0.0, powf(t, p1));
     }
     return wMax * wr;
 }
@@ -190,7 +233,7 @@ static std::vector<LeafKey> gFlatKeys; static std::vector<std::string> gFlatName
 static std::vector<LeafGeom>      gLeafGeoms;
 static std::vector<StemLayerGeom> gStemLayers;
 
-// Leaf shape
+// Leaf shape defaults (used only to seed per-leaf params on first use)
 static float gLeafLength = 1.00f;
 static float gLeafWmax = 0.18f;
 static int   gSamplesMin = 16;
@@ -199,85 +242,131 @@ static float gDroopMax = 0.06f;
 static bool  gTwistOn = true;
 static float gTwistMaxD = 20.f;
 static float gTwistPow = 1.4f;
-static float gRollOffsetD = 180.0f; // rotate about tangent so blades face "up"
 static bool  gAutoRollTangency = true;
 
-// --- Waviness (static corrugation along the leaf length) ---
-static float gWaveAmp = 0.0030f;       // meters, peak displacement
-static float gWaveCycles = 6.0f;       // how many waves from base→tip
-static float gWaveAcross = 0.5f;       // 0=uniform across width; 1=edges out of phase with center
-static float gWaveFadeIn = 0.12f;      // fraction near base to fade in
-static float gWaveFadeOut = 0.10f;     // fraction near tip to fade out
+// --- Waviness defaults ---
+static float gWaveAmp = 0.0030f;
+static float gWaveCycles = 6.0f;
+static float gWaveAcross = 0.5f;
+static float gWaveFadeIn = 0.4f;
+static float gWaveFadeOut = 0.4f;
 
-// Width profile (base-max → knee → tip)
+// Width profile defaults
 static float gWidthKnee = 0.66f;
 static float gWidthAtKnee = 0.45f;
 static float gEarlyPow = 0.70f;
 static float gTipPow = 1.80f;
-static float gTipRelWidth = 0.05f;
-static float gBaseRampFrac = 0.08f;  // wedge length near base
+static float gBaseRampFrac = 0.08f;
 
-// Attachment to stem (blend centerline to cylinder near the base)
-static float gAttachFrac = 0.10f;   // 0..1 of length
-static float gAttachEpsilon = 0.0015f; // keep off the stem (z-fight guard)
+// Attachment defaults
+static float gAttachFrac = 0.10f;
+static float gAttachEpsilon = 0.0015f;
 
-// Unfolding along length (cylinder→leaf)
-static float gLipLenFrac = 0.08f;   // fraction of leaf length for unwrapping
-static int   gLipCols = 11;      // odd, >=7 (grid columns)
-static float gLipArc0Deg = 340.f;   // arc at base (<360 to avoid seam)
-static float gLipArc1Deg = 40.f;    // arc at end of unwrap (0..180)
-static float gCollarHoldFrac = 0.25f;   // portion kept cylindrical
-static float gUnwrapMidFrac = 0.55f;   // logistic midpoint
-static float gUnwrapSharpness = 2.50f;   // logistic steepness
-static float gRingDrop = 0.010f;  // meters (0–5 cm is typical)
+// Unfold defaults
+static float gLipLenFrac = 0.08f;
+static int   gLipCols = 11;      // odd, >=7
+static float gLipArc0Deg = 340.f;
+static float gLipArc1Deg = 40.f;
+static float gUnwrapMidFrac = 0.55f;
+static float gUnwrapSharpness = 2.50f;
+static float gRingDrop = 0.010f;  // default (per-leaf override stored in LeafParams)
 
-// Stem layers (concentric)
-static float gStemLayerShrink = 0.0060f; // radius decrease per new inner cylinder (larger default gap)
+// Stem layers (concentric) — GLOBAL
+static float gStemLayerShrink = 0.0060f; // radius decrease per new inner cylinder
 static int   gStemSides = 48;     // tesselation
 static bool  gStemAsWire = false;  // render layers as wires
 
-// Outermost stem radius override
+// Outermost stem radius override — GLOBAL
 static bool  gOverrideBaseRadius = false;
 static float gOutermostRadius = 0.0200f;
 
-// Texture
+// Texture — GLOBAL display
 static bool     gUseLeafTex = true;
 static GLuint   gLeafTex = 0;  static int gLeafTexW = 0, gLeafTexH = 0;  static bool gTexOK = false;
 static char     gLeafTexPath[256] = "maize_leaf.png";
 static float    gTexURepeat = 1.0f, gTexVRepeat = 1.0f;
 
-// Camera/UI
+// OBJ/MTL export
+static char gObjPath[256] = "plant.obj";
+static bool gObjOK = false, gObjFail = false;
+static bool gCopyTextureOnExport = true;
+static bool gTexCopyOK = false;
+
+// Camera/UI — GLOBAL display
 static int   gWinW = 1280, gWinH = 860;
 static float gYaw = 30.f, gPitch = 18.f, gDist = 3.5f;
 static Vect3d gCamTarget = { 0.5f, 0.25f, 0.0f };
 static bool  gWireframe = false; static float gWireWidth = 1.5f;
 static bool  gShowCtrlPts = true, gShowCtrlPoly = true, gShowCtrlLabel = true; static float gCtrlPtSize = 10.f;
 static bool  gHideSelected = false, gSoloSelected = false;
-static bool gSelectedSolid = true;
+static bool  gSelectedSolid = true;
 
 // XML
-static char gXmlPath[256] = "maizeDebug.xml";
+static char gXmlPath[256] = "plantTestSorghum.xml";
 static bool gSaveOK = false, gSaveFail = false, gLoadOK = false, gLoadFail = false;
 
-// Lighting 
+// Lighting — GLOBAL
 static bool  gLightingOn = true;
-static bool  gTwoSided = true;     // leaves are thin; two-sided looks nicer
-static float gLightPos[4] = { 2.0f, 3.0f, 2.0f, 1.0f }; // w=1 positional (0=directional)
+static bool  gTwoSided = true;
+static float gLightPos[4] = { 2.0f, 3.0f, 2.0f, 1.0f };
 static float gGlobalAmb[4] = { 0.15f, 0.15f, 0.15f, 1.0f };
 static float gLightDiff[4] = { 0.95f, 0.95f, 0.95f, 1.0f };
 static float gLightSpec[4] = { 0.20f, 0.20f, 0.20f, 1.0f };
 static float gMatSpec[4] = { 0.12f, 0.12f, 0.12f, 1.0f };
 static float gShininess = 18.0f;
 
+/* -------------------- per-leaf params store & helpers ------------- */
+static std::map<LeafKey, LeafParams> gLeafParams;
+
+static LeafParams defaultLeafParams() {
+    LeafParams P;
+    P.length = gLeafLength; P.wmax = gLeafWmax; P.samplesMin = gSamplesMin;
+    P.droop = gDroop; P.droopMax = gDroopMax;
+    P.twistOn = gTwistOn; P.twistMaxD = gTwistMaxD; P.twistPow = gTwistPow;
+    P.autoRollTangency = gAutoRollTangency;
+
+    P.waveAmp = gWaveAmp; P.waveCycles = gWaveCycles; P.waveAcross = gWaveAcross;
+    P.waveFadeIn = gWaveFadeIn; P.waveFadeOut = gWaveFadeOut;
+
+    P.widthKnee = gWidthKnee; P.widthAtKnee = gWidthAtKnee; P.earlyPow = gEarlyPow; P.tipPow = gTipPow;
+    P.baseRampFrac = gBaseRampFrac;
+
+    P.attachFrac = gAttachFrac; P.attachEps = gAttachEpsilon;
+
+    P.lipLenFrac = gLipLenFrac; P.lipCols = gLipCols; P.lipArc0Deg = gLipArc0Deg; P.lipArc1Deg = gLipArc1Deg;
+    P.unwrapMidFrac = gUnwrapMidFrac; P.unwrapSharpness = gUnwrapSharpness;
+
+    P.ringDrop = gRingDrop;
+    return P;
+}
+static LeafParams& paramsFor(const LeafKey& key) {
+    auto it = gLeafParams.find(key);
+    if (it == gLeafParams.end()) it = gLeafParams.emplace(key, defaultLeafParams()).first;
+    return it->second;
+}
+
+// Unwrap amount b(s) in [0,1] for a specific leaf
+static inline float unwrapAmountAtS(float s01, const LeafParams& P) {
+    const float sEnd = clampf(P.lipLenFrac, 0.f, 1.f);
+    const float sHold = 0.0f * sEnd;
+    if (s01 <= sHold) return 0.f;
+    if (s01 >= sEnd)  return 1.f;
+    float t = clampf((s01 - sHold) / std::max(1e-4f, sEnd - sHold), 0.f, 1.f);
+    const float x0 = clampf(P.unwrapMidFrac, 0.05f, 0.95f);
+    const float k = std::max(0.1f, P.unwrapSharpness);
+    auto L = [&](float x) { return 1.f / (1.f + std::exp(-k * (x - x0))); };
+    float y = L(t), y0 = L(0.f), y1 = L(1.f);
+    float b = (y - y0) / std::max(1e-6f, (y1 - y0));
+    return b * b * (3.f - 2.f * b);
+}
 
 /* -------------------- helpers & loading --------------------------- */
 static void rebuildFlatKeys() {
     gFlatKeys.clear(); gFlatNames.clear();
     for (size_t ti = 0; ti < gPlant.tillers.size(); ++ti) {
         const auto& td = gPlant.tillers[ti];
-        // Base radius for this tiller (allow override)
         float baseR = gOverrideBaseRadius ? std::max(0.001f, gOutermostRadius) : td.radius;
-        (void)baseR; // not used here; just documenting availability
+        (void)baseR;
         for (size_t li = 0; li < td.leaves.size(); ++li) {
             gFlatKeys.push_back({ (int)ti,(int)li });
             char buf[64]; snprintf(buf, sizeof(buf), "T%zu leaf id=%d", ti, td.leaves[li].id);
@@ -297,7 +386,7 @@ static bool savePlantXMLWithEdits(const char* path) {
     species->SetAttribute("name", gPlant.species.c_str());
     root->InsertEndChild(species);
 
-    // ---- Global params (optional but handy) ----
+    // ---- Global params (defaults only; per-leaf overrides in <lparams>) ----
     XMLElement* P = doc.NewElement("params");
     P->SetAttribute("length_m", gLeafLength);
     P->SetAttribute("max_width_m", gLeafWmax);
@@ -307,7 +396,6 @@ static bool savePlantXMLWithEdits(const char* path) {
     P->SetAttribute("twist_on", (int)gTwistOn);
     P->SetAttribute("twist_max_deg", gTwistMaxD);
     P->SetAttribute("twist_pow", gTwistPow);
-    P->SetAttribute("roll_deg", gRollOffsetD);
     P->SetAttribute("base_ramp_frac", gBaseRampFrac);
 
     P->SetAttribute("attach_frac", gAttachFrac);
@@ -317,7 +405,6 @@ static bool savePlantXMLWithEdits(const char* path) {
     P->SetAttribute("lip_cols", gLipCols);
     P->SetAttribute("lip_arc0_deg", gLipArc0Deg);
     P->SetAttribute("lip_arc1_deg", gLipArc1Deg);
-    P->SetAttribute("collar_hold_frac", gCollarHoldFrac);
     P->SetAttribute("unwrap_mid", gUnwrapMidFrac);
     P->SetAttribute("unwrap_sharpness", gUnwrapSharpness);
     P->SetAttribute("ring_drop_m", gRingDrop);
@@ -354,11 +441,11 @@ static bool savePlantXMLWithEdits(const char* path) {
             lf->SetAttribute("alpha", L.alphaDeg);
             lf->SetAttribute("spines", L.spines);
 
-            // If an edit exists for this leaf, serialize it
+            // Per-leaf editable midrib (optional)
             LeafKey key{ (int)ti, (int)li };
-            auto it = gEdits.find(key);
-            if (it != gEdits.end() && it->second.hasCustom && it->second.customCtrl.size() >= 4) {
-                const LeafEdit& E = it->second;
+            auto editIt = gEdits.find(key);
+            if (editIt != gEdits.end() && editIt->second.hasCustom && editIt->second.customCtrl.size() >= 4) {
+                const LeafEdit& E = editIt->second;
                 XMLElement* ed = doc.NewElement("edit");
                 ed->SetAttribute("pinC0ToStem", (int)E.pinC0ToStem);
                 for (const Vect3d& p : E.customCtrl) {
@@ -369,6 +456,48 @@ static bool savePlantXMLWithEdits(const char* path) {
                     ed->InsertEndChild(cp);
                 }
                 lf->InsertEndChild(ed);
+            }
+
+            // Per-leaf params (optional; only if present/edited)
+            auto pit = gLeafParams.find(key);
+            if (pit != gLeafParams.end()) {
+                const LeafParams& LP = pit->second;
+                XMLElement* lp = doc.NewElement("lparams");
+                lp->SetAttribute("length_m", LP.length);
+                lp->SetAttribute("max_width_m", LP.wmax);
+                lp->SetAttribute("samples_min", LP.samplesMin);
+                lp->SetAttribute("droop_on", (int)LP.droop);
+                lp->SetAttribute("droop_max_m", LP.droopMax);
+                lp->SetAttribute("twist_on", (int)LP.twistOn);
+                lp->SetAttribute("twist_max_deg", LP.twistMaxD);
+                lp->SetAttribute("twist_pow", LP.twistPow);
+                lp->SetAttribute("auto_roll", (int)LP.autoRollTangency);
+
+                lp->SetAttribute("wave_amp_m", LP.waveAmp);
+                lp->SetAttribute("wave_cycles", LP.waveCycles);
+                lp->SetAttribute("wave_across", LP.waveAcross);
+                lp->SetAttribute("wave_fade_in", LP.waveFadeIn);
+                lp->SetAttribute("wave_fade_out", LP.waveFadeOut);
+
+                lp->SetAttribute("width_knee", LP.widthKnee);
+                lp->SetAttribute("width_at_knee", LP.widthAtKnee);
+                lp->SetAttribute("early_pow", LP.earlyPow);
+                lp->SetAttribute("tip_pow", LP.tipPow);
+                lp->SetAttribute("base_ramp_frac", LP.baseRampFrac);
+
+                lp->SetAttribute("attach_frac", LP.attachFrac);
+                lp->SetAttribute("attach_eps", LP.attachEps);
+
+                lp->SetAttribute("lip_len_frac", LP.lipLenFrac);
+                lp->SetAttribute("lip_cols", LP.lipCols);
+                lp->SetAttribute("lip_arc0_deg", LP.lipArc0Deg);
+                lp->SetAttribute("lip_arc1_deg", LP.lipArc1Deg);
+                lp->SetAttribute("unwrap_mid", LP.unwrapMidFrac);
+                lp->SetAttribute("unwrap_sharpness", LP.unwrapSharpness);
+
+                lp->SetAttribute("ring_drop_m", LP.ringDrop);
+
+                lf->InsertEndChild(lp);
             }
 
             leaves->InsertEndChild(lf);
@@ -389,7 +518,7 @@ static bool loadPlantXML(const std::string& path, PlantDesc& out) {
     if (!species) return false;
     if (const char* sp = species->Attribute("name")) out.species = sp; else out.species = "unknown";
 
-    // ---- Optional global params ----
+    // ---- Optional global defaults ----
     if (const XMLElement* P = species->FirstChildElement("params")) {
         P->QueryFloatAttribute("length_m", &gLeafLength);
         P->QueryFloatAttribute("max_width_m", &gLeafWmax);
@@ -399,7 +528,6 @@ static bool loadPlantXML(const std::string& path, PlantDesc& out) {
         { int v = 0; if (P->QueryIntAttribute("twist_on", &v) == XML_SUCCESS) gTwistOn = (v != 0); }
         P->QueryFloatAttribute("twist_max_deg", &gTwistMaxD);
         P->QueryFloatAttribute("twist_pow", &gTwistPow);
-        P->QueryFloatAttribute("roll_deg", &gRollOffsetD);
         P->QueryFloatAttribute("base_ramp_frac", &gBaseRampFrac);
 
         P->QueryFloatAttribute("attach_frac", &gAttachFrac);
@@ -409,7 +537,6 @@ static bool loadPlantXML(const std::string& path, PlantDesc& out) {
         P->QueryIntAttribute("lip_cols", &gLipCols);
         P->QueryFloatAttribute("lip_arc0_deg", &gLipArc0Deg);
         P->QueryFloatAttribute("lip_arc1_deg", &gLipArc1Deg);
-        P->QueryFloatAttribute("collar_hold_frac", &gCollarHoldFrac);
         P->QueryFloatAttribute("unwrap_mid", &gUnwrapMidFrac);
         P->QueryFloatAttribute("unwrap_sharpness", &gUnwrapSharpness);
         P->QueryFloatAttribute("ring_drop_m", &gRingDrop);
@@ -428,6 +555,7 @@ static bool loadPlantXML(const std::string& path, PlantDesc& out) {
 
     out.tillers.clear();
     gEdits.clear();
+    gLeafParams.clear();
 
     size_t ti = 0;
     for (const XMLElement* t = species->FirstChildElement("tiller"); t; t = t->NextSiblingElement("tiller"), ++ti) {
@@ -446,6 +574,8 @@ static bool loadPlantXML(const std::string& path, PlantDesc& out) {
                 L.azimuthDeg = td.alphaDeg + L.id * td.betaDeg;
                 td.leaves.push_back(L);
 
+                LeafKey key{ (int)ti, (int)li };
+
                 // ---- Optional per-leaf edit ----
                 if (const XMLElement* ed = lf->FirstChildElement("edit")) {
                     LeafEdit E; E.hasCustom = true;
@@ -459,9 +589,48 @@ static bool loadPlantXML(const std::string& path, PlantDesc& out) {
                         E.customCtrl.emplace_back(x, y, z);
                     }
                     if (E.customCtrl.size() >= 4) {
-                        gEdits[{(int)ti, (int)li}] = std::move(E);
+                        gEdits[key] = std::move(E);
                     }
                 }
+
+                // ---- Optional per-leaf params ----
+                LeafParams LP = defaultLeafParams();
+                if (const XMLElement* lp = lf->FirstChildElement("lparams")) {
+                    lp->QueryFloatAttribute("length_m", &LP.length);
+                    lp->QueryFloatAttribute("max_width_m", &LP.wmax);
+                    lp->QueryIntAttribute("samples_min", &LP.samplesMin);
+                    { int v = LP.droop; if (lp->QueryIntAttribute("droop_on", &v) == XML_SUCCESS) LP.droop = (v != 0); }
+                    lp->QueryFloatAttribute("droop_max_m", &LP.droopMax);
+                    { int v = LP.twistOn; if (lp->QueryIntAttribute("twist_on", &v) == XML_SUCCESS) LP.twistOn = (v != 0); }
+                    lp->QueryFloatAttribute("twist_max_deg", &LP.twistMaxD);
+                    lp->QueryFloatAttribute("twist_pow", &LP.twistPow);
+                    { int v = LP.autoRollTangency; if (lp->QueryIntAttribute("auto_roll", &v) == XML_SUCCESS) LP.autoRollTangency = (v != 0); }
+
+                    lp->QueryFloatAttribute("wave_amp_m", &LP.waveAmp);
+                    lp->QueryFloatAttribute("wave_cycles", &LP.waveCycles);
+                    lp->QueryFloatAttribute("wave_across", &LP.waveAcross);
+                    lp->QueryFloatAttribute("wave_fade_in", &LP.waveFadeIn);
+                    lp->QueryFloatAttribute("wave_fade_out", &LP.waveFadeOut);
+
+                    lp->QueryFloatAttribute("width_knee", &LP.widthKnee);
+                    lp->QueryFloatAttribute("width_at_knee", &LP.widthAtKnee);
+                    lp->QueryFloatAttribute("early_pow", &LP.earlyPow);
+                    lp->QueryFloatAttribute("tip_pow", &LP.tipPow);
+                    lp->QueryFloatAttribute("base_ramp_frac", &LP.baseRampFrac);
+
+                    lp->QueryFloatAttribute("attach_frac", &LP.attachFrac);
+                    lp->QueryFloatAttribute("attach_eps", &LP.attachEps);
+
+                    lp->QueryFloatAttribute("lip_len_frac", &LP.lipLenFrac);
+                    lp->QueryIntAttribute("lip_cols", &LP.lipCols);
+                    lp->QueryFloatAttribute("lip_arc0_deg", &LP.lipArc0Deg);
+                    lp->QueryFloatAttribute("lip_arc1_deg", &LP.lipArc1Deg);
+                    lp->QueryFloatAttribute("unwrap_mid", &LP.unwrapMidFrac);
+                    lp->QueryFloatAttribute("unwrap_sharpness", &LP.unwrapSharpness);
+
+                    lp->QueryFloatAttribute("ring_drop_m", &LP.ringDrop);
+                }
+                gLeafParams[key] = LP;
             }
         }
         out.tillers.push_back(td);
@@ -497,22 +666,6 @@ static std::vector<Vect3d> makeLeafCtrl(Vect3d base, Vect3d stemUp, Vect3d dir, 
     return { p0,p1,p2,p3,p4 };
 }
 
-// Unwrap amount b(s) in [0,1]: 0=cylinder, 1=flat leaf
-static inline float unwrapAmountAtS(float s01) {
-    const float sEnd = clampf(gLipLenFrac, 0.f, 1.f);
-    const float sHold = clampf(gCollarHoldFrac, 0.f, 0.95f) * sEnd;
-    if (s01 <= sHold) return 0.f;
-    if (s01 >= sEnd)  return 1.f;
-    float t = (s01 - sHold) / std::max(1e-4f, sEnd - sHold);
-    t = clampf(t, 0.f, 1.f);
-    const float x0 = clampf(gUnwrapMidFrac, 0.05f, 0.95f);
-    const float k = std::max(0.1f, gUnwrapSharpness);
-    auto L = [&](float x) { return 1.f / (1.f + std::exp(-k * (x - x0))); };
-    float y = L(t), y0 = L(0.f), y1 = L(1.f);
-    float b = (y - y0) / std::max(1e-6f, (y1 - y0));
-    return b * b * (3.f - 2.f * b);
-}
-
 /* ----------------------- core: rebuild meshes -------------------- */
 static void rebuildGeometry() {
     gLeafGeoms.clear();
@@ -531,12 +684,16 @@ static void rebuildGeometry() {
 
         float baseR = gOverrideBaseRadius ? std::max(0.001f, gOutermostRadius) : td.radius;
 
-        // --- Stem layers (stacked from ground to each leaf base) ---
+        // --- Stem layers ---
         for (size_t k = 0; k < td.leaves.size(); ++k) {
             float r = std::max(0.001f, baseR - (float)k * gStemLayerShrink);
-            StemLayerGeom layer; layer.radius = r; layer.y0 = 0.f; 
-            float yTop = std::max(0.f, yAt[k] - gRingDrop);
+            StemLayerGeom layer; layer.radius = r; layer.y0 = 0.f;
+
+            LeafKey kkey{ (int)ti, (int)k };
+            const LeafParams& KP = paramsFor(kkey);
+            float yTop = std::max(0.f, yAt[k] - KP.ringDrop); // per-leaf ring drop
             layer.y1 = yTop;
+
             layer.sides = std::max(8, gStemSides);
             for (int i = 0; i <= layer.sides; ++i) {
                 float a = (float)i / layer.sides * 2.f * (float)M_PI;
@@ -557,32 +714,35 @@ static void rebuildGeometry() {
             Vect3d base = rhat * baseR + Vect3d{ 0.f, yAt[li], 0.f };          // initial base
             Vect3d dir = (rhat * std::cos(pitch) + stemAxis * std::sin(pitch)).GetNormalized();
 
+            // Per-leaf params
+            LeafKey key{ (int)ti,(int)li };
+            LeafParams& LP = paramsFor(key);
+
             // Leaf attaches to the *current inner layer* created by this leaf
             float rLeaf = std::max(0.001f, baseR - (float)(li)*gStemLayerShrink);
-            base = rhat * (rLeaf + gAttachEpsilon) + Vect3d{ 0.f, yAt[li], 0.f };
-            float yRingTop = base.y() - gRingDrop;  // ring top below C0
+            base = rhat * (rLeaf + LP.attachEps) + Vect3d{ 0.f, yAt[li], 0.f };
+            float yRingTop = base.y() - LP.ringDrop;  // ring top below C0
 
             // Control points (seed or edited)
-            LeafKey key{ (int)ti,(int)li };
             auto it = gEdits.find(key);
             std::vector<Vect3d> ctrl = (it != gEdits.end() && it->second.hasCustom && it->second.customCtrl.size() >= 4)
-                ? it->second.customCtrl : makeLeafCtrl(base, stemAxis, dir, gLeafLength);
+                ? it->second.customCtrl : makeLeafCtrl(base, stemAxis, dir, LP.length);
             if (it != gEdits.end() && it->second.hasCustom && it->second.pinC0ToStem) ctrl[0] = base;
 
-            int samples = std::max(L.spines, gSamplesMin);
+            int samples = std::max(L.spines, LP.samplesMin);
             auto mid = resampleMidrib(ctrl, samples);
             std::vector<Vect3d> T, N, B; buildPTFrames(mid, T, N, B);
 
             // Roll + twist so the blade faces up
             std::vector<Vect3d> N2 = N, B2 = B;
-            float baseRoll = radiansf(gRollOffsetD);
-            if (gAutoRollTangency) {
+            float baseRoll = 0.0f;
+            if (LP.autoRollTangency) {
                 float theta0 = Vect3d::autoRollTheta(B[0], T[0], rhat);
                 baseRoll += theta0;
             }
             for (int i = 0; i < samples; ++i) {
                 float s = (samples == 1) ? 0.f : float(i) / (samples - 1);
-                float twist = gTwistOn ? radiansf(gTwistMaxD) * std::pow(s, gTwistPow) : 0.f;
+                float twist = LP.twistOn ? radiansf(LP.twistMaxD) * std::pow(s, LP.twistPow) : 0.f;
                 float th = baseRoll + twist;
                 N2[i] = Vect3d::rotateAroundAxis(N[i], T[i], th);
                 B2[i] = Vect3d::rotateAroundAxis(B[i], T[i], th);
@@ -592,7 +752,7 @@ static void rebuildGeometry() {
             LeafGeom G;
             G.ctrl = ctrl;
             G.rows = samples;
-            G.cols = std::max(7, (gLipCols | 1)); // force odd to have a true center column
+            G.cols = std::max(7, (LP.lipCols | 1)); // force odd to have a true center column
             G.pos.resize((size_t)G.rows * G.cols);
             G.uv.resize((size_t)G.rows * G.cols);
 
@@ -604,27 +764,28 @@ static void rebuildGeometry() {
                 // Midrib (optionally hug cylinder near base)
                 Vect3d C = mid[i];
 
-                if (gAttachFrac > 0.f) {
-                    float x = clampf(s01 / std::max(1e-4f, gAttachFrac), 0.f, 1.f);
+                if (LP.attachFrac > 0.f) {
+                    float x = clampf(s01 / std::max(1e-4f, LP.attachFrac), 0.f, 1.f);
                     float t = 1.f - (x * x * (3.f - 2.f * x));
-                    Vect3d Ccyl = rhat * (rLeaf + gAttachEpsilon) + Vect3d{ 0.f, C.y(), 0.f };
+                    float rCylAttach = rLeaf;
+                    Vect3d Ccyl = rhat * rCylAttach + Vect3d{ 0.f, C.y(), 0.f };
                     C = C * (1.f - t) + Ccyl * t;
                 }
 
                 if (i == 0) C.SetY(base.y()); // seal first row to layer height
-                if (gDroop) C.SetY(C.y() - gDroopMax * s01 * s01);
+                if (LP.droop) C.SetY(C.y() - LP.droopMax * s01 * s01);
 
                 Vect3d Nrow = N2[i];
 
                 // Unwrap and arc at this s
-                float b = unwrapAmountAtS(s01);                      // 0..1
-                float dphi = radiansf(lerpf(gLipArc0Deg, gLipArc1Deg, b));
+                float b = unwrapAmountAtS(s01, LP);                      // 0..1
+                float dphi = radiansf(lerpf(LP.lipArc0Deg, LP.lipArc1Deg, b));
 
                 // Width and anti-hourglass blend
-                float wLeaf = widthBaseMax(s01, gLeafWmax, gWidthKnee, gWidthAtKnee, gEarlyPow, gTipPow, gTipRelWidth);
-                float baseRamp = smooth01(s01 / std::max(1e-4f, gBaseRampFrac));
+                float wLeaf = widthBaseMax(s01, LP.wmax, LP.widthKnee, LP.widthAtKnee, LP.earlyPow, LP.tipPow);
+                float baseRamp = smooth01(s01 / std::max(1e-4f, LP.baseRampFrac));
                 float halfWLeaf = 0.5f * wLeaf * baseRamp;
-                float halfChord = (rLeaf + gAttachEpsilon) * std::sinf(0.5f * dphi);
+                float halfChord = (rLeaf + LP.attachEps) * std::sinf(0.5f * dphi);
                 float halfW = lerpf(halfChord, halfWLeaf, b);
 
                 for (int j = 0; j < G.cols; ++j) {
@@ -633,42 +794,44 @@ static void rebuildGeometry() {
                     float phj = phi + uLR * dphi;
 
                     // Cylinder and flat cross-section
-                    // Let the cylinder's Y start at the dropped ring, then rise to C.y() over the unwrap span
-                    const float sEnd = clampf(gLipLenFrac, 0.f, 1.f);
+                    const float sEnd = clampf(LP.lipLenFrac, 0.f, 1.f);
                     float tRise = (sEnd > 1e-6f) ? clampf(s01 / sEnd, 0.f, 1.f) : 1.f;
+
+                    // First row sits exactly on the stem top ring height for a perfect weld
+                    if (i == 0) C.SetY(yRingTop);
+
                     float cylY = lerpf(yRingTop, C.y(), tRise);
 
-                    Vect3d Pcyl = { std::cos(phj) * (rLeaf + gAttachEpsilon),
-                                    cylY,
-                                    std::sin(phj) * (rLeaf + gAttachEpsilon) };
+                    float rCyl = rLeaf;
+                    Vect3d Pcyl = { std::cos(phj) * rCyl, cylY, std::sin(phj) * rCyl };
                     Vect3d Pleaf = C + Nrow * (uLR * halfW);
 
                     // Blend by unwrap amount
-                    Vect3d P = Pcyl * (1.f - b) + Pleaf * b;
+                    Vect3d Pv = Pcyl * (1.f - b) + Pleaf * b;
 
                     if (i > 0) { // keep the seam row i==0 sealed to the ring
                         // Binormal from local frame
                         Vect3d Bblend = (T[i].Cross(Nrow)).GetNormalized();
 
                         // s01 already computed above; build a length envelope (fade in/out)
-                        float fadeIn = smoothstepf(0.0f, std::max(1e-3f, gWaveFadeIn), s01);
-                        float fadeOut = 1.0f - smoothstepf(1.0f - gWaveFadeOut, 1.0f, s01);
+                        float fadeIn = smoothstepf(0.0f, std::max(1e-3f, LP.waveFadeIn), s01);
+                        float fadeOut = 1.0f - smoothstepf(1.0f - LP.waveFadeOut, 1.0f, s01);
                         float env = fadeIn * fadeOut;
 
                         // base sinusoid down the length
                         const float twoPi = 6.28318530718f;
-                        float basePhase = twoPi * (gWaveCycles * s01);
+                        float basePhase = twoPi * (LP.waveCycles * s01);
 
                         // across-width modulation: uLR in [-1,1]
-                        float acrossPhase = twoPi * 0.25f * gWaveAcross * uLR; // quarter-cycle skew toward edges
-                        float amp = gWaveAmp * env * std::sinf(basePhase + acrossPhase);
+                        float acrossPhase = twoPi * 0.25f * LP.waveAcross * uLR;
+                        float amp = LP.waveAmp * env * std::sinf(basePhase + acrossPhase);
 
                         // displace vertex along binormal
-                        P = P + Bblend * amp;
+                        Pv = Pv + Bblend * amp;
                     }
 
                     int id = idxAt(i, j);
-                    G.pos[id] = P;
+                    G.pos[id] = Pv;
                     G.uv[id] = { u * gTexURepeat, s01 * gTexVRepeat };
                 }
             }
@@ -688,7 +851,7 @@ static void rebuildGeometry() {
 
                     Vect3d dU = P_jp - P_jm;   // across columns
                     Vect3d dV = P_ip - P_im;   // along rows
-                    Vect3d n = dV.Cross(dU);  // orientation chosen to match triangle order
+                    Vect3d n = dV.Cross(dU);
                     float L = n.Length();
                     if (L > 1e-12f) n = n * (1.0f / L);
                     else            n = { 0,1,0 };
@@ -698,6 +861,218 @@ static void rebuildGeometry() {
             gLeafGeoms.push_back(std::move(G));
         }
     }
+}
+
+/* -------------------------- OBJ/MTL export helpers --------------- */
+static std::string dirFromPath(const std::string& p) {
+    size_t s = p.find_last_of("/\\"); return (s == std::string::npos) ? std::string() : p.substr(0, s);
+}
+static std::string fileFromPath(const std::string& p) {
+    size_t s = p.find_last_of("/\\"); return (s == std::string::npos) ? p : p.substr(s + 1);
+}
+static std::string replaceExt(const std::string& p, const char* newExtWithDot) {
+    size_t s = p.find_last_of('.'); size_t slash = p.find_last_of("/\\");
+    if (s == std::string::npos || (slash != std::string::npos && s < slash)) return p + newExtWithDot;
+    return p.substr(0, s) + newExtWithDot;
+}
+static bool copyFile(const char* src, const char* dst) {
+    FILE* in;
+    errno_t err_in = fopen_s(&in, src, "rb"); if (!in) return false;
+    FILE* out; 
+    errno_t err_out = fopen_s(&out, dst, "wb"); if (!out) { std::fclose(in); return false; }
+    char buf[1 << 15];
+    size_t n;
+    while ((n = std::fread(buf, 1, sizeof(buf), in)) > 0) {
+        if (std::fwrite(buf, 1, n, out) != n) { std::fclose(in); std::fclose(out); return false; }
+    }
+    std::fclose(in); std::fclose(out); return true;
+}
+static std::string normPath(std::string p) {
+    for (auto& c : p) if (c == '\\') c = '/';
+    return p;
+}
+static bool samePath(const std::string& a, const std::string& b) {
+    std::string na = normPath(a), nb = normPath(b);
+#if defined(_WIN32) || defined(_WIN64)
+    std::transform(na.begin(), na.end(), na.begin(), ::tolower);
+    std::transform(nb.begin(), nb.end(), nb.begin(), ::tolower);
+#endif
+    return na == nb;
+}
+static bool saveMTL(const char* mtlPath, const char* textureFileNameOnly) {
+    FILE* m;
+    errno_t err_m = fopen_s(&m, mtlPath, "w");
+    if (!m) return false;
+    std::fprintf(m, "# Plant materials\n\n");
+
+    // Leaf
+    std::fprintf(m, "newmtl leaf_mat\n");
+    std::fprintf(m, "Ns 18.0\nKa 0 0 0\nKd 0.75 0.75 0.75\nKs 0.1 0.1 0.1\nillum 2\n");
+    if (textureFileNameOnly && textureFileNameOnly[0]) {
+        std::fprintf(m, "map_Kd %s\n", textureFileNameOnly);
+        std::fprintf(m, "map_d %s\n", textureFileNameOnly);
+    }
+    std::fprintf(m, "\n");
+
+    // Stem — was Kd 0.2 0.6 0.25; make it 1 1 1 to avoid dimming the texture
+    std::fprintf(m, "newmtl stem_mat\n");
+    std::fprintf(m, "Ns 18.0\nKa 0 0 0\nKd 1 1 1\nKs 0.05 0.05 0.05\nillum 2\n");
+    if (textureFileNameOnly && textureFileNameOnly[0]) {
+        std::fprintf(m, "map_Kd %s\n", textureFileNameOnly);
+        std::fprintf(m, "map_d %s\n", textureFileNameOnly);
+    }
+    std::fclose(m);
+    return true;
+}
+
+/* -------------------------- OBJ export (with MTL) ---------------- */
+static bool savePlantOBJ(const char* path) {
+    // Paths
+    std::string objPath(path);
+    std::string objDir = dirFromPath(objPath);
+    std::string mtlFileName = fileFromPath(replaceExt(objPath, ".mtl"));
+    std::string mtlPath = objDir.empty() ? mtlFileName : (objDir + "/" + mtlFileName);
+
+    std::string texFileName = fileFromPath(std::string(gLeafTexPath)); // just the basename
+    std::string texOutPath = objDir.empty() ? texFileName : (objDir + "/" + texFileName);
+
+    // Write OBJ
+    FILE* f; 
+    errno_t err_f = fopen_s(&f, path, "w");
+    if (!f) return false;
+
+    std::fprintf(f, "# Exported plant\n# units: meters\n");
+    std::fprintf(f, "mtllib %s\n\n", mtlFileName.c_str());
+
+    int vCount = 0, vtCount = 0, vnCount = 0;
+
+    // ---------- Stem layers ----------
+    int stemIdx = 0;
+    for (const auto& S : gStemLayers) {
+        if (S.band.empty()) continue;
+
+        std::fprintf(f, "o stem_%02d\nusemtl stem_mat\n", stemIdx++);
+        const int vBase = vCount + 1;
+        const int vtBase = vtCount + 1;
+        const int vnBase = vnCount + 1;
+
+        // vertices / uvs / normals
+        for (size_t k = 0; k < S.band.size(); ++k) {
+            const Vect3d& v = S.band[k];
+            std::fprintf(f, "v %.6f %.6f %.6f\n", v.x(), v.y(), v.z());
+
+            float ang = std::atan2((float)v.z(), (float)v.x());
+            ang += radiansf(90);
+
+            float uBase = ang / (2.0f * float(M_PI)); if (uBase < 0.f) uBase += 1.f;
+            float vBase = (S.y1 - S.y0 > 1e-6f) ? (float)((v.y() - S.y0) / (S.y1 - S.y0)) : 0.f;
+
+            float u = uBase;
+            float vv = vBase;
+
+            float a = radiansf(0);
+            float ca = std::cos(a), sa = std::sin(a);
+            float du = u - 0.5f, dv = vv - 0.5f;
+            float ru = du * ca - dv * sa;
+            float rv = du * sa + dv * ca;
+            u = 0.5f + ru;
+            vv = 0.5f + rv;
+
+            std::fprintf(f, "vt %.6f %.6f\n", u * gTexURepeat * 2.0f, vv * gTexVRepeat);
+
+            Vect3d n = Vect3d(v.x(), 0.0, v.z());
+            float L = n.Length(); if (L > 1e-12f) n = n * (1.0 / L); else n = Vect3d{ 1,0,0 };
+            std::fprintf(f, "vn %.6f %.6f %.6f\n", n.x(), n.y(), n.z());
+        }
+        vCount += (int)S.band.size();
+        vtCount += (int)S.band.size();
+        vnCount += (int)S.band.size();
+
+        // triangles from triangle strip
+        for (int i = 0; i < S.sides; ++i) {
+            int l0 = vBase + 2 * i;
+            int u0 = vBase + 2 * i + 1;
+            int l1 = vBase + 2 * (i + 1);
+            int u1 = vBase + 2 * (i + 1) + 1;
+
+            std::fprintf(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
+                l0, vtBase + 2 * i, vnBase + 2 * i,
+                u0, vtBase + 2 * i + 1, vnBase + 2 * i + 1,
+                l1, vtBase + 2 * (i + 1), vnBase + 2 * (i + 1));
+
+            std::fprintf(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
+                u0, vtBase + 2 * i + 1, vnBase + 2 * i + 1,
+                u1, vtBase + 2 * (i + 1) + 1, vnBase + 2 * (i + 1) + 1,
+                l1, vtBase + 2 * (i + 1), vnBase + 2 * (i + 1));
+        }
+        std::fprintf(f, "\n");
+    }
+
+    // ---------- Leaves ----------
+    int leafIdx = 0;
+    for (const auto& G : gLeafGeoms) {
+        if (G.rows <= 1 || G.cols <= 1) continue;
+
+        std::fprintf(f, "o leaf_%02d\nusemtl leaf_mat\n", leafIdx++);
+        const int vBase = vCount + 1;
+        const int vtBase = vtCount + 1;
+        const int vnBase = vnCount + 1;
+
+        const int total = G.rows * G.cols;
+        for (int i = 0; i < total; ++i) {
+            const Vect3d& p = G.pos[i];
+            std::fprintf(f, "v %.6f %.6f %.6f\n", p.x(), p.y(), p.z());
+            const Vec2& t = G.uv[i];
+            std::fprintf(f, "vt %.6f %.6f\n", t.u, t.v);
+            const Vect3d& n = G.nrm[i];
+            std::fprintf(f, "vn %.6f %.6f %.6f\n", n.x(), n.y(), n.z());
+        }
+        vCount += total; vtCount += total; vnCount += total;
+
+        auto idx = [&](int r, int c) { return r * G.cols + c; };
+        for (int r = 0; r < G.rows - 1; ++r) {
+            for (int c = 0; c < G.cols - 1; ++c) {
+                int i00 = vBase + idx(r, c);
+                int i10 = vBase + idx(r + 1, c);
+                int i01 = vBase + idx(r, c + 1);
+                int i11 = vBase + idx(r + 1, c + 1);
+
+                int t00 = vtBase + idx(r, c);
+                int t10 = vtBase + idx(r + 1, c);
+                int t01 = vtBase + idx(r, c + 1);
+                int t11 = vtBase + idx(r + 1, c + 1);
+
+                int n00 = vnBase + idx(r, c);
+                int n10 = vnBase + idx(r + 1, c);
+                int n01 = vnBase + idx(r, c + 1);
+                int n11 = vnBase + idx(r + 1, c + 1);
+
+                // two triangles per quad
+                std::fprintf(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
+                    i00, t00, n00, i10, t10, n10, i01, t01, n01);
+                std::fprintf(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
+                    i10, t10, n10, i11, t11, n11, i01, t01, n01);
+            }
+        }
+        std::fprintf(f, "\n");
+    }
+
+    std::fclose(f);
+
+    // Write MTL
+    bool mtlOK = saveMTL(mtlPath.c_str(), texFileName.c_str());
+
+    gTexCopyOK = true;
+    if (gCopyTextureOnExport) {
+        if (samePath(gLeafTexPath, texOutPath)) {
+            // Already in the destination; no copy needed
+            gTexCopyOK = true;
+        }
+        else {
+            gTexCopyOK = copyFile(gLeafTexPath, texOutPath.c_str());
+        }
+    }
+    return mtlOK;
 }
 
 /* -------------------------- rendering ---------------------------- */
@@ -730,6 +1105,8 @@ static void drawStemLayers() {
     }
     else {
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glEnable(GL_POLYGON_OFFSET_FILL);
+        glPolygonOffset(1.0f, 1.0f);
         if (gUseLeafTex && gLeafTex) {
             glEnable(GL_TEXTURE_2D);
             glBindTexture(GL_TEXTURE_2D, gLeafTex);
@@ -745,7 +1122,6 @@ static void drawStemLayers() {
     int idx = 0;
     for (const auto& S : gStemLayers) {
         if (!gUseLeafTex || !gLeafTex || gStemAsWire) {
-            // subtle color variation per layer if not using texture
             float t = (idx == 0) ? 0.f : 0.12f + 0.12f * (idx % 5);
             glColor3f(0.06f + t, 0.45f + 0.2f * t, 0.08f + 0.05f * t);
         }
@@ -754,16 +1130,36 @@ static void drawStemLayers() {
         for (size_t vi = 0; vi < S.band.size(); ++vi) {
             const Vect3d& v = S.band[vi];
 
-            // normal for cylinder around Y axis
             Vect3d n = Vect3d(v.x(), 0.0f, v.z());
-            float L = n.Length(); if (L > 1e-12f) n = n * (1.0f / L); else n = { 1,0,0 };
+            float L = n.Length(); if (L > 1e-12f) n = n * (1.0f / L); else n = Vect3d{ 1,0,0 };
             glNormal3f(n.x(), n.y(), n.z());
 
             if (!gStemAsWire && gUseLeafTex && gLeafTex) {
                 float ang = std::atan2(v.z(), v.x());
-                float u = ang / (2.0f * float(M_PI)); if (u < 0.f) u += 1.f;
-                float vtex = (S.y1 - S.y0 > 1e-6f) ? (v.y() - S.y0) / (S.y1 - S.y0) : 0.f;
-                glTexCoord2f(u * gTexURepeat * 4, vtex * gTexVRepeat);
+
+                // 1) Spin around stem axis (phase shift the seam)
+                ang += radiansf(90.0f);
+
+                // Base cylindrical mapping
+                float uBase = ang / (2.0f * float(M_PI)); if (uBase < 0.f) uBase += 1.f;
+                float vBase = (S.y1 - S.y0 > 1e-6f) ? (v.y() - S.y0) / (S.y1 - S.y0) : 0.f;
+
+                // Optional axis swap & flips
+                float u = uBase;
+                float v = vBase;
+
+                // 2) Rotate in UV space about the center (0.5,0.5)
+                float a = radiansf(0.f);
+                float ca = std::cos(a), sa = std::sin(a);
+                float du = u - 0.5f, dv = v - 0.5f;
+                float ru = du * ca - dv * sa;
+                float rv = du * sa + dv * ca;
+                u = 0.5f + ru;
+                v = 0.5f + rv;
+
+                // Apply your stem tiling (keep your factor of 2 on U)
+                glTexCoord2f(u * gTexURepeat * 2.0f, v * gTexVRepeat);
+
             }
 
             glVertex3f(v.x(), v.y(), v.z());
@@ -807,7 +1203,6 @@ static void drawLeaves() {
             }
         }
 
-        // render grid as row triangle strips
         for (int i = 0; i < G.rows - 1; ++i) {
             glBegin(GL_TRIANGLE_STRIP);
             for (int j = 0; j < G.cols; ++j) {
@@ -815,14 +1210,12 @@ static void drawLeaves() {
                 int i1 = (i + 1) * G.cols + j;
 
                 if (!wireForThis) {
-                    // normals + texcoord + vertex (row i)
                     const Vect3d& n0 = G.nrm[i0]; glNormal3f(n0.x(), n0.y(), n0.z());
                     if (gUseLeafTex && gLeafTex) glTexCoord2f(G.uv[i0].u, G.uv[i0].v);
                 }
                 const Vect3d& p0 = G.pos[i0]; glVertex3f(p0.x(), p0.y(), p0.z());
 
                 if (!wireForThis) {
-                    // normals + texcoord + vertex (row i+1)
                     const Vect3d& n1 = G.nrm[i1]; glNormal3f(n1.x(), n1.y(), n1.z());
                     if (gUseLeafTex && gLeafTex) glTexCoord2f(G.uv[i1].u, G.uv[i1].v);
                 }
@@ -831,15 +1224,12 @@ static void drawLeaves() {
             glEnd();
         }
 
-
-        // clean up per-leaf GL state
         if (!wireForThis && gUseLeafTex && gLeafTex) { glBindTexture(GL_TEXTURE_2D, 0); glDisable(GL_TEXTURE_2D); glDisable(GL_BLEND); }
         if (wireForThis) { glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); glLineWidth(1.0f); }
-
+        glDisable(GL_POLYGON_OFFSET_FILL);
         idx++;
     }
 
-    // Optional highlight overlay – skip if we’re already drawing the selected solid
     if (!gLeafGeoms.empty() && !gHideSelected && !gSoloSelected && !(gSelectedSolid)) {
         int sel = gSelectedFlat;
         if (sel >= 0 && sel < (int)gLeafGeoms.size()) {
@@ -906,16 +1296,12 @@ static void setupLighting() {
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, gGlobalAmb);
     glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, gTwoSided ? 1 : 0);
 
-    // Materials: use glColor for ambient+diffuse; set specular/shininess explicitly
     glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, gMatSpec);
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, gShininess);
 
-    // Normals may be non-unit after transforms; be safe:
     glEnable(GL_NORMALIZE);
-
-    // Smooth shading
     glShadeModel(GL_SMOOTH);
 }
 
@@ -928,7 +1314,7 @@ static void display() {
 
     ImGuiIO& io = ImGui::GetIO();
     if (!io.WantCaptureMouse && io.MouseDown[0]) { gYaw += io.MouseDelta.x * 0.3f; gPitch += io.MouseDelta.y * 0.3f; gPitch = clampf(gPitch, -89.f, 89.f); }
-    if (!io.WantCaptureMouse && io.MouseWheel != 0.f) { gDist = clampf(gDist * (io.MouseWheel > 0.f ? 0.90f : 1.10f), 0.3f, 50.f); }
+    if (!io.WantCaptureMouse && io.MouseWheel != 0.f) { gDist = clampf(gDist * (io.MouseWheel > 0.f ? 0.90f : 1.70f), 0.3f, 50.f); }
     if (!io.WantCaptureMouse && io.MouseDown[1]) {
         const float PI = 3.1415926535f;
         float cy = std::cos(gYaw * PI / 180.f), sy = std::sin(gYaw * PI / 180.f);
@@ -971,15 +1357,17 @@ static void display() {
     drawLeaves();
 
     glDisable(GL_LIGHTING);
-    drawCtrlViz();
+    if (gShowCtrlPts || gShowCtrlPoly || gShowCtrlLabel)
+        drawCtrlViz();
+
     drawGridXZ();
 
     // ---- UI ----
-    ImGui::Begin("Maize - Concentric Stem & Grid Leaves");
+    ImGui::Begin("Maize");
 
     static bool needReload = false, needRebuild = false;
 
-    // In display() UI, where you have XML load controls:
+    // XML load/save
     ImGui::Text("XML: %s", gXmlPath);
     ImGui::InputText("Path", gXmlPath, IM_ARRAYSIZE(gXmlPath)); ImGui::SameLine();
     if (ImGui::Button("Load XML")) {
@@ -998,56 +1386,43 @@ static void display() {
     if (gSaveOK) { ImGui::SameLine(); ImGui::TextColored(ImVec4(0, 0.6f, 0, 1), "Saved."); }
     if (gSaveFail) { ImGui::SameLine(); ImGui::TextColored(ImVec4(0.8f, 0.2f, 0, 1), "Save failed."); }
 
-    ImGui::SeparatorText("Leaf (global)");
-    needRebuild |= ImGui::SliderFloat("Length (m)", &gLeafLength, 0.2f, 2.0f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Max width (m)", &gLeafWmax, 0.02f, 0.40f, "%.3f");
-    needRebuild |= ImGui::SliderInt("Samples (min)", &gSamplesMin, 8, 200);
-    ImGui::Checkbox("Droop", &gDroop); ImGui::SameLine(); needRebuild |= ImGui::SliderFloat("Max droop (m)", &gDroopMax, 0.0f, 0.25f, "%.3f");
-    ImGui::Checkbox("Twist", &gTwistOn);
-    if (gTwistOn) { needRebuild |= ImGui::SliderFloat("Twist max (deg)", &gTwistMaxD, 0.0f, 90.0f, "%.1f"); needRebuild |= ImGui::SliderFloat("Twist power", &gTwistPow, 0.5f, 3.0f, "%.2f"); }
-    needRebuild |= ImGui::SliderFloat("Roll offset (deg)", &gRollOffsetD, -180.f, 180.f, "%.1f");
+    // ---------------- Export ----------------
+    ImGui::SeparatorText("Export");
+    ImGui::InputText("OBJ path", gObjPath, IM_ARRAYSIZE(gObjPath));
+    ImGui::Checkbox("Copy texture next to OBJ", &gCopyTextureOnExport); ImGui::SameLine();
+    ImGui::TextDisabled("(from) %s", gLeafTexPath);
+    if (ImGui::Button("Export OBJ + MTL")) {
+        if (gLeafGeoms.empty() && gStemLayers.empty()) rebuildGeometry();
+        if (savePlantOBJ(gObjPath)) { gObjOK = true; gObjFail = false; }
+        else { gObjFail = true; gObjOK = false; }
+    }
+    if (gObjOK) {
+        ImGui::SameLine();
+        ImGui::TextColored(ImVec4(0, 0.6f, 0, 1), gCopyTextureOnExport ? (gTexCopyOK ? "OBJ+MTL+texture exported." : "OBJ+MTL exported (texture copy failed).")
+            : "OBJ+MTL exported.");
+    }
+    if (gObjFail) { ImGui::SameLine(); ImGui::TextColored(ImVec4(0.8f, 0.2f, 0, 1), "Export failed."); }
 
-    ImGui::SeparatorText("Waviness");
-    needRebuild |= ImGui::SliderFloat("Amplitude (m)", &gWaveAmp, 0.0000f, 0.0200f, "%.4f");
-    needRebuild |= ImGui::SliderFloat("Cycles (base→tip)", &gWaveCycles, 0.0f, 20.0f, "%.1f");
-    needRebuild |= ImGui::SliderFloat("Across factor", &gWaveAcross, 0.0f, 1.0f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Fade-in frac", &gWaveFadeIn, 0.0f, 0.40f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Fade-out frac", &gWaveFadeOut, 0.0f, 0.40f, "%.2f");
-
-    ImGui::SeparatorText("Width profile");
-    needRebuild |= ImGui::SliderFloat("Knee s", &gWidthKnee, 0.40f, 0.90f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Width at knee (x)", &gWidthAtKnee, 0.05f, 0.95f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Early pow", &gEarlyPow, 0.2f, 3.0f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Tip pow", &gTipPow, 0.2f, 3.0f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Tip rel width", &gTipRelWidth, 0.0f, 0.40f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Base ramp frac", &gBaseRampFrac, 0.02f, 0.25f, "%.3f");
-
-    ImGui::SeparatorText("Attachment");
-    needRebuild |= ImGui::SliderFloat("Attach frac", &gAttachFrac, 0.0f, 0.40f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Attach epsilon (m)", &gAttachEpsilon, 0.0f, 0.01f, "%.4f");
-
-    ImGui::SeparatorText("Unfold along length");
-    needRebuild |= ImGui::SliderFloat("Lip length frac", &gLipLenFrac, 0.02f, 0.20f, "%.3f");
-    needRebuild |= ImGui::SliderInt("Leaf columns (odd)", &gLipCols, 7, 65);
-    needRebuild |= ImGui::SliderFloat("Arc at base (deg)", &gLipArc0Deg, 90.f, 359.f, "%.0f");
-    needRebuild |= ImGui::SliderFloat("Arc at end (deg)", &gLipArc1Deg, 0.f, 180.f, "%.0f");
-    needRebuild |= ImGui::SliderFloat("Collar hold frac", &gCollarHoldFrac, 0.0f, 0.9f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Unwrap mid", &gUnwrapMidFrac, 0.05f, 0.95f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Unwrap sharpness", &gUnwrapSharpness, 0.1f, 6.0f, "%.2f");
-    needRebuild |= ImGui::SliderFloat("Ring drop (m)", &gRingDrop, 0.0f, 0.05f, "%.3f");  // <— NEW
-
+    // ---------------- GLOBAL controls that remain ----------------
     ImGui::SeparatorText("Stem layers");
     needRebuild |= ImGui::SliderFloat("Layer shrink (m)", &gStemLayerShrink, 0.0002f, 0.0300f, "%.4f");
     needRebuild |= ImGui::SliderInt("Sides", &gStemSides, 8, 128);
     ImGui::Checkbox("Stem as wireframe", &gStemAsWire);
     ImGui::Checkbox("Override outermost radius", &gOverrideBaseRadius); ImGui::SameLine();
-    needRebuild |= ImGui::SliderFloat("Outermost radius (m)", &gOutermostRadius, 0.0010f, 0.1500f, "%.4f");
+    needRebuild |= ImGui::SliderFloat("Outermost radius (m)", &gOutermostRadius, 0.0010f, 0.0200f, "%.4f");
 
     ImGui::SeparatorText("Display");
     ImGui::Checkbox("Wireframe (leaves)", &gWireframe); ImGui::SameLine(); ImGui::SliderFloat("Wire width", &gWireWidth, 1.0f, 5.0f, "%.1f");
     ImGui::Checkbox("Use leaf texture", &gUseLeafTex);
     ImGui::Checkbox("Selected leaf solid (override wireframe)", &gSelectedSolid);
     ImGui::InputText("Leaf tex path", gLeafTexPath, IM_ARRAYSIZE(gLeafTexPath));
+
+    ImGui::SeparatorText("Control overlays");
+    ImGui::Checkbox("Show control points", &gShowCtrlPts); ImGui::SameLine();
+    ImGui::Checkbox("Show labels", &gShowCtrlLabel); ImGui::SameLine();
+    ImGui::Checkbox("Show connecting line", &gShowCtrlPoly);
+    ImGui::SliderFloat("Control point size", &gCtrlPtSize, 2.0f, 30.0f, "%.0f");
+
 
     ImGui::SeparatorText("Lighting");
     ImGui::Checkbox("Enable lighting", &gLightingOn);
@@ -1059,7 +1434,7 @@ static void display() {
     ImGui::ColorEdit3("Light specular", gLightSpec);
     ImGui::ColorEdit3("Material specular", gMatSpec);
 
-
+    // ---------------- PER-LEAF Editor ----------------
     ImGui::SeparatorText("Leaf Editor (per-leaf)");
     if (!gFlatKeys.empty()) {
         ImGui::PushItemWidth(220);
@@ -1069,9 +1444,13 @@ static void display() {
         ImGui::PopItemWidth();
         ImGui::Checkbox("Hide selected", &gHideSelected); ImGui::SameLine(); ImGui::Checkbox("Solo selected", &gSoloSelected);
 
-        LeafKey key = gFlatKeys[gSelectedFlat]; auto& edit = gEdits[key];
+        LeafKey key = gFlatKeys[gSelectedFlat];
+        auto& edit = gEdits[key];
+
         if (ImGui::Button(edit.hasCustom ? "Reset to generated" : "Make editable")) {
-            if (edit.hasCustom) { edit.hasCustom = false; }
+            if (edit.hasCustom) {
+                edit.hasCustom = false;
+            }
             else {
                 if (gSelectedFlat < (int)gLeafGeoms.size()) {
                     edit.customCtrl = gLeafGeoms[gSelectedFlat].ctrl;
@@ -1082,14 +1461,75 @@ static void display() {
             needRebuild = true;
         }
         ImGui::SameLine(); ImGui::Checkbox("Pin C0 to stem", &edit.pinC0ToStem);
+
         if (edit.hasCustom) {
-            if (ImGui::Button("Add point")) { if (!edit.customCtrl.empty()) { Vect3d last = edit.customCtrl.back(); edit.customCtrl.push_back(last + Vect3d{ 0.2f,0,0 }); } else { edit.customCtrl = { {0,0,0},{0.3f,0,0},{0.6f,0,0},{1,0,0} }; } needRebuild = true; }
-            ImGui::SameLine(); if (ImGui::Button("Remove last") && edit.customCtrl.size() > 4) { edit.customCtrl.pop_back(); needRebuild = true; }
-            for (size_t i = 0; i < edit.customCtrl.size(); ++i) { float xyz[3] = { edit.customCtrl[i].x(), edit.customCtrl[i].y(), edit.customCtrl[i].z() }; char label[32]; snprintf(label, sizeof(label), "C%zu", i); if (ImGui::DragFloat3(label, xyz, 0.005f)) { edit.customCtrl[i] = { xyz[0],xyz[1],xyz[2] }; needRebuild = true; } }
+            if (ImGui::Button("Add point")) {
+                if (!edit.customCtrl.empty()) {
+                    Vect3d last = edit.customCtrl.back();
+                    edit.customCtrl.push_back(last + Vect3d{ 0.2f,0,0 });
+                }
+                else {
+                    edit.customCtrl = { {0,0,0},{0.3f,0,0},{0.6f,0,0},{1,0,0} };
+                }
+                needRebuild = true;
+            }
+            ImGui::SameLine();
+            if (ImGui::Button("Remove last") && edit.customCtrl.size() > 4) { edit.customCtrl.pop_back(); needRebuild = true; }
+            for (size_t i = 0; i < edit.customCtrl.size(); ++i) {
+                float xyz[3] = { edit.customCtrl[i].x(), edit.customCtrl[i].y(), edit.customCtrl[i].z() };
+                char label[32]; snprintf(label, sizeof(label), "C%zu", i);
+                if (ImGui::DragFloat3(label, xyz, 0.005f)) { edit.customCtrl[i] = { xyz[0],xyz[1],xyz[2] }; needRebuild = true; }
+            }
         }
         else {
             ImGui::TextDisabled("Click Make editable to tweak C0..Cn of this leaf.");
         }
+
+        // --- Per-leaf numeric parameters ---
+        ImGui::SeparatorText("Parameters (selected leaf)");
+        LeafParams& LP = paramsFor(key);
+
+        if (ImGui::SliderFloat("Length (m)", &LP.length, 0.1f, 2.0f, "%.2f")) needRebuild = true;
+        if (ImGui::SliderFloat("Max width (m)", &LP.wmax, 0.02f, 0.40f, "%.3f")) needRebuild = true;
+        if (ImGui::SliderInt("Samples (min)", &LP.samplesMin, 8, 200)) needRebuild = true;
+
+        if (ImGui::Checkbox("Droop", &LP.droop)) needRebuild = true;
+        ImGui::SameLine();
+        if (ImGui::SliderFloat("Max droop (m)", &LP.droopMax, 0.0f, 0.25f, "%.3f")) needRebuild = true;
+
+        if (ImGui::Checkbox("Twist", &LP.twistOn)) needRebuild = true;
+        if (LP.twistOn) {
+            if (ImGui::SliderFloat("Twist max (deg)", &LP.twistMaxD, 0.0f, 90.0f, "%.1f")) needRebuild = true;
+            if (ImGui::SliderFloat("Twist power", &LP.twistPow, 0.5f, 3.0f, "%.2f")) needRebuild = true;
+        }
+        if (ImGui::Checkbox("Auto-roll tangency", &LP.autoRollTangency)) needRebuild = true;
+
+        ImGui::SeparatorText("Waviness");
+        if (ImGui::SliderFloat("Amplitude (m)", &LP.waveAmp, 0.0000f, 0.0050f, "%.4f")) needRebuild = true;
+        if (ImGui::SliderFloat("Cycles (base to tip)", &LP.waveCycles, 0.0f, 5.0f, "%.1f")) needRebuild = true;
+        if (ImGui::SliderFloat("Across factor", &LP.waveAcross, 0.0f, 2.0f, "%.2f")) needRebuild = true;
+
+        ImGui::SeparatorText("Width profile");
+        if (ImGui::SliderFloat("Knee s", &LP.widthKnee, 0.40f, 0.90f, "%.2f")) needRebuild = true;
+        if (ImGui::SliderFloat("Width at knee (x)", &LP.widthAtKnee, 0.05f, 0.95f, "%.2f")) needRebuild = true;
+        if (ImGui::SliderFloat("Early pow", &LP.earlyPow, 0.2f, 3.0f, "%.2f")) needRebuild = true;
+        if (ImGui::SliderFloat("Tip pow", &LP.tipPow, 0.2f, 3.0f, "%.2f")) needRebuild = true;
+        if (ImGui::SliderFloat("Base ramp frac", &LP.baseRampFrac, 0.02f, 0.25f, "%.3f")) needRebuild = true;
+
+        ImGui::SeparatorText("Attachment");
+        if (ImGui::SliderFloat("Attach frac", &LP.attachFrac, 0.0f, 0.40f, "%.2f")) needRebuild = true;
+        if (ImGui::SliderFloat("Attach epsilon (m)", &LP.attachEps, 0.0f, 0.01f, "%.4f")) needRebuild = true;
+
+        ImGui::SeparatorText("Unfold along length");
+        if (ImGui::SliderFloat("Lip length frac", &LP.lipLenFrac, 0.02f, 0.20f, "%.3f")) needRebuild = true;
+        if (ImGui::SliderInt("Leaf columns (odd)", &LP.lipCols, 7, 65)) needRebuild = true;
+        if (ImGui::SliderFloat("Arc at base (deg)", &LP.lipArc0Deg, 90.f, 359.f, "%.0f")) needRebuild = true;
+        if (ImGui::SliderFloat("Arc at end (deg)", &LP.lipArc1Deg, 0.f, 180.f, "%.0f")) needRebuild = true;
+        if (ImGui::SliderFloat("Unwrap mid", &LP.unwrapMidFrac, 0.05f, 0.95f, "%.2f")) needRebuild = true;
+        if (ImGui::SliderFloat("Unwrap sharpness", &LP.unwrapSharpness, 0.1f, 6.0f, "%.2f")) needRebuild = true;
+
+        if (ImGui::SliderFloat("Ring drop (m)", &LP.ringDrop, 0.0f, 0.05f, "%.3f")) needRebuild = true;
+
     }
     else { ImGui::TextDisabled("No leaves found in the XML."); }
 
@@ -1114,7 +1554,7 @@ int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA | GLUT_DEPTH);
     glutInitWindowSize(gWinW, gWinH);
-    glutCreateWindow("Maize – Concentric Stem & Grid Leaves");
+    glutCreateWindow("Maize");
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();

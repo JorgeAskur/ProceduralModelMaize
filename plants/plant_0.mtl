@@ -1,0 +1,19 @@
+# Plant materials
+
+newmtl leaf_mat
+Ns 18.0
+Ka 0 0 0
+Kd 0.75 0.75 0.75
+Ks 0.1 0.1 0.1
+illum 2
+map_Kd maize_leaf.png
+map_d maize_leaf.png
+
+newmtl stem_mat
+Ns 18.0
+Ka 0 0 0
+Kd 1 1 1
+Ks 0.05 0.05 0.05
+illum 2
+map_Kd maize_leaf.png
+map_d maize_leaf.png
