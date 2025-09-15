@@ -1,10 +1,17 @@
 <plant>
     <species name="maize">
-        <params length_m="1" max_width_m="0.18000001" samples_min="16" droop_on="1" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" base_ramp_frac="0.079999998" attach_frac="0.1" attach_epsilon="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="340" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" ring_drop_m="0.0099999998" stem_layer_shrink="0.00019999999" stem_sides="40" override_base_radius="1" outermost_radius_m="0.0115" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001"/>
+        <params length_m="1" max_width_m="0.18000001" samples_min="16" droop_on="1" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" base_ramp_frac="0.079999998" attach_frac="0.1" attach_epsilon="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="340" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" ring_drop_m="0.0099999998" stem_layer_shrink="0.00019999999" stem_sides="64" override_base_radius="1" outermost_radius_m="0.0115" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001"/>
         <tiller type="main" radius="0.025" alpha="0" beta="180">
             <leaves number="9">
                 <leaf id="0" distance="0.2" alpha="15" spines="65">
-                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="200" droop_on="0" droop_max_m="0" twist_on="1" twist_max_deg="30" twist_pow="0.5" auto_roll="1" wave_amp_m="0.0015" wave_cycles="6" wave_across="2" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.30000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.02" attach_frac="0.2" attach_eps="0" lip_len_frac="0.2" lip_cols="20" lip_arc0_deg="90" lip_arc1_deg="0" unwrap_mid="0.050000001" unwrap_sharpness="0.1" ring_drop_m="0"/>
+                    <edit pinC0ToStem="1">
+                        <cp x="0.0115" y="0.2" z="0"/>
+                        <cp x="0.112" y="0.24600001" z="0"/>
+                        <cp x="0.23800001" y="0.28729299" z="0"/>
+                        <cp x="0.329" y="0.27835125" z="0"/>
+                        <cp x="0.39700001" y="0.26588038" z="0"/>
+                    </edit>
+                    <lparams length_m="0.62" max_width_m="0.15000001" samples_min="8" droop_on="0" droop_max_m="0" twist_on="1" twist_max_deg="30" twist_pow="0.5" auto_roll="1" wave_amp_m="0.0015" wave_cycles="6" wave_across="2" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.30000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.02" attach_frac="0" attach_eps="0" lip_len_frac="0.2" lip_cols="10" lip_arc0_deg="179" lip_arc1_deg="229" unwrap_mid="0.2" unwrap_sharpness="10" ring_drop_m="0" open_start_frac="0.94999999" open_sharpness="6"/>
                 </leaf>
                 <leaf id="1" distance="0.050000653" alpha="15" spines="60">
                     <edit pinC0ToStem="1">
@@ -14,7 +21,7 @@
                         <cp x="-0.25799999" y="0.41299999" z="-3.3032858e-08"/>
                         <cp x="-0.37099999" y="0.38600001" z="-3.8099497e-08"/>
                     </edit>
-                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="200" droop_on="0" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.2" tip_pow="3" base_ramp_frac="0.25" attach_frac="0" attach_eps="0" lip_len_frac="0.2" lip_cols="20" lip_arc0_deg="90" lip_arc1_deg="0" unwrap_mid="0.050000001" unwrap_sharpness="0.1" ring_drop_m="0.0099999998"/>
+                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="8" droop_on="0" droop_max_m="0" twist_on="1" twist_max_deg="27.9" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.30000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.02" attach_frac="0" attach_eps="0" lip_len_frac="0.2" lip_cols="10" lip_arc0_deg="179" lip_arc1_deg="45" unwrap_mid="0.25" unwrap_sharpness="9.5" ring_drop_m="0" open_start_frac="0.94999999" open_sharpness="6"/>
                 </leaf>
                 <leaf id="2" distance="0.050000012" alpha="15" spines="55">
                     <edit pinC0ToStem="1">
@@ -24,7 +31,7 @@
                         <cp x="0.32300001" y="0.48300001" z="6.6118169e-08"/>
                         <cp x="0.44100001" y="0.45100001" z="-0.0049999999"/>
                     </edit>
-                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="200" droop_on="1" droop_max_m="0" twist_on="1" twist_max_deg="30" twist_pow="0.5" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="2" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.079999998" attach_frac="0" attach_eps="0" lip_len_frac="0.2" lip_cols="20" lip_arc0_deg="90" lip_arc1_deg="0" unwrap_mid="0.050000001" unwrap_sharpness="0.1" ring_drop_m="0.0099999998"/>
+                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="8" droop_on="1" droop_max_m="0" twist_on="1" twist_max_deg="30" twist_pow="0.5" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="2" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.02" attach_frac="0" attach_eps="0" lip_len_frac="0.2" lip_cols="10" lip_arc0_deg="179" lip_arc1_deg="0" unwrap_mid="0.050000001" unwrap_sharpness="9" ring_drop_m="0" open_start_frac="0.94999999" open_sharpness="6"/>
                 </leaf>
                 <leaf id="3" distance="0.049999952" alpha="15" spines="50">
                     <edit pinC0ToStem="1">
@@ -34,17 +41,17 @@
                         <cp x="-0.33399999" y="0.50300002" z="-9.0498355e-09"/>
                         <cp x="-0.43200001" y="0.44600001" z="-1.0432062e-08"/>
                     </edit>
-                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="200" droop_on="1" droop_max_m="0" twist_on="1" twist_max_deg="66.699997" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.079999998" attach_frac="0" attach_eps="0.0015" lip_len_frac="0.2" lip_cols="20" lip_arc0_deg="90" lip_arc1_deg="0" unwrap_mid="0.050000001" unwrap_sharpness="0.1" ring_drop_m="0.0099999998"/>
+                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="8" droop_on="1" droop_max_m="0" twist_on="1" twist_max_deg="66.699997" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.02" attach_frac="0" attach_eps="0.0015" lip_len_frac="0.2" lip_cols="10" lip_arc0_deg="179" lip_arc1_deg="0" unwrap_mid="0.050000001" unwrap_sharpness="8.0100002" ring_drop_m="0" open_start_frac="0.94999999" open_sharpness="6"/>
                 </leaf>
                 <leaf id="4" distance="0.05000025" alpha="15" spines="45">
-                    <edit pinC0ToStem="1">
+                    <edit pinC0ToStem="0">
                         <cp x="0.0107" y="0.40000087" z="3.741695e-09"/>
                         <cp x="0.107" y="0.47105914" z="4.4274778e-08"/>
                         <cp x="0.177" y="0.50700003" z="9.1563379e-08"/>
                         <cp x="0.26800001" y="0.54799998" z="1.3209646e-07"/>
                         <cp x="0.45100001" y="0.51599997" z="1.5236301e-07"/>
                     </edit>
-                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="16" droop_on="0" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.02" attach_frac="0.2" attach_eps="0" lip_len_frac="0.2" lip_cols="11" lip_arc0_deg="90" lip_arc1_deg="0" unwrap_mid="0.050000001" unwrap_sharpness="2.5" ring_drop_m="0"/>
+                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="8" droop_on="0" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.02" attach_frac="0" attach_eps="0" lip_len_frac="0.2" lip_cols="10" lip_arc0_deg="179" lip_arc1_deg="0" unwrap_mid="0.050000001" unwrap_sharpness="7" ring_drop_m="0" open_start_frac="0.94999999" open_sharpness="6"/>
                 </leaf>
                 <leaf id="5" distance="0.050000191" alpha="15" spines="40">
                     <edit pinC0ToStem="1">
@@ -54,7 +61,7 @@
                         <cp x="-0.29300001" y="0.588" z="1.0501297e-07"/>
                         <cp x="-0.41100001" y="0.53100002" z="1.2113284e-07"/>
                     </edit>
-                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="200" droop_on="1" droop_max_m="0" twist_on="1" twist_max_deg="20" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="1.8" base_ramp_frac="0.25" attach_frac="0.2" attach_eps="0" lip_len_frac="0.2" lip_cols="20" lip_arc0_deg="90" lip_arc1_deg="0" unwrap_mid="0.050000001" unwrap_sharpness="0.1" ring_drop_m="0.0099999998"/>
+                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="8" droop_on="1" droop_max_m="0" twist_on="1" twist_max_deg="20" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="1.8" base_ramp_frac="0.02" attach_frac="0.2" attach_eps="0" lip_len_frac="0.2" lip_cols="10" lip_arc0_deg="179" lip_arc1_deg="210" unwrap_mid="0.050000001" unwrap_sharpness="5.0100002" ring_drop_m="0" open_start_frac="0.94999999" open_sharpness="0.5"/>
                 </leaf>
                 <leaf id="6" distance="0.049999952" alpha="15" spines="35">
                     <edit pinC0ToStem="1">
@@ -64,7 +71,7 @@
                         <cp x="0.39700001" y="0.63300002" z="1.7999502e-08"/>
                         <cp x="0.47999999" y="0.60600001" z="2.0763956e-08"/>
                     </edit>
-                    <lparams length_m="0.40000001" max_width_m="0.18000001" samples_min="200" droop_on="1" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" auto_roll="1" wave_amp_m="0.0035000001" wave_cycles="6" wave_across="2" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.079999998" attach_frac="0.40000001" attach_eps="0" lip_len_frac="0.2" lip_cols="11" lip_arc0_deg="90" lip_arc1_deg="180" unwrap_mid="0.94999999" unwrap_sharpness="6" ring_drop_m="0.0099999998"/>
+                    <lparams length_m="0.40000001" max_width_m="0.18000001" samples_min="8" droop_on="1" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" auto_roll="1" wave_amp_m="0.0035000001" wave_cycles="6" wave_across="2" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.079999998" attach_frac="0.40000001" attach_eps="0" lip_len_frac="0.2" lip_cols="10" lip_arc0_deg="179" lip_arc1_deg="180" unwrap_mid="0.5" unwrap_sharpness="6" ring_drop_m="0" open_start_frac="0.94999999" open_sharpness="0.5"/>
                 </leaf>
                 <leaf id="7" distance="0.01500001" alpha="45" spines="20">
                     <edit pinC0ToStem="1">
@@ -74,7 +81,7 @@
                         <cp x="-0.15899999" y="0.69400001" z="1.6174155e-07"/>
                         <cp x="-0.28099999" y="0.69800001" z="1.8635454e-07"/>
                     </edit>
-                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="200" droop_on="1" droop_max_m="0" twist_on="1" twist_max_deg="20" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.25" attach_frac="0.40000001" attach_eps="0" lip_len_frac="0.2" lip_cols="20" lip_arc0_deg="90" lip_arc1_deg="180" unwrap_mid="0.94999999" unwrap_sharpness="6" ring_drop_m="0.0099999998"/>
+                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="8" droop_on="1" droop_max_m="0" twist_on="1" twist_max_deg="20" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="3" base_ramp_frac="0.25" attach_frac="0.40000001" attach_eps="0" lip_len_frac="0.2" lip_cols="10" lip_arc0_deg="179" lip_arc1_deg="0" unwrap_mid="0.94999999" unwrap_sharpness="6" ring_drop_m="0" open_start_frac="0.94999999" open_sharpness="0.5"/>
                 </leaf>
                 <leaf id="8" distance="0.0099999998" alpha="45" spines="15">
                     <edit pinC0ToStem="1">
@@ -84,7 +91,7 @@
                         <cp x="0.050000001" y="0.73400003" z="1.9589739e-07"/>
                         <cp x="0.048" y="0.78299999" z="2.2556968e-07"/>
                     </edit>
-                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="200" droop_on="0" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="2" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="1.8" base_ramp_frac="0.25" attach_frac="0.40000001" attach_eps="0" lip_len_frac="0.2" lip_cols="11" lip_arc0_deg="180" lip_arc1_deg="180" unwrap_mid="0.94999999" unwrap_sharpness="6" ring_drop_m="0"/>
+                    <lparams length_m="0.40000001" max_width_m="0.15000001" samples_min="8" droop_on="0" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" auto_roll="1" wave_amp_m="0.003" wave_cycles="6" wave_across="2" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.40000001" width_at_knee="0.40000001" early_pow="0.2" tip_pow="1.8" base_ramp_frac="0.25" attach_frac="0.40000001" attach_eps="0" lip_len_frac="0.2" lip_cols="10" lip_arc0_deg="179" lip_arc1_deg="0" unwrap_mid="0.94999999" unwrap_sharpness="6" ring_drop_m="0" open_start_frac="0.94999999" open_sharpness="0.5"/>
                 </leaf>
             </leaves>
         </tiller>

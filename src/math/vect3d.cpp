@@ -142,6 +142,17 @@ Vect3d Vect3d::GetRotatedAxis(double angle, const Vect3d & axis) const
 				  this->Dot(rotMatrixRow2));
 }
 
+Vect3d Vect3d::rotateAroundAxisThroughPoint(const Vect3d& P,
+	const Vect3d& axisPoint,
+	const Vect3d& axisDirUnit,
+	float angleRad) {
+	Vect3d k = axisDirUnit.GetNormalized();
+	Vect3d v = P - axisPoint;
+	Vect3d vr = Vect3d::rotateAroundAxis(v, k, angleRad);
+	return axisPoint + vr;
+}
+
+
 void Vect3d::RotateAxis(double angle, const Vect3d & axis)
 {
 	(*this)=GetRotatedAxis(angle, axis);

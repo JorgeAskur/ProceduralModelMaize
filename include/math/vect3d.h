@@ -91,6 +91,10 @@ public:
 	// Find θ such that rotateAroundAxis(B, T, θ) aligns with target (radial r).
 	static float autoRollTheta(Vect3d B, Vect3d T, Vect3d target) { float x = B.Dot(target); float y = target.Dot(T.Cross(B)); return std::atan2(y, x); }
 
+	static Vect3d rotateAroundAxisThroughPoint(const Vect3d& P,
+		const Vect3d& axisPoint,
+		const Vect3d& axisDirUnit,
+		float angleRad);
 	//overloaded operators
 	//binary operators
 	Vect3d operator+(const Vect3d & rhs) const
