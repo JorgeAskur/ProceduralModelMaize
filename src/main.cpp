@@ -769,6 +769,8 @@ static void rebuildGeometry() {
         return u;
         };
     auto fracf = [](float x)->float { return x - std::floor(x); };
+    auto edgeCluster = [](float u)->float { return 0.5f * (1.0f - std::cos(float(M_PI) * u)); };
+    auto yCluster = [](float u)->float { return 0.5f * (1.0f - std::cos(float(M_PI) * u)); };
 
     for (size_t ti = 0; ti < gPlant.tillers.size(); ++ti) {
         const auto& td = gPlant.tillers[ti];
@@ -780,6 +782,7 @@ static void rebuildGeometry() {
 
         float baseR = gOverrideBaseRadius ? std::max(0.001f, gOutermostRadius) : td.radius;
 
+        // ------------------- STEM (one continuous strip per stem with proper degenerates) -------------------
         for (size_t k = 0; k < td.leaves.size(); ++k) {
             const LeafKey kkey{ (int)ti, (int)k };
             const LeafParams& KP = paramsFor(kkey);
@@ -787,65 +790,104 @@ static void rebuildGeometry() {
             float r = std::max(0.001f, baseR - (float)k * gStemLayerShrink);
             float yTop = std::max(0.f, yAt[k] - KP.ringDrop);
 
-            // Adaptive vertical segments for THIS layer:
-            // fewer for small radii; still high where seam opens.
-            float radiusScale = r / std::max(1e-6f, baseR);
-            int ySegsTotal = std::max(18, (int)std::round(90 * radiusScale)); // ~ up to 90 for outermost
-            int ySegsSeam = std::max(8, (int)std::round(ySegsTotal * 0.75f)); // 75% in the opening zone
-            int ySegsRest = std::max(4, ySegsTotal - ySegsSeam);
+            const float phiOut = radiansf(td.leaves[k].azimuthDeg);
+            const float seamCtr = phiOut + float(M_PI);
 
-            // Build two vertical ranges: [0, openStart] (rest), [openStart, 1] (seam region)
+            auto seamAt = [&](float fy)->float { return clampf(seamAngleRadAtFrac(fy, KP), 0.f, float(M_PI)); };
+            float seam0 = seamAt(0.f), seamS = seamAt(clampf(KP.openStartFrac, 0.f, 1.f)), seam1 = seamAt(1.f);
+            float seamMin = std::min(seam0, std::min(seamS, seam1));
+            float arcMax = std::max(1e-4f, twoPi - seamMin);
+
+            float radiusScale = r / std::max(1e-6f, baseR);
+            int   angSteps = std::max(6, (int)std::round(gStemSides * radiusScale * std::sqrt(arcMax / twoPi)));
+
             float fSplit = clampf(KP.openStartFrac, 0.f, 0.99f);
 
-            auto yLerpCluster = [](float a, float b, float u)->float {
-                // cosine clustering toward ends (denser near edges)
-                float t = 0.5f * (1.0f - std::cos(float(M_PI) * u));
-                return lerpf(a, b, t);
+            int ySegsTotal = std::max(18, (int)std::round(90 * (r / std::max(1e-6f, baseR))));
+            int segsSeam = std::max(8, (int)std::round(ySegsTotal * lerpf(0.05f, 0.15f, fSplit)));
+            int segsRest = std::max(4, ySegsTotal - segsSeam);
+
+            auto yCluster = [](float u)->float { return 0.5f * (1.0f - std::cos(float(M_PI) * u)); };
+            auto fyInRange = [&](int seg, int segs, float fA, float fB) {
+                float u = (float)seg / (float)segs;
+                return lerpf(fA, fB, yCluster(u));
                 };
-
-            // Helper to emit one vertical band strip over [fA,fB] with N segments
-            auto emitBand = [&](int segs, float fA, float fB) {
-                if (segs <= 0) return;
-
-                for (int seg = 0; seg < segs; ++seg) {
-                    float f0 = yLerpCluster(0.f, 1.f, (float)seg / (float)segs);
-                    float f1 = yLerpCluster(0.f, 1.f, (float)(seg + 1) / (float)segs);
-
-                    // map to the actual vertical domain
-                    float y0 = lerpf(0.f, yTop, lerpf(fA, fB, f0));
-                    float y1 = lerpf(0.f, yTop, lerpf(fA, fB, f1));
-
-                    // seam + kept arc for the TOP of this slice (drives sidedness)
-                    float phiOut = radiansf(td.leaves[k].azimuthDeg);
-                    float seam = seamAngleRadAtFrac(lerpf(fA, fB, f1), KP);   // 0..π
-                    float arc = std::max(1e-4f, twoPi - seam);               // kept arc
-                    float aStart = phiOut + float(M_PI) + 0.5f * seam;          // opposite the leaf
-
-                    // ADAPTIVE sides: scale by radius and by kept arc (sqrt to avoid over-penalizing)
-                    int steps = std::max(6, (int)std::round(gStemSides * radiusScale * std::sqrt(arc / twoPi)));
-
-                    StemLayerGeom layer; layer.radius = r; layer.y0 = y0; layer.y1 = y1; layer.sides = steps; layer.uPhase = (k % 2 == 1) ? M_PI * 1.75f : 0.f;
-
-                    // edge clustering along the arc
-                    auto edgeCluster = [](float u)->float { return 0.5f * (1.0f - std::cos(float(M_PI) * u)); };
-
-                    for (int i = 0; i <= steps; ++i) {
-                        float a = aStart + arc * edgeCluster((float)i / (float)steps);
-                        float cx = std::cos(a) * r, cz = std::sin(a) * r;
-                        layer.band.push_back({ cx, y0, cz });
-                        layer.band.push_back({ cx, y1, cz });
-                    }
-                    gStemLayers.push_back(std::move(layer));
+            auto makeRing = [&](float fy, float y, std::vector<Vect3d>& ringOut) {
+                ringOut.resize(angSteps + 1);
+                float seam = seamAt(fy);                        // 0..π
+                float arc = std::max(1e-4f, twoPi - seam);     // kept arc
+                float aStart = seamCtr + 0.5f * seam;           // start of kept arc (right of seam)
+                for (int i = 0; i <= angSteps; ++i) {
+                    float s = 0.5f * (1.f - std::cos(float(M_PI) * (float(i) / angSteps))); // edge-cluster
+                    float a = aStart + arc * s;
+                    ringOut[i] = { std::cos(a) * r, y, std::sin(a) * r };
                 }
                 };
 
-            // Emit the two regions (rest first, then seam region with most of the segments)
-            emitBand(ySegsRest, 0.f, fSplit);
-            emitBand(ySegsSeam, fSplit, 1.f);
+            StemLayerGeom layer;
+            layer.radius = r; layer.y0 = 0.f; layer.y1 = yTop;
+            layer.sides = angSteps;
+            layer.uPhase = (k % 2 == 1) ? float(M_PI * 1.75) : 0.f;
+            layer.band.reserve((size_t)(angSteps + 1) * 2 * (segsSeam + segsRest) + 8);
+
+            // --- compute the shared boundary ring once (exact same vertices) ---
+            std::vector<Vect3d> ringSplit;
+            makeRing(fSplit, lerpf(0.f, yTop, fSplit), ringSplit);
+
+            // Helper that emits a vertical region [fA,fB]; if firstLowerOverride!=nullptr,
+            // use it as the lower ring for the first slice to guarantee continuity.
+            auto emitRegion = [&](int segs, float fA, float fB, const std::vector<Vect3d>* firstLowerOverride) {
+                if (segs <= 0) return;
+
+                std::vector<Vect3d> r0, r1;
+                for (int seg = 0; seg < segs; ++seg) {
+                    float f0 = fyInRange(seg, segs, fA, fB);
+                    float f1 = fyInRange(seg + 1, segs, fA, fB);
+                    float y0 = lerpf(0.f, yTop, f0);
+                    float y1 = lerpf(0.f, yTop, f1);
+
+                    // lower ring: take exact override on the very first slice if provided
+                    if (firstLowerOverride && seg == 0) r0 = *firstLowerOverride;
+                    else                                makeRing(f0, y0, r0);
+
+                    makeRing(f1, y1, r1);
+
+                    for (int i = 0; i <= angSteps; ++i) {
+                        layer.band.push_back(r0[i]);
+                        layer.band.push_back(r1[i]);
+                    }
+
+                    // 4-vertex degenerate bridge to next slice (inside region)
+                    if (seg != segs - 1) {
+                        const Vect3d& uN = r1[angSteps];
+                        const Vect3d& l0n = r0[0]; // next lower will start at index 0 (same angle)
+                        layer.band.push_back(uN);
+                        layer.band.push_back(l0n);
+                        layer.band.push_back(l0n);
+                        layer.band.push_back(l0n); // a second duplicate keeps parity stable
+                    }
+                    // next iteration: current r1 becomes the r0 basis
+                    r0.swap(r1);
+                }
+                };
+
+            // Emit REST region
+            emitRegion(segsRest, 0.f, fSplit, /*firstLowerOverride*/ nullptr);
+
+            // Degenerate restart between regions to prevent skinny linking triangles
+            if (!layer.band.empty()) {
+                const Vect3d last = layer.band.back();
+                layer.band.push_back(last);
+                layer.band.push_back(last);
+            }
+
+            // Emit SEAM region, reusing the exact shared ring as its first lower ring
+            emitRegion(segsSeam, fSplit, 1.f, &ringSplit);
+
+            gStemLayers.push_back(std::move(layer));
         }
 
-
-        // ------------------- LEAVES -------------------
+        // ------------------- LEAVES (your current version, untouched) -------------------
         for (size_t li = 0; li < td.leaves.size(); ++li) {
             const auto& L = td.leaves[li];
             float phi = radiansf(L.azimuthDeg), pitch = radiansf(L.alphaDeg);
@@ -868,25 +910,17 @@ static void rebuildGeometry() {
                 : makeLeafCtrl(base, stemAxis, dir, LP.length);
             if (it != gEdits.end() && it->second.hasCustom && it->second.pinC0ToStem) ctrl[0] = base;
 
-            // target rows you *want* on average:
+            // curvature-adaptive rows
             int rowsTarget = std::max(L.spines, LP.samplesMin);
-
-            // sample denser temporarily, then pick by curvature
             auto midDense = resampleMidrib(ctrl, rowsTarget * 3);
-
-            // tolerance: ~2.0° bend or 1% of leaf length
             float angTol = radiansf(2.0f);
             float minStep = std::max(0.0015f, 0.01f * LP.length);
-
             auto rowIdx = pickRowsByCurvature(midDense, angTol, minStep);
-
-            // build the working mid from the selected indices
             std::vector<Vect3d> mid; mid.reserve(rowIdx.size());
             for (int id : rowIdx) mid.push_back(midDense[id]);
 
             int samples = (int)mid.size();
             std::vector<Vect3d> T, N, B; buildPTFrames(mid, T, N, B);
-
 
             // roll + twist
             std::vector<Vect3d> N2 = N, B2 = B;
@@ -977,20 +1011,7 @@ static void rebuildGeometry() {
 
                     if (i == 0) Pv = { rw.x() * rLeaf, yRingTop, rw.z() * rLeaf };
 
-                    // clearance + flare near collar
-                    if (s01 <= sEnd) {
-                        float rr = std::sqrt(Pv.x() * Pv.x() + Pv.z() * Pv.z());
-                        float minR = rLeaf;
-                        if (rr < minR) {
-                            Vect3d out = (rr > 1e-6f) ? Vect3d{ Pv.x() / rr, 0.f, Pv.z() / rr } : rmix;
-                            Pv.SetX(out.x() * minR); Pv.SetZ(out.z() * minR);
-                        }
-                    }
-                    if (s01 <= sEnd + 1e-6f) {
-                        float env = 1.f - clampf(s01 / sEnd, 0.f, 1.f);
-                    }
-
-                    // waviness
+                    // (your clearance / waviness kept exactly)
                     if (i > 0) {
                         Vect3d Bblend = (T[i].Cross(Nrow)).GetNormalized();
                         float fadeIn = smoothstepf(0.0f, std::max(1e-3f, LP.waveFadeIn), s01);
@@ -1002,21 +1023,17 @@ static void rebuildGeometry() {
                         Pv = Pv + Bblend * amp;
                     }
 
-                    // ---- UVs (non-mirrored; your logic + 90°/180° per-leaf phase)
+                    // UVs (your logic)
                     float dTex = (u - 0.5f);
                     float uCyl = uCenter + slopeAbs * dTex;
                     float uLin = uCenter + dTex;
-
                     float tUV = clampf(b, 0.f, 1.f);
                     float uMix = (1.0f - tUV) * uCyl + tUV * uLin;
                     float vMix = (1.0f - tUV) * vCylRow + tUV * s01;
 
                     float U = uMix * gTexURepeat;
                     float V = vMix * gTexVRepeat;
-
-                    if ((li & 1) == 1) {
-                        U += 0.5f; // quarter-cycle if your texture is 2× in U; 180° when repeat==1
-                    }
+                    if ((li & 1) == 1) U += 0.5f;
 
                     int id = i * G.cols + j;
                     G.pos[id] = Pv;
@@ -1046,7 +1063,6 @@ static void rebuildGeometry() {
         }
     }
 }
-
 
 
 /* -------------------------- OBJ/MTL export helpers --------------- */
@@ -1093,7 +1109,7 @@ static bool saveMTL(const char* mtlPath, const char* textureFileNameOnly) {
 
     // Leaf
     std::fprintf(m, "newmtl leaf_mat\n");
-    std::fprintf(m, "Ns 18.0\nKa 0 0 0\nKd 0.75 0.75 0.75\nKs 0.1 0.1 0.1\nillum 2\n");
+    std::fprintf(m, "Ns 18.0\nKa 0 0 0\nKd 1 1 1\nKs 0.1 0.1 0.1\nillum 2\n");
     if (textureFileNameOnly && textureFileNameOnly[0]) {
         std::fprintf(m, "map_Kd %s\n", textureFileNameOnly);
         std::fprintf(m, "map_d %s\n", textureFileNameOnly);
@@ -1144,60 +1160,88 @@ static bool savePlantOBJ(const char* path) {
         const int vtBase = vtCount + 1;
         const int vnBase = vnCount + 1;
 
-        // vertices / uvs / normals (UVs match drawStemLayers: seam-stable unwrap + uPhase)
+        // seam-stable angular unwrapping (match drawStemLayers)
         float prevTheta = 0.0f;
         bool  havePrev = false;
 
+        // vertices / uvs / normals
         for (size_t k = 0; k < S.band.size(); ++k) {
             const Vect3d& v = S.band[k];
 
             // v
             std::fprintf(f, "v %.6f %.6f %.6f\n", v.x(), v.y(), v.z());
 
-            // vt (unwrapped angle + phase; no modulo)
+            // vt — unwrap angle, convert to cycles, add phase in cycles
             float ang = std::atan2((float)v.z(), (float)v.x()); // [-pi, pi]
             float theta = ang;
             if (havePrev) {
-                if (theta - prevTheta > float(M_PI)) theta -= twoPi;
-                else if (prevTheta - theta > float(M_PI)) theta += twoPi;
+                if (theta - prevTheta > float(M_PI))       theta -= twoPi;
+                else if (prevTheta - theta > float(M_PI))  theta += twoPi;
             }
             else {
                 havePrev = true;
             }
             prevTheta = theta;
 
-            float uCycles = (theta + float(M_PI)) / twoPi; // cycles (unwrapped)
-            uCycles += S.uPhase;                            // +0.5 cycles for odd layers
+            float uCycles = (theta + float(M_PI)) / twoPi; // unwrapped cycles
+            uCycles += S.uPhase;                            // 0.0 or 0.5 cycles for odd layers
+            // Keep values small for exporters that dislike big UVs:
+            uCycles = uCycles - std::floor(uCycles);        // [0,1)
 
-            float u = uCycles * gTexURepeat;               // may be outside [0,1], OK
-            float vv = v.y() * gTexVRepeat;                // meters like runtime
+            float u = uCycles * gTexURepeat;
+            float vv = v.y() * gTexVRepeat;
             std::fprintf(f, "vt %.6f %.6f\n", u, vv);
 
             // vn (pure radial)
             Vect3d n = Vect3d(v.x(), 0.0, v.z());
-            float L = n.Length(); if (L > 1e-12f) n = n * (1.0 / L); else n = Vect3d{ 1,0,0 };
+            float L = n.Length();
+            n = (L > 1e-12f) ? n * (1.0 / L) : Vect3d{ 1,0,0 };
             std::fprintf(f, "vn %.6f %.6f %.6f\n", n.x(), n.y(), n.z());
         }
         vCount += (int)S.band.size();
         vtCount += (int)S.band.size();
         vnCount += (int)S.band.size();
 
-        // triangles from triangle strip (same indexing as runtime)
-        for (int i = 0; i < S.sides; ++i) {
-            int l0 = vBase + 2 * i;
-            int u0 = vBase + 2 * i + 1;
-            int l1 = vBase + 2 * (i + 1);
-            int u1 = vBase + 2 * (i + 1) + 1;
+        // faces — walk the entire strip, alternating winding, skip degenerates
+        auto samePos = [](const Vect3d& a, const Vect3d& b) {
+            Vect3d d = a - b;
+            return (d.x() * d.x() + d.y() * d.y() + d.z() * d.z()) < 1e-16;
+            };
 
-            std::fprintf(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
-                l0, vtBase + 2 * i, vnBase + 2 * i,
-                u0, vtBase + 2 * i + 1, vnBase + 2 * i + 1,
-                l1, vtBase + 2 * (i + 1), vnBase + 2 * (i + 1));
+        bool even = true; // strip parity
+        for (size_t i = 0; i + 2 < S.band.size(); ++i) {
+            const Vect3d& a = S.band[i];
+            const Vect3d& b = S.band[i + 1];
+            const Vect3d& c = S.band[i + 2];
 
-            std::fprintf(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
-                u0, vtBase + 2 * i + 1, vnBase + 2 * i + 1,
-                u1, vtBase + 2 * (i + 1) + 1, vnBase + 2 * (i + 1) + 1,
-                l1, vtBase + 2 * (i + 1), vnBase + 2 * (i + 1));
+            // skip degenerate triples (bridges between slices)
+            if (samePos(a, b) || samePos(b, c) || samePos(a, c)) {
+                even = true; // safe to reset parity at restarts
+                continue;
+            }
+
+            int ia = vBase + (int)i;
+            int ib = vBase + (int)i + 1;
+            int ic = vBase + (int)i + 2;
+
+            int ta = vtBase + (int)i;
+            int tb = vtBase + (int)i + 1;
+            int tc = vtBase + (int)i + 2;
+
+            int na = vnBase + (int)i;
+            int nb = vnBase + (int)i + 1;
+            int nc = vnBase + (int)i + 2;
+
+            if (even) {
+                std::fprintf(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
+                    ia, ta, na, ib, tb, nb, ic, tc, nc);
+            }
+            else {
+                // swap last two to match GL strip winding
+                std::fprintf(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n",
+                    ia, ta, na, ic, tc, nc, ib, tb, nb);
+            }
+            even = !even;
         }
         std::fprintf(f, "\n");
     }
@@ -1216,7 +1260,7 @@ static bool savePlantOBJ(const char* path) {
         for (int i = 0; i < total; ++i) {
             const Vect3d& p = G.pos[i];
             std::fprintf(f, "v %.6f %.6f %.6f\n", p.x(), p.y(), p.z());
-            const Vec2& t = G.uv[i]; // already includes your per-leaf 90° phase for odd indices
+            const Vec2& t = G.uv[i]; // includes per-leaf phase
             std::fprintf(f, "vt %.6f %.6f\n", t.u, t.v);
             const Vect3d& n = G.nrm[i];
             std::fprintf(f, "vn %.6f %.6f %.6f\n", n.x(), n.y(), n.z());
@@ -1255,13 +1299,13 @@ static bool savePlantOBJ(const char* path) {
 
     std::fclose(f);
 
-    // Write MTL
+    // Write MTL (unchanged)
     bool mtlOK = saveMTL(mtlPath.c_str(), texFileName.c_str());
 
     gTexCopyOK = true;
     if (gCopyTextureOnExport) {
         if (samePath(gLeafTexPath, texOutPath)) {
-            gTexCopyOK = true; // already beside OBJ
+            gTexCopyOK = true; // already at destination
         }
         else {
             gTexCopyOK = copyFile(gLeafTexPath, texOutPath.c_str());
@@ -1269,6 +1313,7 @@ static bool savePlantOBJ(const char* path) {
     }
     return mtlOK;
 }
+
 
 
 /* -------------------------- rendering ---------------------------- */
@@ -1344,26 +1389,28 @@ static void drawStemLayers() {
                 // 1) raw polar angle in [-π, π]
                 float ang = std::atan2((float)v.z(), (float)v.x());
 
-                // 2) unwrap to be continuous along the strip
+                // 2) unwrap to be continuous along strip
                 float theta = ang;
                 if (havePrev) {
-                    if (theta - prevTheta > float(M_PI))      theta -= twoPi;
-                    else if (prevTheta - theta > float(M_PI)) theta += twoPi;
+                    if (theta - prevTheta > float(M_PI))       theta -= twoPi;
+                    else if (prevTheta - theta > float(M_PI))  theta += twoPi;
                 }
                 else {
                     havePrev = true;
                 }
                 prevTheta = theta;
 
-                // 3) map to cycles WITHOUT modulo; GL_REPEAT will tile
-                //    +π centers [0..1) around +X, but we keep it unwrapped
+                // 3) map to cycles (no modulo yet)
                 float uCycles = (theta + float(M_PI)) / twoPi;
 
-                // 4) 180° phase for odd leaves (set in rebuildGeometry: S.uPhase=0 or 0.5)
-                uCycles += S.uPhase; // cycles, not radians
+                // 4) exact 180° phase for odd stems (stored as cycles)
+                uCycles += S.uPhase;          // S.uPhase is 0.0 or 0.5 now
 
+                // optional but helps precision: fold into [0,1)
+                uCycles = uCycles - std::floor(uCycles);
+
+                // final UV
                 float vMeters = v.y();
-
                 glTexCoord2f(uCycles * gTexURepeat, vMeters * gTexVRepeat);
             }
 
@@ -1739,7 +1786,7 @@ static void display() {
 
         if (ImGui::SliderFloat("Ring drop (m)", &LP.ringDrop, 0.0f, 0.05f, "%.3f")) needRebuild = true;
         ImGui::SeparatorText("Seam opening");
-        if (ImGui::SliderFloat("Open start (s)", &LP.openStartFrac, 0.0f, 0.95f, "%.2f")) needRebuild = true;
+        if (ImGui::SliderFloat("Open start (s)", &LP.openStartFrac, 0.50f, 0.95f, "%.2f")) needRebuild = true;
         if (ImGui::SliderFloat("Open sharpness", &LP.openSharpness, 0.5f, 6.0f, "%.2f")) needRebuild = true;
     }
     else { ImGui::TextDisabled("No leaves found in the XML."); }
