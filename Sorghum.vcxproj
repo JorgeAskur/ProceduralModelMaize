@@ -19,6 +19,8 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="Descriptor.cpp" />
+    <ClCompile Include="Maize.cpp" />
     <ClCompile Include="src\imgui.cpp" />
     <ClCompile Include="src\imgui_demo.cpp" />
     <ClCompile Include="src\imgui_draw.cpp" />
@@ -28,13 +30,12 @@
     <ClCompile Include="src\imgui_tables.cpp" />
     <ClCompile Include="src\imgui_widgets.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\Maize.cpp" />
     <ClCompile Include="src\math\matrix4d.cpp" />
     <ClCompile Include="src\math\vect3d.cpp" />
     <ClCompile Include="src\math\vect4d.cpp" />
-    <ClCompile Include="src\Sorghum.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\Descriptor.h" />
     <ClInclude Include="include\GL\freeglut.h" />
     <ClInclude Include="include\GL\freeglut_ext.h" />
     <ClInclude Include="include\GL\freeglut_std.h" />
@@ -54,7 +55,6 @@
     <ClInclude Include="include\math\vect3d.h" />
     <ClInclude Include="include\math\vect4d.h" />
     <ClInclude Include="include\shapes.h" />
-    <ClInclude Include="include\sorghum.h" />
     <ClInclude Include="include\stb_image\stb_image.h" />
     <ClInclude Include="include\stb_image\stb_image_write.h" />
     <ClInclude Include="include\trackball.h" />

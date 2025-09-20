@@ -1,0 +1,27 @@
+<plant>
+    <species name="maize">
+        <params length_m="1" max_width_m="0.18000001" samples_min="16" droop_on="1" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" base_ramp_frac="0.079999998" attach_frac="0.1" attach_epsilon="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" ring_drop_m="0.0099999998"/>
+        <tiller type="main" radius="0.015" alpha="0" beta="180" stem_shrink="0.00019999999">
+            <leaves number="6">
+                <leaf id="0" distance="0.12" alpha="30" spines="14">
+                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="16" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                </leaf>
+                <leaf id="1" distance="0.12" alpha="30" spines="14">
+                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="16" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                </leaf>
+                <leaf id="2" distance="0.12" alpha="30" spines="14">
+                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="16" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                </leaf>
+                <leaf id="3" distance="0.12" alpha="30" spines="14">
+                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="16" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                </leaf>
+                <leaf id="4" distance="0.12" alpha="30" spines="14">
+                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="16" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                </leaf>
+                <leaf id="5" distance="0.12" alpha="30" spines="14">
+                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="100" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="20" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                </leaf>
+            </leaves>
+        </tiller>
+    </species>
+</plant>

@@ -1,108 +1,133 @@
-﻿/*────────────────────────── Maize.h ───────────────────────────*/
-#ifndef MAIZE_H
-#define MAIZE_H
-
+#pragma once
 #include <vector>
-#include <cstdint>
-#include <GL/freeglut.h>
-#include "math/vect3d.h"
+#include <map>
+#include <string>
+#include <math/vect3d.h>
 
-/*──────────────────────── leaf parameters ─────────────────────*/
-struct LeafParams
-{
-    /* geometry */
-    int   spines = 32;     // # ribs
-    float length = 1.0f;   // blade length (m)
-    float halfW = 0.06f;  // half width at ligule
-    float tipSharp = 1.0f;   // 1 = linear, >1 = pointier
+struct Vec2 { float u, v; };
 
-    /* pose */
-    float angleDeg = -35.f;  // collar pitch (deg)
-    float sideRoll = 0.0f;   // twist around mid-rib (0-1)
-    float dip = 0.0f;   // downward bend at mid-rib
-    float midArch = 0.10f;  // left–right arch (+Z)
-
-    /* hook & droop */
-    float hookAmount = 0.20f;  // upward “kick”
-    float hookStart = 0.00f;  // 0 = base, 1 = tip
-    float tipDrop = 0.40f;  // downward quadratic droop
-
-    /* base flare */
-    float startW = 0.05f;  // sheath width (m)
-    float startAngle = -90.f;  // roll at the very base (deg)
-
-    /* profile */
-    float tipTaperDeg = 1.0f;   // extra taper at the last 30 %
-
-    /* jitter */
-    float yWiggle = 1.0f;   // per-leaf random Y scale
+// Plant descriptors
+struct LeafDesc {
+    int   id = 0;           // id from XML
+    float distance = 0;     // internode length
+    float alphaDeg = 30;    // vertical tilt
+    int   spines = 10;      // sampling suggestion
+    float azimuthDeg = 0;   // computed from id * tiller.beta
+};
+struct TillerDesc {
+    std::string type = "main";
+    float radius = 0.02f;     // base stem radius
+    float alphaDeg = 0.f;     // base azimuth
+    float betaDeg = 180.f;    // phyllotaxy step
+	float stemShrink = 0.002f; // per-leaf radius reduction
+    std::vector<LeafDesc> leaves;
+};
+struct PlantDesc {
+    std::string species = "maize";
+    std::vector<TillerDesc> tillers;
 };
 
-/*────────────────────────── Maize class ───────────────────────*/
-class Maize
-{
-public:
-    static GLuint sLeafTex;                       // shared 1×64 texture
-
-    /* construction */
-    Maize(uint32_t seed = 0, int leaves = 16,
-        float r = 0.022f, float h = 2.0f,
-        float spacing = 0.12f, float gap = 0.0f);
-
-    /* ── frame-to-frame setters ─────────────────────────────── */
-    void SetStructure(int leaves, float r, float h,
-        float spacing, float gap);
-
-    /* per-leaf control (same API as Sorghum) */
-    void SetLeafParams(int idx, const LeafParams& p); // one leaf
-    void SetAllLeaves(const LeafParams& proto);       // broadcast
-    void SetLeafParams(int sp, float len, float baseW, float ang,
-        float dip, float tipDrop, float tipSharp,
-        float hookAmp, float ywig, float startW,
-        float startAng, float midArch, float sideRoll,
-        float tipTaper, float hookStart);
-
-    /* wrap, noise, placement */
-    void SetWrapParams(float frac, float fade, float deg, float pow, float sheathFrac, float pw);
-    void SetNoiseParams(float amp, float freq);
-    void SetPos(Vect3d p);   void Move(Vect3d d);
-    void SetColor(GLubyte r, GLubyte g, GLubyte b);
-
-    /* drawing */
-    void Render();            // call every frame
-
-private:
-    /* helpers */
-    void DrawMaize();
-    void DrawStem()  const;
-    void DrawLeaf(int idx) const;
-
-    /* geometry state ────────────────────────────────────────── */
-    int   numLeaves;
-    float stemRadius, stemHeight;
-    float leafSpacing, clearance;
-
-    /* per-leaf parameters */
-    std::vector<LeafParams> leaf;
-
-    /* sheath wrap (global) */
-    float leafWrapFrac = 0.25f;     // % of blade hugging stem
-    float leafFadeFrac = 0.05f;
-    float leafMaxWrapDeg = 25.f;
-    float leafWrapPow = 1.f;
-    float sheathFrac = 0.15f;
-    float leafCurvePow = 1.f;
-
-    /* noise / jitter (global) */
-    float noiseAmpOffset = 0.05f;
-    float noiseFreqOffset = 30.f;
-
-    /* misc */
-    std::vector<float> phaseL, phaseR; // independent noise phase
-    Vect3d  pos{ 0,0,0 };
-    GLubyte color[3]{ 255,255,255 };
-    uint32_t baseSeed;
+// Editable leaf controls
+struct LeafKey { int tIdx; int lIdx; bool operator<(const LeafKey& o) const { return (tIdx < o.tIdx) || (tIdx == o.tIdx && lIdx < o.lIdx); } };
+struct LeafEdit {
+    bool hasCustom = false;
+    bool pinC0ToStem = true;
+    std::vector<Vect3d> customCtrl;   // control points
 };
 
-/*──────────────────────────────────────────────────────────────*/
-#endif // MAIZE_H
+// Per-leaf parameter bundle
+struct LeafParams {
+    // Shape / sampling
+    float length = 0.40f;
+    float wmax = 0.18f;
+    int   samplesMin = 16;
+    // Droop / twist / roll
+    float droopMax = 0.0f;
+    float twistMaxD = 20.f;
+    float twistPow = 1.4f;
+
+    // Waviness
+    float waveAmp = 0.0030f;
+    float waveCycles = 6.0f;
+    float waveAcross = 0.5f;
+    float waveFadeIn = 0.4f;
+    float waveFadeOut = 0.4f;
+    // Width profile
+    float widthKnee = 0.66f;
+    float widthAtKnee = 0.45f;
+    float earlyPow = 0.70f;
+    float tipPow = 1.80f;
+    float baseRampFrac = 0.08f;
+    // Attach + unwrap
+    float attachFrac = 0.10f;
+    float attachEps = 0.0015f;
+    float lipLenFrac = 0.08f;
+    int   lipCols = 11;
+    float lipArc0Deg = 179.f;
+    float lipArc1Deg = 40.f;
+    float unwrapMidFrac = 0.55f;
+    float unwrapSharpness = 2.50f;
+    // Seam opening controls
+    float openStartFrac = 0.75f;
+    float seamMaxDeg = 179.f;
+    float openSharpness = 3.0f;
+    float seamOffsetDeg = 180.f;
+    // Seam ring drop
+    float ringDrop = 0.00f;
+};
+
+// Generated geometry
+struct LeafGeom {
+    int rows = 0, cols = 0;
+    std::vector<Vect3d> pos;
+    std::vector<Vec2>   uv;
+    std::vector<Vect3d> ctrl;
+    std::vector<Vect3d> nrm;
+};
+struct StemLayerGeom {
+    float radius = 0.f; float y0 = 0.f, y1 = 0.f; int sides = 32;
+    std::vector<Vect3d> band; // triangle strip vertices
+    float uPhase = 0.f;       // 0.0 for even, 0.5 for odd (180� in U)
+};
+
+// Maize API
+namespace Maize {
+    // State access
+    PlantDesc& plant();
+    std::map<LeafKey, LeafEdit>& edits();
+    std::map<LeafKey, LeafParams>& leafParams();
+
+    // Geometry outputs
+    const std::vector<LeafGeom>& leafGeoms();
+    const std::vector<StemLayerGeom>& stemLayers();
+
+    // Parameter helpers
+    LeafParams defaultLeafParams();
+    LeafParams& paramsFor(const LeafKey& key);
+
+    // Rebuild all geometry from current state
+    void rebuildGeometry();
+
+	// Geometry helpers
+	std::vector<float> openUniformKnots(int nCtrl, int p);
+	int findSpan(int n, int p, float u, const std::vector<float>& U);
+	Vect3d deBoor(float u, const std::vector<Vect3d>& P, const std::vector<Vect3d>& U, int p);
+	std::vector<Vect3d> resampleMidrib(const std::vector<Vect3d>& ctrl, int N);
+	std::vector<int> pickRowsByCurvature(const std::vector<Vect3d>& mid, float angTol, float minStep);
+	void buildPTFrames(const std::vector<Vect3d>& mid, std::vector<Vect3d>& T, std::vector<Vect3d>& N, std::vector<Vect3d>& B);
+	static inline float widthBaseMax(float s01, float wmax, float knee, float atKnee, float earlyPow, float tipPow);
+    static inline float unwrapAmountAtS(float s01, const LeafParams& P);
+	static inline float seamAngleRadAtFrac(float frac, const LeafParams& P);
+	static std::vector<Vect3d> makeLeafCtrl(Vect3d base, Vect3d stemUp, Vect3d dir, float L);
+
+    // OBJ/MTL export
+    bool savePlantOBJ(const char* path, const char* textureFullPath);
+	static bool saveMTL(const char* mtlPath, const char* textureFileNameOnly);
+	static std::string dirFromPath(const std::string& p);
+    static std::string fileFromPath(const std::string& p);
+	static std::string replaceExt(const std::string& p, const char* newExt);
+	static bool samePath(const std::string& a, const std::string& b);
+	static std::string normPath(std::string p);
+	static bool copyFile(const char* src, const char* dst);
+
+}

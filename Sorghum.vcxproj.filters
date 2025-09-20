@@ -33,9 +33,6 @@
     <ClCompile Include="src\math\vect4d.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="src\Sorghum.cpp">
-      <Filter>Archivos de origen</Filter>
-    </ClCompile>
     <ClCompile Include="src\imgui.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
@@ -60,7 +57,10 @@
     <ClCompile Include="src\imgui_widgets.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
-    <ClCompile Include="src\Maize.cpp">
+    <ClCompile Include="Maize.cpp">
+      <Filter>Archivos de origen</Filter>
+    </ClCompile>
+    <ClCompile Include="Descriptor.cpp">
       <Filter>Archivos de origen</Filter>
     </ClCompile>
   </ItemGroup>
@@ -90,9 +90,6 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="include\math\vect4d.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
-    <ClInclude Include="include\sorghum.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="include\GL\glui.h">
@@ -125,14 +122,17 @@
     <ClInclude Include="include\imgui_internal.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="include\Maize.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
     <ClInclude Include="include\stb_image\stb_image.h">
       <Filter>Archivos de encabezado\stb_image</Filter>
     </ClInclude>
     <ClInclude Include="include\stb_image\stb_image_write.h">
       <Filter>Archivos de encabezado\stb_image</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Descriptor.h">
+      <Filter>Archivos de encabezado</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Maize.h">
+      <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
