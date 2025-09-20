@@ -39,7 +39,7 @@ struct LeafEdit {
 struct LeafParams {
     // Shape / sampling
     float length = 0.40f;
-    float wmax = 0.18f;
+    float wmax = 0.1f;
     int   samplesMin = 16;
     // Droop / twist / roll
     float droopMax = 0.0f;
@@ -68,7 +68,7 @@ struct LeafParams {
     float unwrapMidFrac = 0.55f;
     float unwrapSharpness = 2.50f;
     // Seam opening controls
-    float openStartFrac = 0.75f;
+    float openStartFrac = 0.95f;
     float seamMaxDeg = 179.f;
     float openSharpness = 3.0f;
     float seamOffsetDeg = 180.f;

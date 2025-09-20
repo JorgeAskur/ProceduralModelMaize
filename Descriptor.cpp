@@ -6,17 +6,16 @@ using namespace tinyxml2;
 namespace Descriptor {
 
 	// Global defaults
-    static float gLeafLength = 1.00f, gLeafWmax = 0.18f;
+    static float gLeafLength = 0.40f, gLeafWmax = 0.1f;
     static int   gSamplesMin = 16;
-    static bool  gDroop = true; static float gDroopMax = 0.06f;
-    static bool  gTwistOn = true; static float gTwistMaxD = 20.f, gTwistPow = 1.4f;
-    static bool  gAutoRollTangency = true;
+    static float gDroopMax = 0.0f;
+    static float gTwistMaxD = 20.f, gTwistPow = 1.4f;
     static float gWaveAmp = 0.0030f, gWaveCycles = 6.0f, gWaveAcross = 0.5f, gWaveFadeIn = 0.4f, gWaveFadeOut = 0.4f;
     static float gWidthKnee = 0.66f, gWidthAtKnee = 0.45f, gEarlyPow = 0.70f, gTipPow = 1.80f, gBaseRampFrac = 0.08f;
     static float gAttachFrac = 0.10f, gAttachEpsilon = 0.0015f;
     static float gLipLenFrac = 0.08f; static int gLipCols = 11; static float gLipArc0Deg = 179.f, gLipArc1Deg = 40.f;
     static float gUnwrapMidFrac = 0.55f, gUnwrapSharpness = 2.50f, gRingDrop = 0.010f;
-	static float gOpenStartFrac = 0.75f, gSeamMaxDeg = 179.f, gOpenSharpness = 3.0f, gSeamOffsetDeg = 180.f;
+	static float gOpenStartFrac = 0.95f, gSeamMaxDeg = 179.f, gOpenSharpness = 3.0f, gSeamOffsetDeg = 180.f;
 
 	// Return a LeafParams struct with the current global defaults
     static LeafParams defaultLeafParamsSeed() {
@@ -38,8 +37,6 @@ namespace Descriptor {
         // Global defaults block
         auto* P = doc.NewElement("params");
         P->SetAttribute("length_m", gLeafLength); P->SetAttribute("max_width_m", gLeafWmax); P->SetAttribute("samples_min", gSamplesMin);
-        P->SetAttribute("droop_on", (int)gDroop); P->SetAttribute("droop_max_m", gDroopMax);
-        P->SetAttribute("twist_on", (int)gTwistOn); P->SetAttribute("twist_max_deg", gTwistMaxD); P->SetAttribute("twist_pow", gTwistPow);
         P->SetAttribute("base_ramp_frac", gBaseRampFrac);
         P->SetAttribute("attach_frac", gAttachFrac); P->SetAttribute("attach_epsilon", gAttachEpsilon);
         P->SetAttribute("lip_len_frac", gLipLenFrac); P->SetAttribute("lip_cols", gLipCols); P->SetAttribute("lip_arc0_deg", gLipArc0Deg);
@@ -107,7 +104,6 @@ namespace Descriptor {
         if (const XMLElement* P = species->FirstChildElement("params")) {
             P->QueryFloatAttribute("length_m", &gLeafLength); P->QueryFloatAttribute("max_width_m", &gLeafWmax); P->QueryIntAttribute("samples_min", &gSamplesMin);
             P->QueryFloatAttribute("droop_max_m", &gDroopMax);
-            { int v = 0; if (P->QueryIntAttribute("twist_on", &v) == XML_SUCCESS) gTwistOn = (v != 0); }
             P->QueryFloatAttribute("twist_max_deg", &gTwistMaxD); P->QueryFloatAttribute("twist_pow", &gTwistPow);
             P->QueryFloatAttribute("base_ramp_frac", &gBaseRampFrac);
             P->QueryFloatAttribute("attach_frac", &gAttachFrac); P->QueryFloatAttribute("attach_epsilon", &gAttachEpsilon);
