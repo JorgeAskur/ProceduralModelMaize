@@ -23,7 +23,7 @@ public:
 	{v[0]=x;v[1]=y;v[2]=z;}
 
 	inline void Set(const Vect3d &p)
-	{memcpy(v,p,3*sizeof(float));}
+	{memcpy(v,static_cast<const float*>(p),3*sizeof(float));}
 	
 	//Accessors kept for compatibility
 	inline void SetX(float x) {v[0]=x;}

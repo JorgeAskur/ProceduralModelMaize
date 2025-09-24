@@ -6,6 +6,17 @@
 
 #define M_PI 3.14159265358979323846
 
+#ifdef _WIN32
+    #define sinf std::sinf;
+#else
+    // Linux: map fopen_s -> fopen and errno_t -> int
+    typedef int errno_t;
+    inline errno_t fopen_s(FILE **file, const char *filename, const char *mode) {
+        *file = fopen(filename, mode);
+        return (*file == nullptr) ? 1 : 0;
+    }
+#endif
+
 // Math helpers
 static inline float clampf(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
 static inline float radiansf(float d) { return d * float(M_PI) / 180.f; }
@@ -298,7 +309,7 @@ namespace Maize {
                     float wLeaf = widthBaseMax(s01, LP.wmax, LP.widthKnee, LP.widthAtKnee, LP.earlyPow, LP.tipPow);
                     float baseRamp = smooth01(s01 / std::max(1e-4f, LP.baseRampFrac));
                     float halfWLeaf = 0.5f * wLeaf * baseRamp;
-                    float halfChord = (rLeaf + LP.attachEps) * std::sinf(0.5f * dphi);
+                    float halfChord = (rLeaf + LP.attachEps) * sinf(0.5f * dphi);
                     float halfW = lerpf(halfChord, halfWLeaf, b);
 
                     // Weld arc endpoints
@@ -354,7 +365,7 @@ namespace Maize {
                             float env = fadeIn * fadeOut;
                             float basePhase = twoPi * (LP.waveCycles * s01);
                             float acrossPhase = twoPi * 0.25f * LP.waveAcross * uLR;
-                            float amp = LP.waveAmp * env * std::sinf(basePhase + acrossPhase);
+                            float amp = LP.waveAmp * env * sinf(basePhase + acrossPhase);
                             Pv = Pv + Bblend * amp;
                         }
 
