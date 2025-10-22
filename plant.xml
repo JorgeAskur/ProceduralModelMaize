@@ -1,25 +1,55 @@
 <plant>
     <species name="maize">
-        <params length_m="1" max_width_m="0.18000001" samples_min="16" droop_on="1" droop_max_m="0.059999999" twist_on="1" twist_max_deg="20" twist_pow="1.4" base_ramp_frac="0.079999998" attach_frac="0.1" attach_epsilon="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" ring_drop_m="0.0099999998"/>
-        <tiller type="main" radius="0.015" alpha="0" beta="180" stem_shrink="0.00019999999">
+        <params length="0.40000001" max_width_m="0.18000001" leaf_rows="16" lip_cols="11" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" tip_pow="1.8" tip_roll="0.02" tip_start="0.88" sickle_amp_frac="0.18000001" extra_twist_deg="6" open_start_frac="0.94999999" seam_max_deg="179" open_sharpness="3" auricle_wrap_deg="60" auricle_span_v="0.18000001" base_width_boost_frac="0.1" auricle_incline_exp="1" base_start_width_pct="0" collar_seam_split_deg="0.25" k_weld_density_strength="0.75" k_weld_snap="0.85000002"/>
+        <tiller type="main" radius="0.0099999998" alpha="0" stem_shrink="0.001">
             <leaves number="6">
-                <leaf id="0" distance="0.12" alpha="30" spines="14">
-                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="16" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                <leaf id="0" distance="0.12" alpha="30" azimuth_deg="0" length="0.40000001">
+                    <edit>
+                        <cp x="0.0099999998" y="0.12" z="0"/>
+                        <cp x="0.070016757" y="0.26699999" z="0"/>
+                        <cp x="0.14024998" y="0.32300001" z="0.0027995848"/>
+                        <cp x="0.21024999" y="0.35100001" z="0"/>
+                    </edit>
+                    <lparams length="0.40000001" max_width_m="0.07" leaf_rows="105" lip_cols="11" twist_max_deg="0" twist_pow="0.5" wave_amp_m="0.0020999999" wave_cycles="3.5999999" wave_across="0.5" tip_pow="7.0100002" tip_roll="0.02" tip_start="0.88" sickle_amp_frac="0.18000001" extra_twist_deg="6" open_start_frac="0.94999999" seam_max_deg="15.3" open_sharpness="5" auricle_wrap_deg="180" auricle_span_v="1" base_width_boost_frac="0" auricle_incline_exp="20" base_start_width_pct="52" collar_seam_split_deg="0.25" k_weld_density_strength="1" k_weld_snap="1"/>
                 </leaf>
-                <leaf id="1" distance="0.12" alpha="30" spines="14">
-                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="16" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                <leaf id="1" distance="0.12" alpha="30" azimuth_deg="180" length="0.40000001">
+                    <edit>
+                        <cp x="-0.0089999996" y="0.23999999" z="-7.8680495e-10"/>
+                        <cp x="-0.06900312" y="0.391931" z="-6.025767e-09"/>
+                        <cp x="-0.13924998" y="0.46799999" z="0.0039963871"/>
+                        <cp x="-0.33399999" y="0.47099999" z="-1.8293214e-08"/>
+                    </edit>
+                    <lparams length="0.40000001" max_width_m="0.07" leaf_rows="99" lip_cols="11" twist_max_deg="86.800003" twist_pow="1.4" wave_amp_m="0.00079999998" wave_cycles="6" wave_across="0.5" tip_pow="5" tip_roll="0.02" tip_start="0.88" sickle_amp_frac="0.18000001" extra_twist_deg="6" open_start_frac="0.97000003" seam_max_deg="30" open_sharpness="4.0799999" auricle_wrap_deg="180" auricle_span_v="1" base_width_boost_frac="0" auricle_incline_exp="6.4699998" base_start_width_pct="0" collar_seam_split_deg="0.25" k_weld_density_strength="1" k_weld_snap="0.89999998"/>
                 </leaf>
-                <leaf id="2" distance="0.12" alpha="30" spines="14">
-                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="16" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                <leaf id="2" distance="0.12" alpha="30" azimuth_deg="360" length="0.40000001">
+                    <edit>
+                        <cp x="0.0080999993" y="0.35999998" z="1.4162489e-09"/>
+                        <cp x="0.068122149" y="0.5119791" z="1.2130412e-08"/>
+                        <cp x="0.13834998" y="0.59316659" z="0.0028428233"/>
+                        <cp x="0.31299999" y="0.611" z="3.6429068e-08"/>
+                    </edit>
+                    <lparams length="0.40000001" max_width_m="0.07" leaf_rows="100" lip_cols="11" twist_max_deg="41" twist_pow="0.5" wave_amp_m="0.0020000001" wave_cycles="6" wave_across="0.5" tip_pow="4.9899998" tip_roll="0.02" tip_start="0.88" sickle_amp_frac="0.18000001" extra_twist_deg="6" open_start_frac="0.98000002" seam_max_deg="29.9" open_sharpness="4.0100002" auricle_wrap_deg="180" auricle_span_v="1" base_width_boost_frac="0" auricle_incline_exp="4.9699998" base_start_width_pct="0" collar_seam_split_deg="0.25" k_weld_density_strength="1" k_weld_snap="0.89999998"/>
                 </leaf>
-                <leaf id="3" distance="0.12" alpha="30" spines="14">
-                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="16" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                <leaf id="3" distance="0.12" alpha="30" azimuth_deg="540" length="0.40000001">
+                    <edit>
+                        <cp x="-0.0072899992" y="0.47999999" z="-1.7386474e-10"/>
+                        <cp x="-0.067290463" y="0.63192415" z="-1.6290673e-09"/>
+                        <cp x="-0.13753998" y="0.71316659" z="0.0018217688"/>
+                        <cp x="-0.29300001" y="0.74599999" z="-4.9497793e-09"/>
+                    </edit>
+                    <lparams length="0.40000001" max_width_m="0.07" leaf_rows="100" lip_cols="11" twist_max_deg="31.700001" twist_pow="0.61000001" wave_amp_m="0.001" wave_cycles="6" wave_across="0.5" tip_pow="4.9899998" tip_roll="0.02" tip_start="0.88" sickle_amp_frac="0.18000001" extra_twist_deg="6" open_start_frac="0.99000001" seam_max_deg="16.700001" open_sharpness="4" auricle_wrap_deg="180" auricle_span_v="1" base_width_boost_frac="0" auricle_incline_exp="3.75" base_start_width_pct="0" collar_seam_split_deg="0.25" k_weld_density_strength="1" k_weld_snap="0.89999998"/>
                 </leaf>
-                <leaf id="4" distance="0.12" alpha="30" spines="14">
-                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="16" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="11" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                <leaf id="4" distance="0.12" alpha="30" azimuth_deg="720" length="0.40000001">
+                    <lparams length="0.40000001" max_width_m="0.07" leaf_rows="100" lip_cols="11" twist_max_deg="0" twist_pow="1.4" wave_amp_m="0.001" wave_cycles="6" wave_across="0.5" tip_pow="4.9899998" tip_roll="0.02" tip_start="0.88" sickle_amp_frac="0.18000001" extra_twist_deg="6" open_start_frac="0.99000001" seam_max_deg="15.5" open_sharpness="3" auricle_wrap_deg="180" auricle_span_v="1" base_width_boost_frac="0" auricle_incline_exp="20" base_start_width_pct="0" collar_seam_split_deg="0.25" k_weld_density_strength="1" k_weld_snap="0.89999998"/>
                 </leaf>
-                <leaf id="5" distance="0.12" alpha="30" spines="14">
-                    <lparams length_m="0.40000001" max_width_m="0.1" samples_min="100" droop_max_m="0" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.003" wave_cycles="6" wave_across="0.5" wave_fade_in="0.40000001" wave_fade_out="0.40000001" width_knee="0.66000003" width_at_knee="0.44999999" early_pow="0.69999999" tip_pow="1.8" base_ramp_frac="0.079999998" attach_frac="0.1" attach_eps="0.0015" lip_len_frac="0.079999998" lip_cols="20" lip_arc0_deg="179" lip_arc1_deg="40" unwrap_mid="0.55000001" unwrap_sharpness="2.5" open_start_frac="0.94999999" open_sharpness="3" seam_max_deg="179" seam_offset_deg="180" ring_drop_m="0"/>
+                <leaf id="5" distance="0.12" alpha="30" azimuth_deg="900" length="0.40000001">
+                    <edit>
+                        <cp x="-0.0099999998" y="0.71999997" z="2.7814184e-09"/>
+                        <cp x="-0.033" y="0.82700002" z="2.7350966e-08"/>
+                        <cp x="-0.061999999" y="0.89200002" z="5.7475674e-08"/>
+                        <cp x="-0.12" y="1.02" z="8.614014e-08"/>
+                    </edit>
+                    <lparams length="0.40000001" max_width_m="0.07" leaf_rows="101" lip_cols="12" twist_max_deg="20" twist_pow="1.4" wave_amp_m="0.0031999999" wave_cycles="6.0999999" wave_across="0" tip_pow="1.8" tip_roll="0.02" tip_start="0.88" sickle_amp_frac="0.18000001" extra_twist_deg="6" open_start_frac="0.97000003" seam_max_deg="22.299999" open_sharpness="5" auricle_wrap_deg="180" auricle_span_v="1" base_width_boost_frac="0" auricle_incline_exp="1.14" base_start_width_pct="0" collar_seam_split_deg="0.25" k_weld_density_strength="1" k_weld_snap="0.977"/>
                 </leaf>
             </leaves>
         </tiller>

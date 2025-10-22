@@ -3,6 +3,10 @@
 #include <vector>
 #include <string>
 #include <cstdio>
+#include <cmath>
+#include <algorithm>
+#include <ctime>
+#include <cstdlib>
 #include <math/vect3d.h>
 
 #include "imgui.h"
@@ -17,586 +21,565 @@
 
 #define M_PI 3.14159265358979323846
 
-// Window and camera
+/* ---------------- Window + camera ---------------- */
 static int   gWinW = 1280, gWinH = 860;
 static float gYaw = 30.f, gPitch = 18.f, gDist = 3.5f;
 static Vect3d gCamTarget = { 0.0f, 0.0f, 0.0f };
-
-// Camera controls
 static float gFovDeg = 60.0f;
 static float gMoveSpeed = 1.0f;
 static float gBoost = 4.0f;
 static float gSlow = 0.25f;
 
-static bool  gKeyDown[256] = { false };
-static bool  gMouseRot = false;
-static int   gLastMouseX = 0, gLastMouseY = 0;
-
-// For frame time
-static int   gLastTimeMs = 0;
-
-// Mouse sensitivity
-static float gMouseYawSens = 0.25f;
-static float gMousePitchSens = 0.25f;
-
-// Orbit pivot
-static Vect3d gAxisPos = { 0.0, 0.0, 0.0 };
-
-
-// Display / render options
-static bool  gWireframe = false;
-static bool  gLightingOn = true;
-static float gLightPos[4] = { 2.0f, 3.0f, 2.0f, 1.0f };
-static float gGlobalAmb[4] = { 0.15f, 0.15f, 0.15f, 1.0f };
-static float gLightDiff[4] = { 0.95f, 0.95f, 0.95f, 1.0f };
-static float gLightSpec[4] = { 0.20f, 0.20f, 0.20f, 1.0f };
-static float gMatSpec[4] = { 0.12f, 0.12f, 0.12f, 1.0f };
-static float gShininess = 18.0f;
-
-// Control point display
-static bool gShowCtrlPts = true; static bool gShowCtrlPoly = true; static bool gShowCtrlLabel = true;
-static float gCtrlPtSize = 5.0f;
-
+/* ---------------- Selection & UI State ---------------- */
 static int gSelTiller = 0;
 static int gSelLeaf = 0;
+static int gSelSpline = 0; // 0=Center, 1=Left, 2=Right, 3=Base
 
-// Texture
-static GLuint gLeafTex = 0; static bool gTexOK = false;
-static char   gLeafTexPath[256] = "maize_leaf.png";
-static char   gXmlPath[256] = "plant.xml";
-static char   gObjPath[256] = "plant.obj";
+/* ---------------- Overlays & View Options ---------------- */
+static bool gShowCtrlPts = true;
+static bool gShowCtrlPoly = true;
+static bool gWireframe = false;
 
+/* ---------------- Lighting ---------------- */
+static bool gLightingOn = true;
+static float gLightPos[4] = { 2.0f, 3.0f, 4.0f, 1.0f };
+static float gGlobalAmb[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
+static float gLightDiff[4] = { 0.8f, 0.8f, 0.8f, 1.0f };
+static float gLightSpec[4] = { 0.6f, 0.6f, 0.6f, 1.0f };
+static float gMatSpec[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
+static float gShininess = 32.0f;
+
+
+/* ---------------- Paths ---------------- */
+static char gXmlPath[256] = "plant_spline.xml";
+static char gObjPath[256] = "plant_spline.obj";
+static char gTexPath[256] = "maize_leaf.png";
+
+/* ---------------- Globals ---------------- */
+static GLuint gTextureID = 0;
+static bool   gTextureOK = false;
+
+/* ---------------- Helpers ---------------- */
 static inline float clampf(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
+static inline float radiansf(float d) { return d * float(M_PI) / 180.f; }
 
-// Load a texture from file, create GL texture object
-static bool loadLeafTexture(const char* path) {
-    int w = 0, h = 0, n = 0; stbi_uc* data = stbi_load(path, &w, &h, &n, 4);
-    if (!data) return false;
-    if (!gLeafTex) glGenTextures(1, &gLeafTex);
-    glBindTexture(GL_TEXTURE_2D, gLeafTex);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
-    glBindTexture(GL_TEXTURE_2D, 0);
-    stbi_image_free(data);
-    gTexOK = true; return true;
+static void loadTexture(const char* path) {
+    if (gTextureID) {
+        glDeleteTextures(1, &gTextureID);
+        gTextureID = 0;
+    }
+    gTextureOK = false;
+    int w, h, n;
+    unsigned char* data = stbi_load(path, &w, &h, &n, 4);
+    if (data) {
+        glGenTextures(1, &gTextureID);
+        glBindTexture(GL_TEXTURE_2D, gTextureID);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
+        stbi_image_free(data);
+        gTextureOK = true;
+    }
 }
 
-// Setup OpenGL lighting state
+/* ---------------- Lighting Setup ---------------- */
 static void setupLighting() {
-    if (!gLightingOn) { glDisable(GL_LIGHTING); return; }
-
+    if (!gLightingOn) {
+        glDisable(GL_LIGHTING);
+        return;
+    }
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
     glLightfv(GL_LIGHT0, GL_POSITION, gLightPos);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, gLightDiff);
     glLightfv(GL_LIGHT0, GL_SPECULAR, gLightSpec);
-
     glLightModelfv(GL_LIGHT_MODEL_AMBIENT, gGlobalAmb);
-    glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, 1);
-
     glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, gMatSpec);
     glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, gShininess);
-
     glEnable(GL_NORMALIZE);
-    glShadeModel(GL_SMOOTH);
 }
 
-// Draw the plant geometry
+
+/* ---------------- Drawing ---------------- */
 static void drawPlant() {
     setupLighting();
-    glColor4f(1.f, 1.f, 1.f, 1.f); 
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glColor4f(1.f, 1.f, 1.f, 1.f);
 
-    if (gTexOK) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, gLeafTex); }
-    if (gWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); else glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    if (gTextureOK) {
+        glEnable(GL_TEXTURE_2D);
+        glBindTexture(GL_TEXTURE_2D, gTextureID);
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    }
 
-    // Stem
+    glPolygonMode(GL_FRONT_AND_BACK, gWireframe ? GL_LINE : GL_FILL);
+
     for (const auto& S : Maize::stemLayers()) {
         if (S.band.empty()) continue;
-
+        glColor3f(0.8f, 0.8f, 0.8f);
         glBegin(GL_TRIANGLE_STRIP);
-
-        const float uShift = S.uPhase;
-
-        for (const auto& v : S.band) {
-            Vect3d n = Vect3d(v.x(), 0.0, v.z());
-            double L = n.Length();
-            if (L > 1e-12) n = n * (1.0 / L);
-            else           n = Vect3d{ 1,0,0 };
-
-            // Base U from angle
-            float u = (std::atan2((float)v.z(), (float)v.x()) + (float)M_PI) / (2.0f * (float)M_PI);
-
-            // Apply layer phase
-            u += uShift;
-            u -= std::floor(u);
-
-            glNormal3f((float)n.x(), (float)n.y(), (float)n.z());
-            glTexCoord2f(u, (float)v.y());
-            glVertex3f((float)v.x(), (float)v.y(), (float)v.z());
+        for (size_t i = 0; i < S.band.size(); ++i) {
+            Vect3d n = Vect3d(S.band[i].x(), 0, S.band[i].z()).GetNormalized();
+            glNormal3f(n.x(), n.y(), n.z());
+            glTexCoord2f(S.uv[i].u, S.uv[i].v);
+            glVertex3f(S.band[i].x(), S.band[i].y(), S.band[i].z());
         }
         glEnd();
     }
 
-    // Leaves
     for (const auto& G : Maize::leafGeoms()) {
         if (G.rows <= 1 || G.cols <= 1) continue;
+        glColor3f(1.0f, 1.0f, 1.0f);
         for (int i = 0; i < G.rows - 1; ++i) {
             glBegin(GL_TRIANGLE_STRIP);
             for (int j = 0; j < G.cols; ++j) {
-                int a = i * G.cols + j, b = (i + 1) * G.cols + j;
-                const auto& pa = G.pos[a], & pb = G.pos[b]; const auto& ua = G.uv[a], & ub = G.uv[b]; const auto& na = G.nrm[a], & nb = G.nrm[b];
-                glNormal3f((float)na.x(), (float)na.y(), (float)na.z()); glTexCoord2f(ua.u, ua.v); glVertex3f((float)pa.x(), (float)pa.y(), (float)pa.z());
-                glNormal3f((float)nb.x(), (float)nb.y(), (float)nb.z()); glTexCoord2f(ub.u, ub.v); glVertex3f((float)pb.x(), (float)pb.y(), (float)pb.z());
+                int a = i * G.cols + j;
+                int b = (i + 1) * G.cols + j;
+
+                glNormal3f(G.nrm[a].x(), G.nrm[a].y(), G.nrm[a].z());
+                glTexCoord2f(G.uv[a].u, G.uv[a].v);
+                glVertex3f(G.pos[a].x(), G.pos[a].y(), G.pos[a].z());
+
+                glNormal3f(G.nrm[b].x(), G.nrm[b].y(), G.nrm[b].z());
+                glTexCoord2f(G.uv[b].u, G.uv[b].v);
+                glVertex3f(G.pos[b].x(), G.pos[b].y(), G.pos[b].z());
             }
             glEnd();
         }
     }
 
-    if (gTexOK) { glBindTexture(GL_TEXTURE_2D, 0); glDisable(GL_TEXTURE_2D); }
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    if (gTextureOK) {
+        glDisable(GL_TEXTURE_2D);
+    }
+    if (gLightingOn) {
+        glDisable(GL_LIGHTING);
+    }
 }
 
-// Draw control points and polygons
 static void drawCtrlViz() {
-    glDisable(GL_DEPTH_TEST); glDisable(GL_TEXTURE_2D); glDisable(GL_BLEND);
+    if (!gShowCtrlPts && !gShowCtrlPoly) return;
+    glDisable(GL_DEPTH_TEST); glDisable(GL_LIGHTING);
 
-    if (gShowCtrlPoly) {
-        glLineWidth(2.f); glColor3f(1.f, 0.45f, 0.05f);
-        for (const auto& G : Maize::leafGeoms()) {
+    auto drawSpline = [&](const std::vector<Vect3d>& ctrl, float r, float g, float b) {
+        if (ctrl.empty()) return;
+        glColor3f(r, g, b);
+        if (gShowCtrlPoly) {
+            glLineWidth(2.f);
             glBegin(GL_LINE_STRIP);
-            for (const auto& p : G.ctrl) glVertex3f(p.x(), p.y(), p.z());
+            for (const auto& p : ctrl) glVertex3f(p.x(), p.y(), p.z());
             glEnd();
         }
-    }
-    if (gShowCtrlPts) {
-        glPointSize(gCtrlPtSize); glColor3f(0.95f, 0.2f, 0.1f);
-        glBegin(GL_POINTS);
-        for (const auto& G : Maize::leafGeoms())
-            for (const auto& p : G.ctrl) glVertex3f(p.x(), p.y(), p.z());
-        glEnd();
-    }
-    if (gShowCtrlLabel) {
-        glColor3f(0.05f, 0.05f, 0.05f);
-        for (const auto& G : Maize::leafGeoms()) {
-            for (size_t i = 0; i < G.ctrl.size(); ++i) {
-                const Vect3d& p = G.ctrl[i]; glRasterPos3f(p.x(), p.y(), p.z());
-                char buf[8]; std::snprintf(buf, sizeof(buf), "C%zu", i);
-                for (const char* c = buf; *c; ++c) glutBitmapCharacter(GLUT_BITMAP_8_BY_13, *c);
-            }
+        if (gShowCtrlPts) {
+            glPointSize(7.0f);
+            glBegin(GL_POINTS);
+            for (const auto& p : ctrl) glVertex3f(p.x(), p.y(), p.z());
+            glEnd();
         }
+        };
+
+    for (const auto& G : Maize::leafGeoms()) {
+        drawSpline(G.ctrlCenter, 1.f, 0.5f, 0.f);
+        drawSpline(G.ctrlLeft, 0.2f, 0.6f, 1.f);   // Left is Blue
+        drawSpline(G.ctrlRight, 1.f, 0.f, 1.f);  // Right is Magenta
+        drawSpline(G.ctrlBase_world, 0.f, 1.f, 0.f);
     }
     glEnable(GL_DEPTH_TEST);
 }
 
-// Draw a ground grid in XZ plane with axis
-static void drawGridXZ(float size = 2.5f, int steps = 36) {
-    glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_LINE_BIT | GL_LIGHTING_BIT | GL_TEXTURE_BIT | GL_DEPTH_BUFFER_BIT);
+static void drawGridAndAxes() {
     glDisable(GL_LIGHTING);
-    glDisable(GL_TEXTURE_2D);
-    glDisable(GL_BLEND);
-
-    const float yLift = 0.0002f;
 
     glLineWidth(1.0f);
     glColor3f(0.7f, 0.7f, 0.7f);
     glBegin(GL_LINES);
-    for (int i = 0; i <= steps; ++i) {
-        float t = float(i) / steps, x = -size + 2 * size * t;
-        glVertex3f(x, yLift, -size); glVertex3f(x, yLift, size);
-        glVertex3f(-size, yLift, x); glVertex3f(size, yLift, x);
+    for (int i = -10; i <= 10; ++i) {
+        glVertex3f((float)i, 0, -10); glVertex3f((float)i, 0, 10);
+        glVertex3f(-10, 0, (float)i); glVertex3f(10, 0, (float)i);
     }
     glEnd();
 
-	// Axis at cam target
     glLineWidth(2.0f);
     glBegin(GL_LINES);
-    glColor3f(0.9f, 0.1f, 0.1f); // X
-    glVertex3f((float)gAxisPos.x(), (float)gAxisPos.y(), (float)gAxisPos.z());
-    glVertex3f((float)(gAxisPos.x() + 0.1f), (float)gAxisPos.y(), (float)gAxisPos.z());
-
-    glColor3f(0.1f, 0.6f, 0.1f); // Y
-    glVertex3f((float)gAxisPos.x(), (float)gAxisPos.y(), (float)gAxisPos.z());
-    glVertex3f((float)gAxisPos.x(), (float)(gAxisPos.y() + 0.1f), (float)gAxisPos.z());
-
-    glColor3f(0.1f, 0.3f, 0.9f); // Z
-    glVertex3f((float)gAxisPos.x(), (float)gAxisPos.y(), (float)gAxisPos.z());
-    glVertex3f((float)gAxisPos.x(), (float)gAxisPos.y(), (float)(gAxisPos.z() + 0.1f));
+    glColor3f(1.f, 0.f, 0.f);
+    glVertex3f(gCamTarget.x(), gCamTarget.y(), gCamTarget.z());
+    glVertex3f(gCamTarget.x() + 0.2f, gCamTarget.y(), gCamTarget.z());
+    glColor3f(0.f, 1.f, 0.f);
+    glVertex3f(gCamTarget.x(), gCamTarget.y(), gCamTarget.z());
+    glVertex3f(gCamTarget.x(), gCamTarget.y() + 0.2f, gCamTarget.z());
+    glColor3f(0.f, 0.f, 1.f);
+    glVertex3f(gCamTarget.x(), gCamTarget.y(), gCamTarget.z());
+    glVertex3f(gCamTarget.x(), gCamTarget.y(), gCamTarget.z() + 0.2f);
     glEnd();
-
-    glPopAttrib();
 }
 
+static int leafGeomIndex(int tIdx, int lIdx) {
+    const auto& plant = Maize::plant();
+    if (tIdx < 0 || tIdx >= (int)plant.tillers.size()) return -1;
+    int base = 0;
+    for (int t = 0; t < tIdx; ++t) base += (int)plant.tillers[t].leaves.size();
+    if (lIdx < 0 || lIdx >= (int)plant.tillers[tIdx].leaves.size()) return -1;
+    return base + lIdx;
+}
 
-// Main display function
 static void display() {
     ImGui_ImplOpenGL2_NewFrame();
     ImGui_ImplGLUT_NewFrame();
     ImGui::NewFrame();
-
     ImGuiIO& io = ImGui::GetIO();
-    glViewport(0, 0, gWinW, gWinH);
-    glClearColor(1.f, 1.f, 1.f, 1); 
+
+    glViewport(0, 0, (GLsizei)io.DisplaySize.x, (GLsizei)io.DisplaySize.y);
+    glClearColor(1.f, 1.f, 1.f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST);
 
     glMatrixMode(GL_PROJECTION); glLoadIdentity();
-    gluPerspective(gFovDeg, (double)gWinW / (double)gWinH, 0.01, 100.0);
+    gluPerspective(gFovDeg, io.DisplaySize.x / std::max(1.f, io.DisplaySize.y), 0.1, 100.0);
     glMatrixMode(GL_MODELVIEW); glLoadIdentity();
 
-	// Set camera
-    float cy = gYaw * (float)M_PI / 180.f, cp = gPitch * (float)M_PI / 180.f;
-    Vect3d eye = gCamTarget + Vect3d{ std::cos(cp) * std::cos(cy),
-                                      std::sin(cp),
-                                      std::cos(cp) * std::sin(cy) } *gDist;
-    gluLookAt(eye.x(), eye.y(), eye.z(), gCamTarget.x(), gCamTarget.y(), gCamTarget.z(), 0, 1, 0);
-
-    drawGridXZ(2.5f, 36);
-
-    drawPlant();
-    drawCtrlViz();
-    io.DisplaySize = ImVec2((float)gWinW, (float)gWinH);
-
-    // Delta time
-    static int gLastTimeMs = 0;
-    int now = glutGet(GLUT_ELAPSED_TIME);
-    if (gLastTimeMs == 0) gLastTimeMs = now;
-    float dt = (now - gLastTimeMs) * 0.001f;
-    gLastTimeMs = now;
-
-    // Mouse rotate, wheel zoom
     if (!io.WantCaptureMouse && io.MouseDown[0]) {
         gYaw += io.MouseDelta.x * 0.3f;
-        gPitch += io.MouseDelta.y * 0.3f;
-        gPitch = clampf(gPitch, -89.f, 89.f);
+        gPitch = clampf(gPitch + io.MouseDelta.y * 0.3f, -89.f, 89.f);
     }
-    if (!io.WantCaptureMouse && io.MouseWheel != 0.f) {
-        gDist = clampf(gDist * (io.MouseWheel > 0.f ? 0.90f : 1.10f), 0.2f, 50.f);
-    }
+    gDist = clampf(gDist * (1.f - io.MouseWheel * 0.1f), 0.2f, 50.f);
 
-    // Keyboard translate
+    static int lastTime = 0;
+    int time = glutGet(GLUT_ELAPSED_TIME);
+    float dt = (time - lastTime) / 1000.0f;
+    lastTime = time;
+
     if (!io.WantCaptureKeyboard) {
-        auto down = [](ImGuiKey k) -> int { return ImGui::IsKeyDown(k) ? 1 : 0; };
+        float speed = gMoveSpeed * (io.KeyShift ? gBoost : 1.f) * (io.KeyCtrl ? gSlow : 1.f);
+        float forward_move = 0.0f;
+        float right_move = 0.0f;
+        float up_move = 0.0f;
 
-        int w = down(ImGuiKey_W);
-        int s = down(ImGuiKey_S);
-        int a = down(ImGuiKey_A);
-        int d = down(ImGuiKey_D);
-        int q = down(ImGuiKey_Q);
-        int e = down(ImGuiKey_E);
+        if (ImGui::IsKeyDown(ImGuiKey_W)) forward_move -= speed * dt;
+        if (ImGui::IsKeyDown(ImGuiKey_S)) forward_move += speed * dt;
+        if (ImGui::IsKeyDown(ImGuiKey_A)) right_move += speed * dt;
+        if (ImGui::IsKeyDown(ImGuiKey_D)) right_move -= speed * dt;
+        if (ImGui::IsKeyDown(ImGuiKey_Q)) up_move -= speed * dt;
+        if (ImGui::IsKeyDown(ImGuiKey_E)) up_move += speed * dt;
 
-        bool shift = ImGui::IsKeyDown(ImGuiMod_Shift);
-        bool ctrl = ImGui::IsKeyDown(ImGuiMod_Ctrl);
+        float cy = cos(radiansf(gYaw));
+        float sy = sin(radiansf(gYaw));
 
-        float mult = gMoveSpeed * (shift ? gBoost : 1.f) * (ctrl ? gSlow : 1.f);
-
-        // Cam direction 
-        const float PI = 3.1415926535f;
-        float cy = std::cos(gYaw * PI / 180.f), sy = std::sin(gYaw * PI / 180.f);
-        float cp = std::cos(gPitch * PI / 180.f), sp = std::sin(gPitch * PI / 180.f);
-        Vect3d dir = { cp * cy, sp, cp * sy };
-        Vect3d fwd = dir.GetNormalized();
-        Vect3d right = (fwd.Cross({ 0.f,1.f,0.f })).GetNormalized();
-        Vect3d up = (right.Cross(fwd)).GetNormalized();
-
-        Vect3d vel = fwd * float(s - w) + right * float(a - d) + up * float(q - e);
-        double L = vel.Length();
-        if (L > 1e-6) {
-            vel = vel * (1.0 / L);
-            Vect3d delta = vel * (mult * dt);
-            gCamTarget = gCamTarget + delta;
-			gAxisPos = gAxisPos + delta;
-        }
+        gCamTarget.SetX(gCamTarget.x() + forward_move * cy - right_move * sy);
+        gCamTarget.SetY(gCamTarget.y() + up_move);
+        gCamTarget.SetZ(gCamTarget.z() + forward_move * sy + right_move * cy);
     }
 
-    ImGui::Begin("Maize");
+    float cy = cos(radiansf(gYaw));
+    float sy = sin(radiansf(gYaw));
+    float cp = cos(radiansf(gPitch));
+    float sp = sin(radiansf(gPitch));
 
+    Vect3d eye = gCamTarget + Vect3d{ cp * cy, sp, cp * sy } *gDist;
+    gluLookAt(eye.x(), eye.y(), eye.z(), gCamTarget.x(), gCamTarget.y(), gCamTarget.z(), 0, 1, 0);
+
+    drawGridAndAxes();
+    drawPlant();
+    drawCtrlViz();
+
+    ImGui::Begin("Maize Spline Editor");
     bool needRebuild = false;
-     
-	// XML read/write
-    ImGui::SeparatorText("XML");
-    ImGui::InputText("XML path", gXmlPath, IM_ARRAYSIZE(gXmlPath));
-    ImGui::SameLine();
-    if (ImGui::Button("Load XML")) {
-        if (Descriptor::loadPlantXML(gXmlPath)) { Maize::rebuildGeometry(); }
+
+    ImGui::SeparatorText("File I/O");
+    if (ImGui::Button("New Plant")) {
+        Maize::plant() = PlantDesc{};
+        Maize::edits().clear();
+        TillerDesc t; t.type = "main";
+        t.leaves.push_back({ 0, 0.2f });
+        Maize::plant().tillers.push_back(t);
+        gSelTiller = 0;
+        gSelLeaf = 0;
+        needRebuild = true;
     }
     ImGui::SameLine();
-    if (ImGui::Button("Save XML")) {
-        Descriptor::savePlantXML(gXmlPath);
-    }
-
-    // Export
-    ImGui::SeparatorText("Export");
-    ImGui::InputText("OBJ path", gObjPath, IM_ARRAYSIZE(gObjPath));
-    if (ImGui::Button("Export OBJ + MTL")) {
-        Maize::savePlantOBJ(gObjPath, gLeafTexPath);
-    }
-
-    // Lighting
-    ImGui::SeparatorText("Lighting");
-    ImGui::Checkbox("Enable lighting", &gLightingOn);
+    ImGui::InputText("XML Path", gXmlPath, sizeof(gXmlPath));
+    if (ImGui::Button("Load XML")) { if (Descriptor::loadPlantXML(gXmlPath)) needRebuild = true; }
     ImGui::SameLine();
-    ImGui::DragFloat4("Light position", gLightPos, 0.05f);
-    ImGui::DragFloat("Shininess", &gShininess, 0.5f, 1.0f, 128.0f, "%.1f");
+    if (ImGui::Button("Save XML")) { Descriptor::savePlantXML(gXmlPath); }
+    ImGui::InputText("OBJ Path", gObjPath, sizeof(gObjPath));
+    if (ImGui::Button("Export OBJ")) { Maize::savePlantOBJ(gObjPath, gTexPath); }
 
-    // Overlays
-    ImGui::SeparatorText("Overlays");
-    ImGui::Checkbox("Ctrl pts", &gShowCtrlPts); ImGui::SameLine();
-    ImGui::Checkbox("Ctrl poly", &gShowCtrlPoly); ImGui::SameLine();
-    ImGui::Checkbox("Ctrl labels", &gShowCtrlLabel);
-    ImGui::SliderFloat("Ctrl pt size", &gCtrlPtSize, 2.f, 30.f);
-    
-    // Wireframe
-    ImGui::Checkbox("Wireframe (leaves)", &gWireframe);
-
-    // Tiller params
-    ImGui::SeparatorText("Tiller params");
-    auto& plantForT = Maize::plant();
-    if (plantForT.tillers.empty()) {
-        ImGui::TextDisabled("No tillers loaded.");
-    }
-    else {
-        // Make sure indices are in range
-        gSelTiller = std::min(gSelTiller, (int)plantForT.tillers.size() - 1);
-
-        // Pick which tiller to edit
-        if (ImGui::BeginCombo("Edit tiller", std::to_string(gSelTiller).c_str())) {
-            for (int i = 0; i < (int)plantForT.tillers.size(); ++i) {
-                bool sel = (i == gSelTiller);
-                std::string label = "Tiller " + std::to_string(i) + " (" + plantForT.tillers[i].type + ")";
-                if (ImGui::Selectable(label.c_str(), sel)) gSelTiller = i;
-                if (sel) ImGui::SetItemDefaultFocus();
-            }
-            ImGui::EndCombo();
-        }
-
-        auto& T = plantForT.tillers[gSelTiller];
-
-        // Base radius controls the outermost stem radius for this tiller
-        needRebuild |= ImGui::SliderFloat("Base radius (m)", &T.radius, 0.001f, 0.06f, "%.4f");
-
-        // Azimuth of the first leaf
-        needRebuild |= ImGui::SliderFloat("Alpha (deg)", &T.alphaDeg, -1.f, 1.f, "%.2f");
-
-        // Phyllotaxy step (degrees between leaves around the stem)
-        needRebuild |= ImGui::SliderFloat("Beta (deg)", &T.betaDeg, -360.f, 360.f, "%.1f");
-
-        // Per-leaf stem radius reduction
-        needRebuild |= ImGui::SliderFloat("Stem shrink per leaf (m)", &T.stemShrink, 0.0000f, 0.0150f, "%.4f");
-
-        if (ImGui::Button("Recompute leaf azimuths from alpha/beta")) {
-            for (auto& L : T.leaves) {
-                L.azimuthDeg = L.id * T.betaDeg;
-            }
-            needRebuild = true;
-        }
-
-        ImGui::TextDisabled("Leaves: %d", (int)T.leaves.size());
+    ImGui::SeparatorText("Texture");
+    ImGui::InputText("Texture Path", gTexPath, sizeof(gTexPath));
+    if (ImGui::Button("Load Texture")) {
+        loadTexture(gTexPath);
     }
 
+    ImGui::SeparatorText("Lighting & View");
+    ImGui::Checkbox("Enable Lighting", &gLightingOn);
+    ImGui::SameLine();
+    ImGui::Checkbox("Wireframe", &gWireframe);
+    ImGui::DragFloat3("Light Position", gLightPos, 0.1f);
+    ImGui::SliderFloat("Shininess", &gShininess, 1.0f, 128.0f);
 
-    // Per-leaf editor
-    ImGui::SeparatorText("Leaf Editor");
 
-    // Clamp selections to available tillers/leaves
+    ImGui::SeparatorText("View Options");
+    ImGui::Checkbox("Show Control Points", &gShowCtrlPts);
+    ImGui::SameLine();
+    ImGui::Checkbox("Show Control Polygon", &gShowCtrlPoly);
+
+    needRebuild |= ImGui::SliderInt("Leaf Rows", &Maize::gLeafRows, 3, 200);
+    needRebuild |= ImGui::SliderInt("Leaf Columns", &Maize::gLeafCols, 3, 51);
+    needRebuild |= ImGui::SliderFloat("Base Shape Fade", &Maize::gBaseShapeFade, 0.0f, 0.5f, "%.2f");
+
+
+    ImGui::SeparatorText("Scene Statistics");
+    ImGui::Text("Total Triangles: %d", Maize::getTriangleCount());
+
     auto& plant = Maize::plant();
     if (!plant.tillers.empty()) {
         gSelTiller = std::min(gSelTiller, (int)plant.tillers.size() - 1);
         auto& t = plant.tillers[gSelTiller];
-        int leafCount = (int)t.leaves.size();
-        if (leafCount > 0) {
-            gSelLeaf = std::min(gSelLeaf, leafCount - 1);
-        }
-        else {
-            gSelLeaf = 0;
+
+        ImGui::SeparatorText("Tiller Parameters");
+        needRebuild |= ImGui::DragFloat("Radius", &t.radius, 0.001f, 0.01f, 0.1f, "%.3f m");
+        needRebuild |= ImGui::DragFloat("Tilt", &t.alphaDeg, 0.1f, -20.f, 20.f, "%.1f deg");
+        needRebuild |= ImGui::DragFloat("Shrink per Leaf", &t.stemShrink, 0.0001f, 0.f, 0.01f, "%.4f m");
+        needRebuild |= ImGui::DragFloat("Azimuth Base", &t.azimuthDeg, 1.0f, -360.f, 360.f, "%.1f deg");
+        needRebuild |= ImGui::DragFloat("Azimuth Noise", &t.azimuthNoise, 0.1f, 0.f, 90.f, "%.1f deg");
+
+        ImGui::InputInt("Random Seed", (int*)&t.randomSeed);
+        if (ImGui::IsItemEdited()) needRebuild = true;
+        ImGui::SameLine();
+        if (ImGui::Button("Randomize")) {
+            t.randomSeed = (unsigned int)rand();
+            needRebuild = true;
         }
 
-        // Tiller picker
-        if (ImGui::BeginCombo("Tiller", std::to_string(gSelTiller).c_str())) {
-            for (int i = 0; i < (int)plant.tillers.size(); ++i) {
-                bool sel = (i == gSelTiller);
-                std::string label = "Tiller " + std::to_string(i) + " (" + plant.tillers[i].type + ")";
-                if (ImGui::Selectable(label.c_str(), sel)) { gSelTiller = i; gSelLeaf = 0; }
-                if (sel) ImGui::SetItemDefaultFocus();
+        ImGui::SeparatorText("Leaf Management");
+        if (ImGui::Button("Add New Leaf")) {
+            LeafDesc newLeaf;
+            newLeaf.id = t.leaves.empty() ? 0 : t.leaves.back().id + 1;
+            newLeaf.distance = 0.2f;
+            newLeaf.age = 0.0f;
+            t.leaves.push_back(newLeaf);
+            gSelLeaf = (int)t.leaves.size() - 1;
+            needRebuild = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Remove Selected Leaf")) {
+            if (!t.leaves.empty()) {
+                Maize::edits().erase({ gSelTiller, gSelLeaf });
+                t.leaves.erase(t.leaves.begin() + gSelLeaf);
+                if (gSelLeaf >= (int)t.leaves.size()) {
+                    gSelLeaf = (int)t.leaves.size() - 1;
+                }
+                needRebuild = true;
             }
-            ImGui::EndCombo();
         }
 
-        // Leaf picker
+
         if (!t.leaves.empty()) {
-            int curId = t.leaves[gSelLeaf].id;
-            if (ImGui::BeginCombo("Leaf", ("id=" + std::to_string(curId)).c_str())) {
-                for (int li = 0; li < (int)t.leaves.size(); ++li) {
-                    bool sel = (li == gSelLeaf);
-                    std::string label = "Leaf " + std::to_string(li) + " (id=" + std::to_string(t.leaves[li].id) + ")";
-                    if (ImGui::Selectable(label.c_str(), sel)) { gSelLeaf = li; }
-                    if (sel) ImGui::SetItemDefaultFocus();
+            gSelLeaf = std::min(gSelLeaf, (int)t.leaves.size() - 1);
+
+            ImGui::SeparatorText("Leaf Selection");
+            if (ImGui::BeginCombo("Leaf", std::to_string(gSelLeaf).c_str())) {
+                for (int i = 0; i < (int)t.leaves.size(); ++i) {
+                    if (ImGui::Selectable(std::to_string(i).c_str(), gSelLeaf == i)) gSelLeaf = i;
                 }
                 ImGui::EndCombo();
             }
 
-            // Pull editable bundles
-            LeafKey key{ gSelTiller, gSelLeaf };                      
-            auto& allEdits = Maize::edits();                          
-            auto  itEdit = allEdits.find(key);
-            bool  hasEdit = (itEdit != allEdits.end() && itEdit->second.hasCustom);
+            auto& L = t.leaves[gSelLeaf];
+            ImGui::SeparatorText("Leaf Parameters");
+            needRebuild |= ImGui::DragFloat("Internode Dist.", &L.distance, 0.01f, 0.0f, 1.0f, "%.2f m");
+            needRebuild |= ImGui::SliderFloat("Age", &L.age, 0.f, 1.f, "%.2f");
 
-            // Controls to create/reset custom control points
-            if (ImGui::Button(hasEdit ? "Reset to generated" : "Make editable")) {
+            ImGui::SeparatorText("Spline Editor");
+            const LeafKey key{ gSelTiller, gSelLeaf };
+            auto& edits = Maize::edits();
+            bool hasEdit = edits.count(key);
+
+            if (ImGui::Button(hasEdit ? "Reset Splines" : "Make Editable")) {
                 if (hasEdit) {
-                    allEdits.erase(key);
+                    edits.erase(key);
+                    hasEdit = false;
                 }
                 else {
-                    // Seed editable curve with the generated midrib ctrl from geometry if present,
-                    LeafEdit E;
-                    E.hasCustom = true; E.pinC0ToStem = true;
-                    // Try to grab from current leaf geometry
-                    if (gSelLeaf < (int)Maize::leafGeoms().size() && !Maize::leafGeoms()[gSelLeaf].ctrl.empty()) {
-                        E.customCtrl = Maize::leafGeoms()[gSelLeaf].ctrl;
+                    const auto& geoms = Maize::leafGeoms();
+                    int idx = leafGeomIndex(gSelTiller, gSelLeaf);
+                    if (idx >= 0 && idx < (int)geoms.size()) {
+                        const auto& geom = geoms[idx];
+                        const Vect3d globalUp = { 0,1,0 };
+
+                        float current_y = 0.f;
+                        for (int i = 0; i < gSelLeaf; ++i) current_y += t.leaves[i].distance;
+                        current_y += L.distance;
+
+                        float rLeaf_here = std::max(0.001f, t.radius - t.stemShrink * gSelLeaf);
+                        float leafAzimuth = t.azimuthDeg * (gSelLeaf)+0;
+                        float phi = radiansf(leafAzimuth);
+                        Vect3d rhat = { std::cos(phi), 0.f, std::sin(phi) };
+                        Vect3d base = Vect3d{ 0.f, current_y, 0.f } + rhat * rLeaf_here;
+
+                        LeafEdit tempE;
+                        Maize::makeDefaultLeafSplines(0.7f, 0.08f, tempE.ctrlCenter, tempE.ctrlLeft, tempE.ctrlRight, tempE.ctrlBase);
+                        Vect3d local_dir = (tempE.ctrlCenter[1] - tempE.ctrlCenter[0]).GetNormalized();
+
+                        Vect3d z_axis = (rhat * local_dir.z() + globalUp * local_dir.y()).GetNormalized();
+                        Vect3d x_axis = globalUp.Cross(z_axis).GetNormalized();
+                        Vect3d y_axis = z_axis.Cross(x_axis).GetNormalized();
+
+                        const float tt = t.alphaDeg * (float)M_PI / 180.f;
+                        const float ct = std::cos(tt), st = std::sin(tt);
+                        auto invTiltP = [&](const Vect3d& p)->Vect3d {
+                            return { p.x() * ct + p.y() * st, -p.x() * st + p.y() * ct, p.z() };
+                            };
+
+                        auto worldToLocal = [&](const Vect3d& p_world) {
+                            Vect3d rel_p = invTiltP(p_world) - base;
+                            return Vect3d(rel_p.Dot(x_axis), rel_p.Dot(y_axis), rel_p.Dot(z_axis));
+                            };
+
+                        auto transformToLocal = [&](const std::vector<Vect3d>& geom_ctrl) {
+                            std::vector<Vect3d> local_ctrl;
+                            for (const auto& p_tilted : geom_ctrl) {
+                                local_ctrl.push_back(worldToLocal(p_tilted));
+                            }
+                            return local_ctrl;
+                            };
+
+                        LeafEdit E; E.hasCustom = true;
+                        E.ctrlCenter = transformToLocal(geom.ctrlCenter);
+                        E.ctrlLeft = transformToLocal(geom.ctrlLeft);
+                        E.ctrlRight = transformToLocal(geom.ctrlRight);
+
+                        Maize::makeDefaultLeafSplines(0.7f, 0.08f, tempE.ctrlCenter, tempE.ctrlLeft, tempE.ctrlRight, E.ctrlBase);
+
+                        edits[key] = E;
+                        hasEdit = true;
                     }
-                    else {
-                        // Fallback
-                        E.customCtrl = { {0,0,0},{0.3,0,0},{0.6,0,0},{1.0,0,0} };
-                    }
-                    allEdits[key] = std::move(E);
                 }
                 needRebuild = true;
             }
 
             if (hasEdit) {
-                ImGui::SameLine();
-                ImGui::Checkbox("Pin C0 to stem", &allEdits[key].pinC0ToStem);
+                ImGui::RadioButton("Center", &gSelSpline, 0); ImGui::SameLine();
+                ImGui::RadioButton("Left", &gSelSpline, 1); ImGui::SameLine();
+                ImGui::RadioButton("Right", &gSelSpline, 2); ImGui::SameLine();
+                ImGui::RadioButton("Base Shape", &gSelSpline, 3);
 
-                // Editable control points
-                auto& ctrl = allEdits[key].customCtrl;
-                if (ImGui::Button("Add point")) {
-                    if (!ctrl.empty()) ctrl.push_back(ctrl.back() + Vect3d{ 0.2,0,0 });
-                    else ctrl = { {0,0,0},{0.3,0,0},{0.6,0,0},{1.0,0,0} };
-                    needRebuild = true;
-                }
-                ImGui::SameLine();
-                if (ImGui::Button("Remove last") && ctrl.size() > 4) { ctrl.pop_back(); needRebuild = true; }
+                auto it = edits.find(key);
+                if (it != edits.end()) {
+                    auto& E = it->second;
+                    std::vector<Vect3d>* activeSpline = nullptr;
+                    // **FIX**: The UI's "Left" should edit the geometric Left, and "Right" the geometric Right.
+                    if (gSelSpline == 0)      activeSpline = &E.ctrlCenter;
+                    else if (gSelSpline == 1) activeSpline = &E.ctrlLeft;
+                    else if (gSelSpline == 2) activeSpline = &E.ctrlRight;
+                    else if (gSelSpline == 3) activeSpline = &E.ctrlBase;
 
-                for (size_t i = 0; i < ctrl.size(); ++i) {
-                    float v[3] = { (float)ctrl[i].x(), (float)ctrl[i].y(), (float)ctrl[i].z() };
-                    std::string label = "C" + std::to_string(i);
-                    if (ImGui::DragFloat3(label.c_str(), v, 0.005f)) {
-                        ctrl[i] = { v[0], v[1], v[2] };
+                    int insert_after_idx = -1;
+                    int remove_at_idx = -1;
+
+                    for (size_t i = 0; i < activeSpline->size(); ++i) {
+                        ImGui::PushID((int)i);
+
+                        bool is_endpoint = (i == 0 || i == activeSpline->size() - 1);
+                        bool is_base_spline_endpoint = (gSelSpline == 3 && is_endpoint);
+
+                        if (is_base_spline_endpoint) ImGui::BeginDisabled();
+
+                        float v[3] = { (*activeSpline)[i].x(), (*activeSpline)[i].y(), (*activeSpline)[i].z() };
+                        if (ImGui::DragFloat3("P", v, 0.01f)) {
+                            (*activeSpline)[i] = Vect3d(v[0], v[1], v[2]);
+                            needRebuild = true;
+                        }
+
+                        if (is_base_spline_endpoint) ImGui::EndDisabled();
+
+                        ImGui::SameLine(); if (ImGui::Button("+")) insert_after_idx = (int)i;
+                        ImGui::SameLine(); if (ImGui::Button("-")) remove_at_idx = (int)i;
+
+                        if (gSelSpline == 1 || gSelSpline == 2) {
+                            ImGui::SameLine();
+                            if (ImGui::Button("M")) {
+                                // **FIX**: Mirror logic now correctly swaps between Left and Right.
+                                std::vector<Vect3d>* dstSpline = (gSelSpline == 1) ? &E.ctrlRight : &E.ctrlLeft;
+                                if (i < dstSpline->size()) {
+                                    const Vect3d& srcPoint = (*activeSpline)[i];
+                                    (*dstSpline)[i] = Vect3d(-srcPoint.x(), srcPoint.y(), srcPoint.z());
+                                    needRebuild = true;
+                                }
+                            }
+                        }
+
+                        ImGui::PopID();
+                    }
+
+                    if (insert_after_idx != -1) {
+                        int i = insert_after_idx;
+                        if (i == activeSpline->size() - 1) activeSpline->push_back((*activeSpline)[i] + Vect3d(0, 0, 0.1));
+                        else activeSpline->insert(activeSpline->begin() + i + 1, ((*activeSpline)[i] + (*activeSpline)[i + 1]) * 0.5f);
                         needRebuild = true;
+                    }
+                    if (remove_at_idx != -1) {
+                        // **FIX**: Allow removing points from base curve down to 3 points
+                        size_t min_points = (gSelSpline == 3) ? 3 : 4;
+                        if (activeSpline->size() > min_points) {
+                            activeSpline->erase(activeSpline->begin() + remove_at_idx);
+                            needRebuild = true;
+                        }
                     }
                 }
             }
-
-            // Per-leaf numeric parameters
-            ImGui::SeparatorText("Parameters (selected leaf)");
-            LeafParams& LP = Maize::paramsFor(key);
-
-            needRebuild |= ImGui::SliderFloat("Length (m)", &LP.length, 0.10f, 1.00f, "%.2f");
-            needRebuild |= ImGui::SliderFloat("Max width (m)", &LP.wmax, 0.02f, 0.150f, "%.3f");
-            needRebuild |= ImGui::SliderInt("Samples (min)", &LP.samplesMin, 8, 200);
-
-            needRebuild |= ImGui::SliderFloat("Droop max (m)", &LP.droopMax, 0.0f, 0.25f, "%.3f");
-            needRebuild |= ImGui::SliderFloat("Twist max (deg)", &LP.twistMaxD, 0.0f, 90.0f, "%.1f");
-            needRebuild |= ImGui::SliderFloat("Twist power", &LP.twistPow, 0.5f, 3.0f, "%.2f");
-
-            ImGui::SeparatorText("Waviness");
-            needRebuild |= ImGui::SliderFloat("Amplitude (m)", &LP.waveAmp, 0.0000f, 0.0050f, "%.4f");
-            needRebuild |= ImGui::SliderFloat("Cycles", &LP.waveCycles, 0.0f, 8.0f, "%.1f");
-            needRebuild |= ImGui::SliderFloat("Across factor", &LP.waveAcross, 0.0f, 2.0f, "%.2f");
-
-            ImGui::SeparatorText("Width profile");
-            needRebuild |= ImGui::SliderFloat("Knee s", &LP.widthKnee, 0.40f, 0.90f, "%.2f");
-            needRebuild |= ImGui::SliderFloat("Width at knee", &LP.widthAtKnee, 0.05f, 0.95f, "%.2f");
-            needRebuild |= ImGui::SliderFloat("Early pow", &LP.earlyPow, 0.2f, 3.0f, "%.2f");
-            needRebuild |= ImGui::SliderFloat("Tip pow", &LP.tipPow, 1.0f, 3.0f, "%.2f");
-            needRebuild |= ImGui::SliderFloat("Base ramp frac", &LP.baseRampFrac, 0.001f, 0.05f, "%.4f");
-
-            ImGui::SeparatorText("Attachment / Unwrap");
-            needRebuild |= ImGui::SliderFloat("Attach frac", &LP.attachFrac, 0.0f, 0.40f, "%.2f");
-            needRebuild |= ImGui::SliderFloat("Attach epsilon", &LP.attachEps, 0.0f, 0.01f, "%.4f");
-            needRebuild |= ImGui::SliderFloat("Lip length frac", &LP.lipLenFrac, 0.02f, 0.20f, "%.3f");
-            needRebuild |= ImGui::SliderInt("Leaf columns (odd)", &LP.lipCols, 7, 65);
-            needRebuild |= ImGui::SliderFloat("Arc at base (deg)", &LP.lipArc0Deg, 0.0f, 270.f, "%.0f");
-            needRebuild |= ImGui::SliderFloat("Arc at end (deg)", &LP.lipArc1Deg, 0.0f, 359.f, "%.0f");
-            needRebuild |= ImGui::SliderFloat("Unwrap mid", &LP.unwrapMidFrac, 0.05f, 0.95f, "%.2f");
-            needRebuild |= ImGui::SliderFloat("Unwrap sharpness", &LP.unwrapSharpness, 0.1f, 10.0f, "%.2f");
-            needRebuild |= ImGui::SliderFloat("Ring drop (m)", &LP.ringDrop, 0.0f, 0.05f, "%.3f");
-
-            ImGui::SeparatorText("Seam opening");
-            needRebuild |= ImGui::SliderFloat("Open start (s)", &LP.openStartFrac, 0.50f, 0.95f, "%.2f");
-            needRebuild |= ImGui::SliderFloat("Open sharpness", &LP.openSharpness, 0.5f, 6.0f, "%.2f");
-            needRebuild |= ImGui::SliderFloat("Seam max (deg)", &LP.seamMaxDeg, 0.0f, 179.0f, "%.1f");
-            needRebuild |= ImGui::SliderFloat("Seam offset (deg)", &LP.seamOffsetDeg, 0.0f, 359.0f, "%.1f");
-        }
-        else {
-            ImGui::TextDisabled("Selected tiller has no leaves.");
         }
     }
-    else {
-        ImGui::TextDisabled("No tillers loaded.");
-    }
-
-    ImGui::Separator();
-    if (needRebuild) { Maize::rebuildGeometry(); }
-
     ImGui::End();
 
-    ImGui::Render(); ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+    if (needRebuild) {
+        Maize::rebuildGeometry();
+    }
+
+    ImGui::Render();
+    ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
     glutSwapBuffers();
 }
 
-static void camBasis(Vect3d& fwd, Vect3d& right, Vect3d& up) {
-    const float PI = 3.1415926535f;
-    float cy = std::cos(gYaw * PI / 180.f), sy = std::sin(gYaw * PI / 180.f);
-    float cp = std::cos(gPitch * PI / 180.f), sp = std::sin(gPitch * PI / 180.f);
-
-    // Look direction from yaw/pitch
-    Vect3d dir = { cp * std::cos(gYaw * PI / 180.f),
-                   sp,
-                   cp * std::sin(gYaw * PI / 180.f) };
-    fwd = dir.GetNormalized();
-    right = (fwd.Cross({ 0.f,1.f,0.f })).GetNormalized();
-    up = (right.Cross(fwd)).GetNormalized();
-}
-
-static void idle() {
-    glutPostRedisplay();
-}
-
 static void reshape(int w, int h) {
-    gWinW = std::max(1, w);
-    gWinH = std::max(1, h);
-    ImGui::GetIO().DisplaySize = ImVec2((float)gWinW, (float)gWinH);
-    glutPostRedisplay();
+    gWinW = w > 0 ? w : 1;
+    gWinH = h > 0 ? h : 1;
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2((float)gWinW, (float)gWinH);
 }
+
+static void idle() { glutPostRedisplay(); }
 
 int main(int argc, char** argv) {
-    glutInit(&argc, argv); glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH); 
-    if (gWinW <= 0 || gWinH <= 0) { glutSwapBuffers(); return 0; }
+    srand((unsigned int)time(NULL));
 
-    glutInitWindowSize(gWinW, gWinH); 
-    glutCreateWindow("Maize");
-    ImGui::CreateContext(); ImGui_ImplGLUT_Init(); ImGui_ImplGLUT_InstallFuncs(); ImGui_ImplOpenGL2_Init();
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
+    glutInitWindowSize(gWinW, gWinH);
+    glutCreateWindow("Maize Spline Editor");
+    ImGui::CreateContext();
+    ImGui_ImplGLUT_Init();
+    ImGui_ImplGLUT_InstallFuncs();
+    ImGui_ImplOpenGL2_Init();
+    ImGuiIO& io = ImGui::GetIO();
+    io.DisplaySize = ImVec2((float)gWinW, (float)gWinH);
 
-    // Minimal seed plant so there is something to draw
     if (Maize::plant().tillers.empty()) {
-        TillerDesc t; t.radius = 0.02f; t.alphaDeg = 0.f; t.betaDeg = 180.f;
-        for (int i = 0; i < 6; ++i) { LeafDesc L; L.id = i; L.distance = 0.12f; L.alphaDeg = 30.f; L.spines = 14; L.azimuthDeg = t.alphaDeg + L.id * t.betaDeg; t.leaves.push_back(L); }
+        TillerDesc t; t.type = "main";
+        t.leaves.push_back({ 0, 0.2f });
+        t.leaves.push_back({ 1, 0.2f });
+        t.leaves.push_back({ 2, 0.2f });
         Maize::plant().tillers.push_back(t);
     }
-    Descriptor::loadPlantXML(gXmlPath);
+
+    loadTexture(gTexPath);
     Maize::rebuildGeometry();
-	loadLeafTexture(gLeafTexPath);
 
-    glutDisplayFunc(display); 
-    glutReshapeFunc(reshape); 
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
     glutIdleFunc(idle);
-
     glutMainLoop();
     return 0;
 }
+
