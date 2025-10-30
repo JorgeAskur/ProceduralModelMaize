@@ -8,6 +8,7 @@ using namespace tinyxml2;
 
 namespace Descriptor {
 
+    // Save splines as XML attributes
     static void saveSplineAsAttributes(XMLElement* parent, const char* name, const std::vector<Vect3d>& ctrl) {
         XMLElement* spline_elem = parent->GetDocument()->NewElement(name);
         spline_elem->SetAttribute("count", (int)ctrl.size());
@@ -22,6 +23,7 @@ namespace Descriptor {
         parent->InsertEndChild(spline_elem);
     }
 
+    // Load spline control points from XML attributes
     static void loadSplineFromAttributes(const XMLElement* parent, const char* name, std::vector<Vect3d>& out_ctrl) {
         out_ctrl.clear();
         const XMLElement* spline_elem = parent->FirstChildElement(name);
@@ -45,6 +47,7 @@ namespace Descriptor {
         }
     }
 
+    // Save the plant description and edits to an XML file
     bool savePlantXML(const char* path) {
         XMLDocument doc;
         doc.InsertFirstChild(doc.NewDeclaration());
@@ -64,33 +67,24 @@ namespace Descriptor {
             tiller_elem->SetAttribute("alpha", td.alphaDeg);
             tiller_elem->SetAttribute("beta", td.azimuthDeg);
             tiller_elem->SetAttribute("randomSeed", td.randomSeed);
+            tiller_elem->SetAttribute("stemShrink", td.stemShrink);
 
             XMLElement* leaves_elem = doc.NewElement("leaves");
             leaves_elem->SetAttribute("number", (int)td.leaves.size());
 
             for (size_t li = 0; li < td.leaves.size(); ++li) {
                 const auto& L = td.leaves[li];
-                const LeafKey key{ (int)ti, (int)li };
+                // const LeafKey key{ (int)ti, (int)li }; // No longer needed
                 XMLElement* leaf_elem = doc.NewElement("leaf");
                 leaf_elem->SetAttribute("id", L.id);
                 leaf_elem->SetAttribute("distance", L.distance);
+                leaf_elem->SetAttribute("sheathLength", L.sheathLength);
 
-                auto itE = Maize::edits().find(key);
-                if (itE != Maize::edits().end() && itE->second.hasCustom) {
-                    const LeafEdit& E = itE->second;
-                    saveSplineAsAttributes(leaf_elem, "control_points_central", E.ctrlCenter);
-                    saveSplineAsAttributes(leaf_elem, "control_points_left", E.ctrlLeft);
-                    saveSplineAsAttributes(leaf_elem, "control_points_right", E.ctrlRight);
-                    saveSplineAsAttributes(leaf_elem, "control_points_base", E.ctrlBase);
-                }
-                else {
-                    LeafEdit E;
-                    Maize::makeDefaultLeafSplines(0.7f, 0.08f, E.ctrlCenter, E.ctrlLeft, E.ctrlRight, E.ctrlBase);
-                    saveSplineAsAttributes(leaf_elem, "control_points_central", E.ctrlCenter);
-                    saveSplineAsAttributes(leaf_elem, "control_points_left", E.ctrlLeft);
-                    saveSplineAsAttributes(leaf_elem, "control_points_right", E.ctrlRight);
-                    saveSplineAsAttributes(leaf_elem, "control_points_base", E.ctrlBase);
-                }
+                saveSplineAsAttributes(leaf_elem, "control_points_central", L.ctrlCenter);
+                saveSplineAsAttributes(leaf_elem, "control_points_left", L.ctrlLeft);
+                saveSplineAsAttributes(leaf_elem, "control_points_right", L.ctrlRight);
+                saveSplineAsAttributes(leaf_elem, "control_points_opening", L.ctrlOpening);
+
                 leaves_elem->InsertEndChild(leaf_elem);
             }
             tiller_elem->InsertEndChild(leaves_elem);
@@ -99,12 +93,12 @@ namespace Descriptor {
         return (doc.SaveFile(path) == XML_SUCCESS);
     }
 
+    // Load the plant description and edits from an XML file
     bool loadPlantXML(const std::string& path) {
         XMLDocument doc;
         if (doc.LoadFile(path.c_str()) != XML_SUCCESS) return false;
 
         Maize::plant() = PlantDesc{};
-        Maize::edits().clear();
 
         const XMLElement* species = doc.FirstChildElement("plant")->FirstChildElement("species");
         if (!species) return false;
@@ -117,25 +111,28 @@ namespace Descriptor {
             t->QueryFloatAttribute("alpha", &td.alphaDeg);
             t->QueryFloatAttribute("beta", &td.azimuthDeg);
             t->QueryUnsignedAttribute("randomSeed", &td.randomSeed);
+            t->QueryFloatAttribute("stemShrink", &td.stemShrink);
 
             if (const XMLElement* leaves = t->FirstChildElement("leaves")) {
                 for (const XMLElement* lf = leaves->FirstChildElement("leaf"); lf; lf = lf->NextSiblingElement("leaf")) {
                     LeafDesc L;
                     lf->QueryIntAttribute("id", &L.id);
                     lf->QueryFloatAttribute("distance", &L.distance);
-                    td.leaves.push_back(L);
 
-                    const LeafKey key{ (int)Maize::plant().tillers.size(), (int)td.leaves.size() - 1 };
-                    LeafEdit E;
-                    E.hasCustom = true;
-                    loadSplineFromAttributes(lf, "control_points_central", E.ctrlCenter);
-                    loadSplineFromAttributes(lf, "control_points_left", E.ctrlLeft);
-                    loadSplineFromAttributes(lf, "control_points_right", E.ctrlRight);
-                    loadSplineFromAttributes(lf, "control_points_base", E.ctrlBase);
+                    lf->QueryFloatAttribute("sheathLength", &L.sheathLength);
 
-                    if (!E.ctrlCenter.empty() || !E.ctrlLeft.empty() || !E.ctrlRight.empty() || !E.ctrlBase.empty()) {
-                        Maize::edits()[key] = std::move(E);
+                    loadSplineFromAttributes(lf, "control_points_central", L.ctrlCenter);
+                    loadSplineFromAttributes(lf, "control_points_left", L.ctrlLeft);
+                    loadSplineFromAttributes(lf, "control_points_right", L.ctrlRight);
+                    loadSplineFromAttributes(lf, "control_points_opening", L.ctrlOpening);
+
+                    // If any spline is missing generate default
+                    if (L.ctrlOpening.empty()) {
+                        std::vector<Vect3d> d1, d2, d3;
+                        Maize::makeDefaultLeafSplines(0.7f, 0.08f, d1, d2, d3, L.ctrlOpening);
                     }
+
+                    td.leaves.push_back(L);
                 }
             }
             Maize::plant().tillers.push_back(td);
@@ -143,3 +140,4 @@ namespace Descriptor {
         return true;
     }
 }
+
