@@ -7,7 +7,9 @@
 #include <map>
 #include <random>
 
+#ifndef M_PI
 #define M_PI 3.14159265358979323846
+#endif
 
 // Math helpers
 static inline float clampf(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
@@ -110,13 +112,16 @@ namespace Maize {
     // Cubic B-spline de Boor evaluation
     Vect3d deBoor(float u, const std::vector<Vect3d>& P) {
         if (P.size() < 2) return P.empty() ? Vect3d() : P.front();
+
+        // Fallback to linear interpolation if not enough points for cubic B-spline
         if (P.size() < 4) {
             int i = (int)clampf(u * (P.size() - 1), 0, (float)P.size() - 2);
             float t = u * (P.size() - 1) - i;
             return lerp_v3(P[i], P[i + 1], t);
         }
-        int p = 3;
-        int n = (int)P.size() - 1;
+
+        int p = 3; // Cubic B-spline (degree 3)
+        int n = (int)P.size() - 1; // Number of control points - 1
         auto U = openUniformKnots((int)P.size(), p);
         int span = findSpan(n, p, u, U);
         std::vector<Vect3d> d(p + 1);
@@ -131,32 +136,148 @@ namespace Maize {
         return d[p];
     }
 
-    // Create default leaf splines
-    void makeDefaultLeafSplines(float L, float W,
-        std::vector<Vect3d>& outCenter, std::vector<Vect3d>& outLeft,
-        std::vector<Vect3d>& outRight, std::vector<Vect3d>& outOpening)
+    // --- NEW Function ---
+    // Generates sheath opening spline from high-level parameters
+    void generateOpeningSpline(
+        const LeafDesc& L,
+        std::vector<Vect3d>& outOpening)
     {
-        // Simple default splines
-        outCenter = { {0, 0, 0}, {0, 0.12f * L, 0.30f * L}, {0, 0.02f * L, 0.65f * L}, {0, 0, L} };
-        outLeft.clear(); outRight.clear();
-        Vect3d side = { W * 0.5f, 0, 0 };
-        const Vect3d& tip = outCenter.back();
+        outOpening.clear();
+        // We only need 2 points for linear interpolation
+        // (Radius Offset, Angle, 0) - Radius offset is 0, Start Angle is fixed at 2.0
+        outOpening.push_back({ 0.0f, 2.0f, 0 }); // <-- Hardcoded 2.0
+        outOpening.push_back({ 0.0f, L.sheathEndAngle, 0 });
+    }
 
-        // Generate left and right splines based on center
-        for (size_t i = 0; i < outCenter.size() - 1; ++i) {
-            const auto& p = outCenter[i];
-            outLeft.push_back(p - side);
-            outRight.push_back(p + side);
+    // --- NEW Function ---
+    // Generates blade splines from high-level parameters
+    void generateLeafSplines(
+        const LeafDesc& L,
+        float stemRadiusAtExit, // This is the key
+        std::vector<Vect3d>& outCenter,
+        std::vector<Vect3d>& outLeft,
+        std::vector<Vect3d>& outRight)
+    {
+        outCenter.clear(); outLeft.clear(); outRight.clear();
+        if (L.splinePoints < 2) return;
+
+        float angleRad = radiansf(L.leafAngle);
+        float LL = L.leafLength;
+        float halfWidth = L.leafWidth * 0.5f;
+        float D = L.droopiness;
+
+        float s = 0.0f;
+        float z_base = 0.0f;
+
+        // P0 (Base)
+        float base_nudge = L.baseNudge; // Nudge the start points "more to the side"
+        float p0_x = -stemRadiusAtExit * base_nudge;
+
+        // Center starts "out" (local y) by the stem radius
+        outCenter.push_back({ 0.0f, stemRadiusAtExit, z_base });
+        // Left/Right start wrapped around the stem (local x) at the stem radius
+        outLeft.push_back({ p0_x, 0.0f, z_base });
+        outRight.push_back({ -p0_x, 0.0f, z_base });
+
+        // P1...PN (Remaining points)
+        float maxHalfWidth = halfWidth * L.baseWidthPct; // This is the width at P1
+        float t_p1 = (L.splinePoints > 2) ? (1.0f / (L.splinePoints - 1)) : 0.0f; // t-value for P1
+
+        for (int i = 1; i < L.splinePoints; ++i)
+        {
+            float t = (float)i / (L.splinePoints - 1); // t is 0..1
+            s = t;
+
+            // Center spline
+            // y is "out", z is "up/down"
+            float y_c = stemRadiusAtExit + (LL * 0.5f * s);
+            float z_c_linear = (y_c - stemRadiusAtExit) * tan(angleRad); // Linear angle
+            float z_c_droop = -D * LL * s * s; // Quadratic droop
+            float z_c = z_c_linear + z_c_droop;
+            outCenter.push_back({ 0, y_c, z_c });
+
+            // Side splines
+            float current_halfWidth_x; // This is the x-value
+            float y_s; // This is the y-value
+
+            if (t <= t_p1 && t_p1 > 0) {
+                // We are between P0 and P1. Blend x from p0_x to -maxHalfWidth.
+                float t_remap = t / t_p1;
+                current_halfWidth_x = lerp_v3(Vect3d(p0_x, 0, 0), Vect3d(-maxHalfWidth, 0, 0), t_remap).x();
+                // Blend y from 0 (at t=0) to y_c(t1) (at t=t1)
+                y_s = lerp_v3(Vect3d(0, 0, 0), Vect3d(0, outCenter[1].y(), 0), t_remap).y();
+            }
+            else {
+                // We are after P1. Taper from -maxHalfWidth to 0 using widthTaper.
+                // Remap t from [t_p1, 1.0] to [0, 1.0]
+                float t_remap = (t_p1 > 1e-6f) ? (t - t_p1) / (1.0f - t_p1) : 1.0f;
+                float t_taper_val = 1.0f - pow(t_remap, L.widthTaper);
+                current_halfWidth_x = -maxHalfWidth * t_taper_val;
+
+                // After P1, just use the center's y
+                y_s = y_c;
+            }
+
+            float z_s = z_c; // Base droop is the same
+
+            outLeft.push_back({ current_halfWidth_x, y_s, z_s });
+            outRight.push_back({ -current_halfWidth_x, y_s, z_s });
         }
-        outLeft.push_back(tip);
-        outRight.push_back(tip);
 
-        outOpening = {
-            {0.01f, 2.0f, 0},
-            {0.01f, 2.0f, 0},
-            {0.01f, 2.0f, 0},
-            {0.01f, 2.0f, 0}
-        };
+        // --- NEW TIP SHAPE LOGIC ---
+        // Ensure the very last point is always pointy
+        outLeft.back().SetX(0.0f);
+        outRight.back().SetX(0.0f);
+
+        // Apply tipWidth to the *penultimate* point (if it exists)
+        if (L.splinePoints >= 3) {
+            int n_penultimate = L.splinePoints - 2; // Index of the penultimate point
+
+            // Set X width
+            outLeft[n_penultimate].SetX(-L.tipWidth);
+            outRight[n_penultimate].SetX(L.tipWidth);
+
+            // Match Y and Z to the center spline to keep it smooth
+            outLeft[n_penultimate].SetY(outCenter[n_penultimate].y());
+            outLeft[n_penultimate].SetZ(outCenter[n_penultimate].z());
+            outRight[n_penultimate].SetY(outCenter[n_penultimate].y());
+            outRight[n_penultimate].SetZ(outCenter[n_penultimate].z());
+        }
+
+        // --- NEW: Apply Sinusoid Wave ---
+        // Apply after all other shaping is done, from base to tip
+        // Stop *before* the last point to keep the tip anchored
+        for (int i = 1; i < L.splinePoints - 1; ++i) // Start at 1 to leave base (i=0) flat
+        {
+            float t = (float)i / (L.splinePoints - 1); // t is 0..1
+
+            // Left Wave
+            if (L.waveLAmp != 0.0f && L.waveLFreq != 0.0f) {
+                float z_offset_L = L.waveLAmp * sin(t * 2.0f * M_PI * L.waveLFreq);
+                outLeft[i].SetZ(outLeft[i].z() + z_offset_L);
+            }
+
+            // Right Wave
+            if (L.waveRAmp != 0.0f && L.waveRFreq != 0.0f) {
+                float z_offset_R = L.waveRAmp * sin(t * 2.0f * M_PI * L.waveRFreq);
+                outRight[i].SetZ(outRight[i].z() + z_offset_R);
+            }
+        }
+    }
+
+
+    // Create default leaf splines (Only used for opening spline now)
+    void makeDefaultLeafSplines(float L, float W,
+        std::vector<Vect3d>& outCenter,
+        std::vector<Vect3d>& outLeft,
+        std::vector<Vect3d>& outRight)
+        // std::vector<Vect3d>& outOpening) // <-- No longer passed
+    {
+        // This function is now effectively a stub,
+        // as all splines are generated parametrically.
+        outCenter.clear();
+        outLeft.clear();
+        outRight.clear();
     }
 
     // Helper to get directory from path
@@ -165,7 +286,7 @@ namespace Maize {
         return (pos == std::string::npos) ? std::string() : p.substr(0, pos);
     }
 
-	// Generate plant files (XML and OBJ)
+    // Generate plant files (XML and OBJ)
     void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& texturePath) {
         // Set the global plant description to the one provided
         Maize::plant() = plantDesc;
@@ -222,10 +343,57 @@ void MaizeModel::rebuildGeometry() {
 
             // Control points
             std::vector<Vect3d> localCtrlC, localCtrlL, localCtrlR, localCtrlOpening;
-            localCtrlC = L.ctrlCenter;
-            localCtrlL = L.ctrlLeft;
-            localCtrlR = L.ctrlRight;
-            localCtrlOpening = L.ctrlOpening;
+
+            // --- NEW ---
+            // Calculate stem radius at this leaf's exit point
+            float global_radius = std::max(0.001f, td.radius - td.stemShrink * li);
+
+            // 1. Generate blade splines on the fly from parameters (flat)
+            Maize::generateLeafSplines(L, global_radius, localCtrlC, localCtrlL, localCtrlR);
+            // 2. Generate sheath spline on the fly
+            Maize::generateOpeningSpline(L, localCtrlOpening);
+
+            // --- NEW: Apply twist to the blade control points BEFORE deBoor evaluation ---
+            if (L.leafTwist != 0.0f && L.splinePoints > 1) {
+                auto twistSpline = [&](std::vector<Vect3d>& ctrl) {
+                    if (ctrl.empty()) return;
+                    // Get center spline's Y-axis to twist around
+                    std::vector<Vect3d> centerAxis;
+                    for (const auto& p : localCtrlC) centerAxis.push_back({ 0, p.y(), p.z() });
+
+                    for (size_t i = 0; i < ctrl.size(); ++i) {
+                        // t goes from 0 at the base to 1 at the tip
+                        float t = (ctrl.size() == 1) ? 1.0f : (float)i / (ctrl.size() - 1);
+                        float twistRad = radiansf(L.leafTwist) * t;
+                        float cT = cos(twistRad);
+                        float sT = sin(twistRad);
+
+                        // We rotate the point's X and Z coordinates around the central spline's Y/Z profile
+                        Vect3d p = ctrl[i];
+                        Vect3d p_center = localCtrlC[i];
+
+                        // Vector from center point to side point, in the XZ plane (of the center point)
+                        float local_x = p.x() - p_center.x();
+                        float local_z = p.z() - p_center.z();
+
+                        // Rotate this vector
+                        float new_local_x = local_x * cT - local_z * sT;
+                        float new_local_z = local_x * sT + local_z * cT;
+
+                        // Add back to the center point
+                        ctrl[i].SetX(p_center.x() + new_local_x);
+                        ctrl[i].SetZ(p_center.z() + new_local_z);
+                    }
+                    };
+
+                // Twist side splines around the center spline
+                // Center spline itself doesn't need to twist
+                // twistSpline(localCtrlC); // No-op,
+                twistSpline(localCtrlL);
+                twistSpline(localCtrlR);
+            }
+            // --- END NEW TWIST LOGIC ---
+
 
             LeafGeom G;
             G.rows = m_leafRows; G.cols = m_leafCols;
@@ -266,9 +434,27 @@ void MaizeModel::rebuildGeometry() {
                     Vect3d stem_normal = rhat;
                     Vect3d stem_binormal = Vect3d::Cross(stem_tangent, stem_normal).GetNormalized();
 
-                    Vect3d openingParams = Maize::deBoor(s_sheath, localCtrlOpening);
-                    float global_radius = std::max(0.001f, td.radius - td.stemShrink * li);
-                    float final_radius = global_radius + openingParams.x();
+                    // --- NEW Sheath Opening Logic ---
+                    float s_open;
+                    if (s_sheath < L.sheathOpeningStart) {
+                        s_open = 0.0f; // Stay at the start angle
+                    }
+                    else {
+                        // Avoid division by zero if openingStart is 1.0
+                        float denom = 1.0f - L.sheathOpeningStart;
+                        s_open = (denom > 1e-6f) ? (s_sheath - L.sheathOpeningStart) / denom : 1.0f;
+                    }
+                    s_open = clampf(s_open, 0.f, 1.f);
+
+                    // Get parameters from our 2-point spline
+                    Vect3d p_start = localCtrlOpening[0];
+                    Vect3d p_end = localCtrlOpening[1];
+                    Vect3d openingParams = lerp_v3(p_start, p_end, s_open);
+
+                    // We already have this from the blade spline generation
+                    // float global_radius = std::max(0.001f, td.radius - td.stemShrink * li);
+
+                    float final_radius = global_radius + openingParams.x(); // openingParams.x is 0
                     float openAngle = (openingParams.y()) * M_PI;
 
                     for (int j = 0; j < G.cols; ++j) {
@@ -283,6 +469,7 @@ void MaizeModel::rebuildGeometry() {
                     float s_blade = (s01 - L.sheathLength) / (1.f - L.sheathLength);
 
                     // Get blade points in local space
+                    // These will now be from the *twisted* splines
                     Vect3d pL_local = Maize::deBoor(s_blade, localCtrlL);
                     Vect3d pC_local = Maize::deBoor(s_blade, localCtrlC);
                     Vect3d pR_local = Maize::deBoor(s_blade, localCtrlR);
@@ -346,16 +533,9 @@ void MaizeModel::rebuildGeometry() {
             G.ctrlLeft = applyTiltToCtrl(transformBladeSplineForViz(localCtrlL));
             G.ctrlRight = applyTiltToCtrl(transformBladeSplineForViz(localCtrlR));
 
-            G.ctrlOpening_world.clear();
+            // No longer need to visualize opening spline
+            // G.ctrlOpening_world.clear(); // <-- Already removed from LeafGeom
 
-            // For ctrlOpening, we visualize it in a fixed position relative to the leaf base
-            if (!localCtrlOpening.empty()) {
-                float plot_scale_x = 2.0f; float plot_scale_y = 2.0f;
-                Vect3d plot_origin = { -1.5f, 0.5f, 0.0f };
-                for (const auto& p_local : localCtrlOpening) {
-                    G.ctrlOpening_world.push_back(plot_origin + Vect3d(p_local.x() * plot_scale_x, p_local.y() * plot_scale_y, 0.0f));
-                }
-            }
 
             m_leafGeoms.push_back(std::move(G));
         }

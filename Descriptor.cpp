@@ -80,10 +80,33 @@ namespace Descriptor {
                 leaf_elem->SetAttribute("distance", L.distance);
                 leaf_elem->SetAttribute("sheathLength", L.sheathLength);
 
-                saveSplineAsAttributes(leaf_elem, "control_points_central", L.ctrlCenter);
-                saveSplineAsAttributes(leaf_elem, "control_points_left", L.ctrlLeft);
-                saveSplineAsAttributes(leaf_elem, "control_points_right", L.ctrlRight);
-                saveSplineAsAttributes(leaf_elem, "control_points_opening", L.ctrlOpening);
+                // --- MODIFIED ---
+                // Save new high-level parameters
+                leaf_elem->SetAttribute("leafLength", L.leafLength);
+                leaf_elem->SetAttribute("leafWidth", L.leafWidth);
+                leaf_elem->SetAttribute("leafAngle", L.leafAngle);
+                leaf_elem->SetAttribute("droopiness", L.droopiness);
+                leaf_elem->SetAttribute("baseWidthPct", L.baseWidthPct);
+                leaf_elem->SetAttribute("splinePoints", L.splinePoints);
+                leaf_elem->SetAttribute("widthTaper", L.widthTaper);
+                leaf_elem->SetAttribute("baseNudge", L.baseNudge);
+                leaf_elem->SetAttribute("leafTwist", L.leafTwist);
+                leaf_elem->SetAttribute("tipWidth", L.tipWidth);
+
+                // --- ADDED ---
+                leaf_elem->SetAttribute("waveLAmp", L.waveLAmp);
+                leaf_elem->SetAttribute("waveLFreq", L.waveLFreq);
+                leaf_elem->SetAttribute("waveRAmp", L.waveRAmp);
+                leaf_elem->SetAttribute("waveRFreq", L.waveRFreq);
+
+                // --- NEW ---
+                leaf_elem->SetAttribute("sheathEndAngle", L.sheathEndAngle);
+                leaf_elem->SetAttribute("sheathOpeningStart", L.sheathOpeningStart);
+
+                // --- REMOVED ---
+                // leaf_elem->SetAttribute("sheathStartAngle", L.sheathStartAngle);
+                // Save only the opening spline
+                // saveSplineAsAttributes(leaf_elem, "control_points_opening", L.ctrlOpening);
 
                 leaves_elem->InsertEndChild(leaf_elem);
             }
@@ -118,19 +141,55 @@ namespace Descriptor {
                     LeafDesc L;
                     lf->QueryIntAttribute("id", &L.id);
                     lf->QueryFloatAttribute("distance", &L.distance);
-
                     lf->QueryFloatAttribute("sheathLength", &L.sheathLength);
 
-                    loadSplineFromAttributes(lf, "control_points_central", L.ctrlCenter);
-                    loadSplineFromAttributes(lf, "control_points_left", L.ctrlLeft);
-                    loadSplineFromAttributes(lf, "control_points_right", L.ctrlRight);
-                    loadSplineFromAttributes(lf, "control_points_opening", L.ctrlOpening);
+                    // --- MODIFIED ---
+                    // Set defaults first, in case they aren't in the XML
+                    L.leafLength = 0.7f;
+                    L.leafWidth = 0.08f;
+                    L.leafAngle = 45.0f;
+                    L.droopiness = 0.5f;
+                    L.baseWidthPct = 0.8f;
+                    L.splinePoints = 4; // Default
+                    L.widthTaper = 1.0f;
+                    L.baseNudge = 1.1f; // Default
+                    L.leafTwist = 0.0f;
+                    L.tipWidth = 0.0f;
 
-                    // If any spline is missing generate default
-                    if (L.ctrlOpening.empty()) {
-                        std::vector<Vect3d> d1, d2, d3;
-                        Maize::makeDefaultLeafSplines(0.7f, 0.08f, d1, d2, d3, L.ctrlOpening);
-                    }
+                    // --- ADDED ---
+                    L.waveLAmp = 0.0f;
+                    L.waveLFreq = 0.0f;
+                    L.waveRAmp = 0.0f;
+                    L.waveRFreq = 0.0f;
+
+                    // --- NEW ---
+                    L.sheathEndAngle = 2.0f;
+                    L.sheathOpeningStart = 0.0f;
+
+                    // Now try to load them from XML
+                    lf->QueryFloatAttribute("leafLength", &L.leafLength);
+                    lf->QueryFloatAttribute("leafWidth", &L.leafWidth);
+                    lf->QueryFloatAttribute("leafAngle", &L.leafAngle);
+                    lf->QueryFloatAttribute("droopiness", &L.droopiness);
+                    lf->QueryFloatAttribute("baseWidthPct", &L.baseWidthPct);
+                    lf->QueryIntAttribute("splinePoints", &L.splinePoints);
+                    lf->QueryFloatAttribute("widthTaper", &L.widthTaper);
+                    lf->QueryFloatAttribute("baseNudge", &L.baseNudge);
+                    lf->QueryFloatAttribute("leafTwist", &L.leafTwist);
+                    lf->QueryFloatAttribute("tipWidth", &L.tipWidth);
+
+                    // --- ADDED ---
+                    lf->QueryFloatAttribute("waveLAmp", &L.waveLAmp);
+                    lf->QueryFloatAttribute("waveLFreq", &L.waveLFreq);
+                    lf->QueryFloatAttribute("waveRAmp", &L.waveRAmp);
+                    lf->QueryFloatAttribute("waveRFreq", &L.waveRFreq);
+
+                    // --- NEW ---
+                    lf->QueryFloatAttribute("sheathEndAngle", &L.sheathEndAngle);
+                    lf->QueryFloatAttribute("sheathOpeningStart", &L.sheathOpeningStart);
+
+                    // Clamp it just in case
+                    L.splinePoints = std::max(4, std::min(L.splinePoints, 10));
 
                     td.leaves.push_back(L);
                 }
@@ -140,4 +199,3 @@ namespace Descriptor {
         return true;
     }
 }
-

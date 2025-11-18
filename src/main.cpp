@@ -20,7 +20,9 @@
 #include "Descriptor.h"
 using namespace std;
 
+#ifndef M_PI
 #define M_PI 3.14159265358979323846
+#endif
 
 // Window and Camera globals
 static int   gWinW = 1280, gWinH = 860;
@@ -34,7 +36,8 @@ static float gSlow = 0.25f;
 // Selection globals
 static int gSelTiller = 0;
 static int gSelLeaf = 0;
-static int gSelSpline = 0; // 0=Center, 1=Left, 2=Right, 3=Opening
+// --- REMOVED ---
+// static int gSelSpline = 3; 
 
 // Overlay globals
 static bool gShowCtrlPts = true;
@@ -217,6 +220,9 @@ static void drawCtrlViz() {
         drawSpline(G.ctrlCenter, 1.f, 0.5f, 0.f, (int)i);
         drawSpline(G.ctrlLeft, 0.2f, 0.6f, 1.f, (int)i);
         drawSpline(G.ctrlRight, 1.f, 0.f, 1.f, (int)i);
+        // --- REMOVED ---
+        // Also draw the opening spline
+        // drawSpline(G.ctrlOpening_world, 0.f, 1.f, 1.f, (int)i);
     }
     glEnable(GL_DEPTH_TEST);
 }
@@ -265,60 +271,12 @@ static void drawText(float x, float y, const char* text, ImU32 color) {
 
 // Draw spline control point overlays
 static void drawSplineOverlays() {
-    
-    // Only draw overlays if a leaf is selected and editable
-    if (gSelTiller < 0 || gSelTiller >= (int)Maize::plant().tillers.size()) return;
-    const auto& tiller = Maize::plant().tillers[gSelTiller];
-    if (gSelLeaf < 0 || gSelLeaf >= (int)tiller.leaves.size()) return;
-    const auto& L = tiller.leaves[gSelLeaf];
 
-    if (!gShowCtrlPts) return;
+    // This function is now empty as the only spline it drew (ctrlOpening)
+    // is no longer visualized or directly edited.
+    return;
 
-    // Get the correct geometry for the selected leaf
-    int geomIdx = leafGeomIndex(gSelTiller, gSelLeaf);
-    if (geomIdx < 0 || geomIdx >= (int)Maize::leafGeoms().size()) return;
-    const auto& geom = Maize::leafGeoms()[geomIdx];
-
-    // Get the correct spline vector based on gSelSpline
-    const std::vector<Vect3d>* activeSpline = nullptr;
-    if (gSelSpline == 0)      activeSpline = &geom.ctrlCenter;
-    else if (gSelSpline == 1) activeSpline = &geom.ctrlLeft;
-    else if (gSelSpline == 2) activeSpline = &geom.ctrlRight;
-    else if (gSelSpline == 3) activeSpline = &geom.ctrlOpening_world;
-
-    if (!activeSpline) return;
-
-    // Get camera matrices
-    GLdouble modelView[16];
-    GLdouble projection[16];
-    GLint viewport[4];
-    glGetDoublev(GL_MODELVIEW_MATRIX, modelView);
-    glGetDoublev(GL_PROJECTION_MATRIX, projection);
-    glGetIntegerv(GL_VIEWPORT, viewport);
-
-    // Text color
-    ImU32 textColor = IM_COL32(0, 0, 0, 255);
-
-    for (size_t i = 0; i < activeSpline->size(); ++i) {
-        const auto& p = (*activeSpline)[i];
-        GLdouble winX, winY, winZ;
-
-        // Project 3D point to 2D screen coordinates
-        if (gluProject(p.x(), p.y(), p.z(),
-            modelView, projection, viewport,
-            &winX, &winY, &winZ))
-        {
-            float screenY = (float)viewport[3] - (float)winY;
-            float screenX = (float)winX;
-
-            // Only draw if the point is in front of the camera
-            if (winZ >= 0.0 && winZ <= 1.0) {
-                char text[16];
-                snprintf(text, 16, "%zu", i);
-                drawText(screenX + 5, screenY - 5, text, textColor);
-            }
-        }
-    }
+    // --- REMOVED ALL PREVIOUS CODE ---
 }
 
 // Main display function
@@ -395,23 +353,40 @@ static void display() {
         Maize::plant() = PlantDesc{};
         TillerDesc t; t.type = "main";
 
-        // Create a leaf and define its splines directly
+        // Create a leaf and define its parameters
         LeafDesc leaf1;
         leaf1.id = 0;
         leaf1.distance = 0.10f;
         leaf1.sheathLength = 0.15f;
+        leaf1.leafLength = 0.4f; // short
+        leaf1.leafWidth = 0.1f; // wide
+        leaf1.leafAngle = 45.0f;
+        leaf1.droopiness = 0.2f;
+        leaf1.baseWidthPct = 0.8f;
+        leaf1.splinePoints = 4;
+        leaf1.widthTaper = 1.0f;
+        leaf1.baseNudge = 1.1f;
+        leaf1.leafTwist = 0.0f;
+        leaf1.tipWidth = 0.0f;
 
-        // Define its splines
-        float L = 0.4f; // short
-        float W = 0.1f; // wide
-        leaf1.ctrlCenter = { {0, 0, 0}, {0, 0.1f * L, 0.3f * L}, {0, -0.05f * L, 0.7f * L}, {0, 0, L} };
-        leaf1.ctrlLeft = { {-W, 0, 0}, {-W, 0.1f * L, 0.3f * L}, {-W * 0.5f, -0.05f * L, 0.7f * L}, {0, 0, L} };
-        leaf1.ctrlRight = { { W, 0, 0}, { W, 0.1f * L, 0.3f * L}, { W * 0.5f, -0.05f * L, 0.7f * L}, {0, 0, L} };
-        leaf1.ctrlOpening = { {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0} };
+        // --- ADDED ---
+        leaf1.waveLAmp = 0.0f;
+        leaf1.waveLFreq = 0.0f;
+        leaf1.waveRAmp = 0.0f;
+        leaf1.waveRFreq = 0.0f;
+
+        // --- NEW ---
+        leaf1.sheathEndAngle = 2.0f;
+        leaf1.sheathOpeningStart = 0.0f;
+
+        // --- REMOVED ---
+        // Define default opening spline
+        // std::vector<Vect3d> d1, d2, d3; // Dummies
+        // Maize::makeDefaultLeafSplines(0.7f, 0.08f, d1, d2, d3, leaf1.ctrlOpening);
 
         // Add the custom leaf
         t.leaves.push_back(leaf1);
-        
+
         Maize::plant().tillers.push_back(t);
         gSelTiller = 0;
         gSelLeaf = 0;
@@ -482,7 +457,7 @@ static void display() {
 
             // Check if a previous leaf exists to copy from
             if (!t.leaves.empty()) {
-                newLeaf = t.leaves.back(); // This now copies all fields, including splines
+                newLeaf = t.leaves.back(); // This now copies all fields, including new params
             }
 
             // Set a new unique ID
@@ -521,92 +496,48 @@ static void display() {
             needRebuild |= ImGui::DragFloat("Internode Dist.", &L.distance, 0.01f, 0.0f, 1.0f, "%.2f m");
             needRebuild |= ImGui::SliderFloat("Sheath Length", &L.sheathLength, 0.f, 1.f, "%.2f");
 
-            ImGui::SeparatorText("Spline Editor");
-            if (ImGui::Button("Reset Splines")) {
-                Maize::makeDefaultLeafSplines(0.7f, 0.08f, L.ctrlCenter, L.ctrlLeft, L.ctrlRight, L.ctrlOpening);
-            }
+            // --- MODIFIED LEAF BLADE EDITOR ---
+            ImGui::SeparatorText("Leaf Blade Parameters");
+            needRebuild |= ImGui::DragFloat("Length", &L.leafLength, 0.01f, 0.1f, 2.0f, "%.2f m");
+            needRebuild |= ImGui::DragFloat("Width", &L.leafWidth, 0.005f, 0.01f, 0.3f, "%.3f m");
+            needRebuild |= ImGui::SliderFloat("Leaf Angle", &L.leafAngle, -90.f, 90.f, "%.1f deg");
+            needRebuild |= ImGui::SliderFloat("Droopiness", &L.droopiness, 0.f, 2.f, "%.2f");
+            needRebuild |= ImGui::SliderFloat("Base Width %", &L.baseWidthPct, 0.f, 1.f, "%.2f");
+            needRebuild |= ImGui::SliderInt("Spline Points", &L.splinePoints, 4, 10);
+            needRebuild |= ImGui::SliderFloat("Width Taper", &L.widthTaper, 0.2f, 3.0f, "%.2f");
+            needRebuild |= ImGui::SliderFloat("Base Nudge", &L.baseNudge, 0.5f, 2.0f, "%.2f");
+            needRebuild |= ImGui::SliderFloat("Leaf Twist", &L.leafTwist, -180.f, 180.f, "%.1f deg");
+            needRebuild |= ImGui::SliderFloat("Tip Width", &L.tipWidth, 0.f, L.leafWidth * 0.5f, "%.4f m");
 
-            ImGui::RadioButton("Center", &gSelSpline, 0); ImGui::SameLine();
-            ImGui::RadioButton("Left", &gSelSpline, 1); ImGui::SameLine();
-            ImGui::RadioButton("Right", &gSelSpline, 2); ImGui::SameLine();
-            ImGui::RadioButton("Opening", &gSelSpline, 3);
+            // --- ADDED ---
+            ImGui::SeparatorText("Leaf Blade Waves");
+            needRebuild |= ImGui::SliderFloat("L. Wave Amp", &L.waveLAmp, 0.f, 0.05f, "%.3f m");
+            needRebuild |= ImGui::SliderFloat("L. Wave Freq", &L.waveLFreq, 0.f, 10.f, "%.1f");
+            needRebuild |= ImGui::SliderFloat("R. Wave Amp", &L.waveRAmp, 0.f, 0.05f, "%.3f m");
+            needRebuild |= ImGui::SliderFloat("R. Wave Freq", &L.waveRFreq, 0.f, 10.f, "%.1f");
 
-            std::vector<Vect3d>* activeSpline = nullptr;
-            if (gSelSpline == 0)      activeSpline = &L.ctrlCenter;
-            else if (gSelSpline == 1) activeSpline = &L.ctrlLeft;
-            else if (gSelSpline == 2) activeSpline = &L.ctrlRight;
-            else if (gSelSpline == 3) activeSpline = &L.ctrlOpening;
 
-            int insert_after_idx = -1;
-            int remove_at_idx = -1;
+            // --- MODIFIED SHEATH EDITOR ---
+            ImGui::SeparatorText("Sheath Parameters");
+            needRebuild |= ImGui::SliderFloat("Sheath End Angle", &L.sheathEndAngle, 0.f, 2.f, "%.2f PI");
+            needRebuild |= ImGui::SliderFloat("Sheath Opening Start", &L.sheathOpeningStart, 0.f, 1.f, "%.2f");
 
-            for (size_t i = 0; i < activeSpline->size(); ++i) {
-                ImGui::PushID((int)i);
 
-                // Create a unique label for each control point
-                char pointLabel[32];
-                snprintf(pointLabel, 32, "P%zu", i);
+            // --- REMOVED SPLINE EDITOR ---
 
-                if (gSelSpline == 3) {
-                    // Use 2D slider for (Radius, Angle)
-                    float v[2] = { (*activeSpline)[i].x(), (*activeSpline)[i].y() };
-                    if (ImGui::DragFloat2(pointLabel, v, 0.001f, -10.f, 10.f, "%.3f")) {
-                        (*activeSpline)[i] = Vect3d(v[0], v[1], (*activeSpline)[i].z());
-                        needRebuild = true;
-                    }
-                }
-                else {
-                    // Standard 3D slider
-                    float v[3] = { (*activeSpline)[i].x(), (*activeSpline)[i].y(), (*activeSpline)[i].z() };
-                    if (ImGui::DragFloat3(pointLabel, v, 0.001f)) {
-                        (*activeSpline)[i] = Vect3d(v[0], v[1], v[2]);
-                        needRebuild = true;
-                    }
-                }
-
-                ImGui::SameLine(); if (ImGui::Button("+")) insert_after_idx = (int)i;
-                ImGui::SameLine(); if (ImGui::Button("-")) remove_at_idx = (int)i;
-
-                if (gSelSpline == 1 || gSelSpline == 2) {
-                    ImGui::SameLine();
-                    if (ImGui::Button("M")) {
-                        std::vector<Vect3d>* dstSpline = (gSelSpline == 1) ? &L.ctrlRight : &L.ctrlLeft;
-                        if (i < dstSpline->size()) {
-                            const Vect3d& srcPoint = (*activeSpline)[i];
-                            (*dstSpline)[i] = Vect3d(-srcPoint.x(), srcPoint.y(), srcPoint.z());
-                            needRebuild = true;
-                        }
-                    }
-                }
-
-                ImGui::PopID();
-            }
-
-            if (insert_after_idx != -1) {
-                int i = insert_after_idx;
-                if (i == (int)activeSpline->size() - 1) activeSpline->push_back((*activeSpline)[i] + Vect3d(0, 0, 0.1));
-                else activeSpline->insert(activeSpline->begin() + i + 1, ((*activeSpline)[i] + (*activeSpline)[i + 1]) * 0.5f);
-                needRebuild = true;
-            }
-            if (remove_at_idx != -1) {
-                size_t min_points = (gSelSpline == 3) ? 2 : 4;
-                if (activeSpline->size() > min_points) {
-                    activeSpline->erase(activeSpline->begin() + remove_at_idx);
-                    needRebuild = true;
-                }
-            }
         }
-        ImGui::End();
-
-        if (needRebuild) {
-            Maize::rebuildGeometry();
-        }
-
-        ImGui::Render();
-        ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
-        glutSwapBuffers();
     }
-}
+    ImGui::End();
+
+    if (needRebuild) {
+        Maize::rebuildGeometry();
+    }
+
+    ImGui::Render();
+    ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+    glutSwapBuffers();
+
+} // This was the original end of display()
 
 // Reshape function
 static void reshape(int w, int h) {
@@ -622,57 +553,64 @@ static void idle() { glutPostRedisplay(); }
 // Main function
 int main(int argc, char** argv) {
     srand((unsigned int)time(NULL));
-    
-    //// How to generate a plant from code
 
+    // --- Example of generation from code (now updated) ---
     //// Create the plant description
     //PlantDesc myPlant;
     //myPlant.species = "maize";
-
-    //// Create a tiller
     //TillerDesc mainTiller;
     //mainTiller.type = "main";
     //mainTiller.radius = 0.025f;
     //mainTiller.azimuthDeg = 180.f; // Leaves alternate
     //mainTiller.randomSeed = 2024;
-
-    //// Create a leaf and define its splines directly
+    //
+    //// Create a leaf and define its parameters
     //LeafDesc leaf1;
     //leaf1.id = 0;
     //leaf1.distance = 0.30f;
     //leaf1.sheathLength = 0.15f;
-
-    //// Define its splines
-    //float L = 0.45f; // Longer leaf
-    //float W = 0.08f; // Narrower leaf
-    //leaf1.ctrlCenter = { {0, 0.05f, 0},              {0, 0.2f * L, 0.2f * L},  {0, 0.6f * L, 0.1f * L},   {0, L, -0.3f * L} };
-    //leaf1.ctrlLeft = { {-0.02f - W * 0.5f, 0, 0},      {-W, 0.2f * L, 0.2f * L},  {-W * 0.7f, 0.6f * L, 0.1f * L}, {0, L, -0.3f * L} };
-    //leaf1.ctrlRight = { {0.02f + W * 0.5f, 0, 0},       { W, 0.2f * L, 0.2f * L},  { W * 0.7f, 0.6f * L, 0.1f * L}, {0, L, -0.3f * L} };
-    //leaf1.ctrlOpening = { {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0} };
-
-    //// Add the custom leaf
+    //leaf1.leafLength = 0.45f;
+    //leaf1.leafWidth = 0.08f;
+    //leaf1.leafAngle = 45.0f;
+    //leaf1.droopiness = 1.2f; // Extra droopy
+    //leaf1.baseWidthPct = 0.9f;
+    //leaf1.splinePoints = 4;
+    //leaf1.widthTaper = 1.0f;
+    //leaf1.baseNudge = 1.1f;
+    //leaf1.leafTwist = 0.0f;
+    //leaf1.tipWidth = 0.0f;
+    //leaf1.waveLAmp = 0.01f;
+    //leaf1.waveLFreq = 5.0f;
+    //leaf1.waveRAmp = 0.01f;
+    //leaf1.waveRFreq = 5.0f;
+    //leaf1.sheathEndAngle = 2.0f;
+    //leaf1.sheathOpeningStart = 0.0f;
     //mainTiller.leaves.push_back(leaf1);
 
     //LeafDesc leaf2;
     //leaf2.id = 1;
     //leaf2.distance = 0.25f;
     //leaf2.sheathLength = 0.18f;
-
-    //// Define its splines
-    //float L2 = 0.30f;
-    //leaf2.ctrlCenter = { {0, 0.025f, 0},              {0, 0.2f * L2, 0.22f * L2}, {0, 0.6f * L2, 0.1f * L2},   {0, L2, 0.9f * L2} };
-    //leaf2.ctrlLeft = { {-W * 0.5f, 0, 0},      {-W, 0.2f * L2, 0.22f * L2}, {-W * 0.7f, 0.6f * L2, 0.1f * L2}, {0, L2, 0.9f * L2} };
-    //leaf2.ctrlRight = { { W * 0.5f, 0, 0},       { W, 0.2f * L2, 0.22f * L2}, { W * 0.7f, 0.6f * L2, 0.1f * L2}, {0, L2, 0.9f * L2} };
-    //leaf2.ctrlOpening = { {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0} };
-
+    //leaf2.leafLength = 0.30f;
+    //leaf2.leafWidth = 0.08f;
+    //leaf2.leafAngle = 30.0f;
+    //leaf2.droopiness = 0.5f;
+    //leaf2.baseWidthPct = 0.8f;
+    //leaf2.splinePoints = 4;
+    //leaf2.widthTaper = 1.0f;
+    //leaf2.baseNudge = 1.1f;
+    //leaf2.leafTwist = 0.0f;
+    //leaf2.tipWidth = 0.0f;
+    //leaf2.waveLAmp = 0.0f;
+    //leaf2.waveLFreq = 0.0f;
+    //leaf2.waveRAmp = 0.0f;
+    //leaf2.waveRFreq = 0.0f;
+    //leaf2.sheathEndAngle = 2.0f;
+    //leaf2.sheathOpeningStart = 0.0f;
     //mainTiller.leaves.push_back(leaf2);
     //
-    //// Add the tiller to the plant
     //myPlant.tillers.push_back(mainTiller);
-
-    //// Generate and save the files
     //Maize::GeneratePlant(myPlant, "my_plant", "maize_leaf.png");
-
     // --- End of example ---
 
     glutInit(&argc, argv);
@@ -692,42 +630,55 @@ int main(int argc, char** argv) {
     if (!loaded || Maize::plant().tillers.empty()) {
         // If load failed or plant is empty, create a default
         Maize::plant() = PlantDesc{};
-
-
         TillerDesc t; t.type = "main";
 
-        // Create a leaf and define its splines directly
+        // Create a leaf and define its parameters
         LeafDesc leaf1;
         leaf1.id = 0;
         leaf1.distance = 0.30f;
         leaf1.sheathLength = 0.15f;
-
-        // Define its splines
-        float L = 0.45f; // Longer leaf
-        float W = 0.08f; // Narrower leaf
-        leaf1.ctrlCenter = { {0, 0.05f, 0},              {0, 0.2f * L, 0.2f * L},  {0, 0.6f * L, 0.1f * L},   {0, L, -0.3f * L} };
-        leaf1.ctrlLeft = { {-0.02f - W * 0.5f, 0, 0},      {-W, 0.2f * L, 0.2f * L},  {-W * 0.7f, 0.6f * L, 0.1f * L}, {0, L, -0.3f * L} };
-        leaf1.ctrlRight = { {0.02f + W * 0.5f, 0, 0},       { W, 0.2f * L, 0.2f * L},  { W * 0.7f, 0.6f * L, 0.1f * L}, {0, L, -0.3f * L} };
-        leaf1.ctrlOpening = { {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0} };
-
-        // Add the custom leaf
+        leaf1.leafLength = 0.45f;
+        leaf1.leafWidth = 0.08f;
+        leaf1.leafAngle = 45.0f;
+        leaf1.droopiness = 1.0f;
+        leaf1.baseWidthPct = 0.9f;
+        leaf1.splinePoints = 4;
+        leaf1.widthTaper = 1.0f;
+        leaf1.baseNudge = 1.1f;
+        leaf1.leafTwist = 0.0f;
+        leaf1.tipWidth = 0.0f;
+        // --- ADDED ---
+        leaf1.waveLAmp = 0.0f;
+        leaf1.waveLFreq = 0.0f;
+        leaf1.waveRAmp = 0.0f;
+        leaf1.waveRFreq = 0.0f;
+        leaf1.sheathEndAngle = 2.0f;
+        leaf1.sheathOpeningStart = 0.0f;
         t.leaves.push_back(leaf1);
 
         LeafDesc leaf2;
         leaf2.id = 1;
         leaf2.distance = 0.25f;
         leaf2.sheathLength = 0.18f;
+        leaf2.leafLength = 0.30f;
+        leaf2.leafWidth = 0.08f;
+        leaf2.leafAngle = 30.0f;
+        leaf2.droopiness = 0.5f;
+        leaf2.baseWidthPct = 0.8f;
+        leaf2.splinePoints = 4;
+        leaf2.widthTaper = 1.0f;
+        leaf2.baseNudge = 1.1f;
+        leaf2.leafTwist = 0.0f;
+        leaf2.tipWidth = 0.0f;
+        // --- ADDED ---
+        leaf2.waveLAmp = 0.0f;
+        leaf2.waveLFreq = 0.0f;
+        leaf2.waveRAmp = 0.0f;
+        leaf2.waveRFreq = 0.0f;
+        leaf2.sheathEndAngle = 2.0f;
+        leaf2.sheathOpeningStart = 0.0f;
+        t.leaves.push_back(leaf2);
 
-        // Define its splines
-        float L2 = 0.30f;
-        leaf2.ctrlCenter = { {0, 0.025f, 0},              {0, 0.2f * L2, 0.22f * L2}, {0, 0.6f * L2, 0.1f * L2},   {0, L2, 0.9f * L2} };
-        leaf2.ctrlLeft = { {-W * 0.5f, 0, 0},      {-W, 0.2f * L2, 0.22f * L2}, {-W * 0.7f, 0.6f * L2, 0.1f * L2}, {0, L2, 0.9f * L2} };
-        leaf2.ctrlRight = { { W * 0.5f, 0, 0},       { W, 0.2f * L2, 0.22f * L2}, { W * 0.7f, 0.6f * L2, 0.1f * L2}, {0, L2, 0.9f * L2} };
-        leaf2.ctrlOpening = { {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0}, {0.01f, 2.0f, 0} };
-
-        // Add the custom leaf
-        t.leaves.push_back(leaf1);
-		t.leaves.push_back(leaf2);
         Maize::plant().tillers.push_back(t);
     }
 
@@ -740,4 +691,3 @@ int main(int argc, char** argv) {
     glutMainLoop();
     return 0;
 }
-
