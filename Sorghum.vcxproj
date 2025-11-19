@@ -21,6 +21,7 @@
   <ItemGroup>
     <ClCompile Include="Descriptor.cpp" />
     <ClCompile Include="Maize.cpp" />
+    <ClCompile Include="MaizeGenerator.cpp" />
     <ClCompile Include="src\imgui.cpp" />
     <ClCompile Include="src\imgui_demo.cpp" />
     <ClCompile Include="src\imgui_draw.cpp" />
@@ -58,6 +59,7 @@
     <ClInclude Include="include\stb_image\stb_image.h" />
     <ClInclude Include="include\stb_image\stb_image_write.h" />
     <ClInclude Include="include\trackball.h" />
+    <ClInclude Include="MaizeGenerator.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
@@ -151,7 +153,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include;C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include\ImGUI;C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include\stb_image;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include;C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include\ImGUI;C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include\stb_image;C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -168,7 +170,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include;C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include\ImGUI;C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include\stb_image;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include;C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include\ImGUI;C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum\include\stb_image;C:\Users\jorge\Documents\Research Purdue\DigitalTwin\Sorghum;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>

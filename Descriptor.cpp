@@ -78,7 +78,6 @@ namespace Descriptor {
                 XMLElement* leaf_elem = doc.NewElement("leaf");
                 leaf_elem->SetAttribute("id", L.id);
                 leaf_elem->SetAttribute("distance", L.distance);
-                leaf_elem->SetAttribute("sheathLength", L.sheathLength);
 
                 // --- MODIFIED ---
                 // Save new high-level parameters
@@ -86,12 +85,9 @@ namespace Descriptor {
                 leaf_elem->SetAttribute("leafWidth", L.leafWidth);
                 leaf_elem->SetAttribute("leafAngle", L.leafAngle);
                 leaf_elem->SetAttribute("droopiness", L.droopiness);
-                leaf_elem->SetAttribute("baseWidthPct", L.baseWidthPct);
                 leaf_elem->SetAttribute("splinePoints", L.splinePoints);
                 leaf_elem->SetAttribute("widthTaper", L.widthTaper);
-                leaf_elem->SetAttribute("baseNudge", L.baseNudge);
                 leaf_elem->SetAttribute("leafTwist", L.leafTwist);
-                leaf_elem->SetAttribute("tipWidth", L.tipWidth);
 
                 // --- ADDED ---
                 leaf_elem->SetAttribute("waveLAmp", L.waveLAmp);
@@ -102,11 +98,6 @@ namespace Descriptor {
                 // --- NEW ---
                 leaf_elem->SetAttribute("sheathEndAngle", L.sheathEndAngle);
                 leaf_elem->SetAttribute("sheathOpeningStart", L.sheathOpeningStart);
-
-                // --- REMOVED ---
-                // leaf_elem->SetAttribute("sheathStartAngle", L.sheathStartAngle);
-                // Save only the opening spline
-                // saveSplineAsAttributes(leaf_elem, "control_points_opening", L.ctrlOpening);
 
                 leaves_elem->InsertEndChild(leaf_elem);
             }
@@ -141,7 +132,6 @@ namespace Descriptor {
                     LeafDesc L;
                     lf->QueryIntAttribute("id", &L.id);
                     lf->QueryFloatAttribute("distance", &L.distance);
-                    lf->QueryFloatAttribute("sheathLength", &L.sheathLength);
 
                     // --- MODIFIED ---
                     // Set defaults first, in case they aren't in the XML
@@ -149,12 +139,9 @@ namespace Descriptor {
                     L.leafWidth = 0.08f;
                     L.leafAngle = 45.0f;
                     L.droopiness = 0.5f;
-                    L.baseWidthPct = 0.8f;
                     L.splinePoints = 4; // Default
                     L.widthTaper = 1.0f;
-                    L.baseNudge = 1.1f; // Default
                     L.leafTwist = 0.0f;
-                    L.tipWidth = 0.0f;
 
                     // --- ADDED ---
                     L.waveLAmp = 0.0f;
@@ -171,12 +158,9 @@ namespace Descriptor {
                     lf->QueryFloatAttribute("leafWidth", &L.leafWidth);
                     lf->QueryFloatAttribute("leafAngle", &L.leafAngle);
                     lf->QueryFloatAttribute("droopiness", &L.droopiness);
-                    lf->QueryFloatAttribute("baseWidthPct", &L.baseWidthPct);
                     lf->QueryIntAttribute("splinePoints", &L.splinePoints);
                     lf->QueryFloatAttribute("widthTaper", &L.widthTaper);
-                    lf->QueryFloatAttribute("baseNudge", &L.baseNudge);
                     lf->QueryFloatAttribute("leafTwist", &L.leafTwist);
-                    lf->QueryFloatAttribute("tipWidth", &L.tipWidth);
 
                     // --- ADDED ---
                     lf->QueryFloatAttribute("waveLAmp", &L.waveLAmp);
@@ -189,7 +173,7 @@ namespace Descriptor {
                     lf->QueryFloatAttribute("sheathOpeningStart", &L.sheathOpeningStart);
 
                     // Clamp it just in case
-                    L.splinePoints = std::max(4, std::min(L.splinePoints, 10));
+                    L.splinePoints = std::max(4, std::min(L.splinePoints, 40));
 
                     td.leaves.push_back(L);
                 }
