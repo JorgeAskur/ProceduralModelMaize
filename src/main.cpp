@@ -18,6 +18,7 @@
 
 #include "Maize.h"
 #include "Descriptor.h"
+#include "MaizeGenerator.h" 
 
 using namespace std;
 
@@ -25,6 +26,7 @@ using namespace std;
 #define M_PI 3.14159265358979323846
 #endif
 
+// --- GLOBALS ---
 static int   gWinW = 1280, gWinH = 860;
 static float gYaw = 30.f, gPitch = 18.f, gDist = 3.5f;
 static Vect3d gCamTarget = { 0.0f, 1.0f, 0.0f };
@@ -34,7 +36,7 @@ static float gMoveSpeed = 1.0f;
 static int gSelTiller = 0;
 static int gSelLeaf = 0;
 
-static bool gShowCtrlPts = true;
+static bool gShowCtrlPts = false;
 static bool gShowCtrlPoly = false;
 static bool gWireframe = false;
 static bool gShowNormals = false;
@@ -54,6 +56,12 @@ static char gTexPath[256] = "maize_leaf.png";
 static GLuint gTextureID = 0;
 static bool   gTextureOK = false;
 
+// Generator State
+static MaizeGenerator gGen;
+static bool gViewAverage = true;
+static int gBatchCount = 10;
+static char gOutputDir[256] = "C:/Users/jorge/Documents/Research Purdue/DigitalTwin/Sorghum/plants";
+
 static inline float clampf(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
 static inline float radiansf(float d) { return d * float(M_PI) / 180.f; }
 
@@ -67,9 +75,9 @@ static void loadTexture(const char* path) {
         glBindTexture(GL_TEXTURE_2D, gTextureID);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        #ifndef GL_CLAMP_TO_EDGE
-        #define GL_CLAMP_TO_EDGE 0x812F
-        #endif
+#ifndef GL_CLAMP_TO_EDGE
+#define GL_CLAMP_TO_EDGE 0x812F
+#endif
         gluBuild2DMipmaps(GL_TEXTURE_2D, GL_RGBA, w, h, GL_RGBA, GL_UNSIGNED_BYTE, data);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -94,12 +102,7 @@ static void setupLighting() {
 
 static void drawPlant() {
     setupLighting();
-
-    // --- IMPORTANT FIX ---
-    // Force Smooth Shading (Gouraud) to blend lighting across vertices.
-    // This removes the "faceted" look.
     glShadeModel(GL_SMOOTH);
-    // ---------------------
 
     glColor4f(1.f, 1.f, 1.f, 1.f);
     if (gTextureOK) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, gTextureID); glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE); }
@@ -112,10 +115,8 @@ static void drawPlant() {
             glBegin(GL_TRIANGLE_STRIP);
             for (int j = 0; j < G.cols; ++j) {
                 int a = i * G.cols + j, b = (i + 1) * G.cols + j;
-
                 Vect3d cA = G.col[a];
                 Vect3d cB = G.col[b];
-
                 glColor3f(cA.x(), cA.y(), cA.z());
                 glNormal3f(G.nrm[a].x(), G.nrm[a].y(), G.nrm[a].z());
                 glTexCoord2f(G.uv[a].u, G.uv[a].v);
@@ -127,20 +128,6 @@ static void drawPlant() {
                 glVertex3f(G.pos[b].x(), G.pos[b].y(), G.pos[b].z());
             }
             glEnd();
-        }
-
-        if (gShowNormals) {
-            glDisable(GL_LIGHTING); glDisable(GL_TEXTURE_2D);
-            glColor3f(1.0f, 1.0f, 0.0f);
-            glBegin(GL_LINES);
-            for (size_t i = 0; i < G.pos.size(); ++i) {
-                glVertex3f(G.pos[i].x(), G.pos[i].y(), G.pos[i].z());
-                Vect3d np = G.pos[i] + G.nrm[i] * 0.02f;
-                glVertex3f(np.x(), np.y(), np.z());
-            }
-            glEnd();
-            if (gLightingOn) glEnable(GL_LIGHTING);
-            if (gTextureOK) glEnable(GL_TEXTURE_2D);
         }
     }
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -158,7 +145,6 @@ static void drawCtrlViz() {
         if (gShowCtrlPts) { glPointSize(5.0f); glBegin(GL_POINTS); for (const auto& p : ctrl) glVertex3f(p.x(), p.y(), p.z()); glEnd(); }
         };
     for (const auto& G : Maize::leafGeoms()) {
-        // Only visualize control points for Blades
         if (G.type == LeafGeom::GEOM_BLADE) {
             drawSpline(G.ctrlCenter, 1.f, 0.5f, 0.f);
             drawSpline(G.ctrlLeft, 0.2f, 0.6f, 1.f);
@@ -181,12 +167,21 @@ static void drawGridAndAxes() {
     glEnd();
 }
 
+static void RebuildFromGenerator() {
+    // If viewing average, we ignore variance (useMeansOnly = true)
+    // If viewing random preview, we use a random seed
+    unsigned int seed = gViewAverage ? 1337 : rand();
+    Maize::plant() = gGen.generate(seed, gViewAverage);
+    Maize::rebuildGeometry();
+}
+
 static void display() {
     ImGui_ImplOpenGL2_NewFrame(); ImGui_ImplGLUT_NewFrame(); ImGui::NewFrame();
     ImGuiIO& io = ImGui::GetIO();
     glViewport(0, 0, (GLsizei)io.DisplaySize.x, (GLsizei)io.DisplaySize.y);
     glClearColor(1.f, 1.f, 1.f, 1.f); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glEnable(GL_DEPTH_TEST);
 
+    // Camera
     glMatrixMode(GL_PROJECTION); glLoadIdentity();
     gluPerspective((GLdouble)gFovDeg, (GLdouble)io.DisplaySize.x / (GLdouble)io.DisplaySize.y, 0.1, 100.0);
     glMatrixMode(GL_MODELVIEW); glLoadIdentity();
@@ -217,83 +212,144 @@ static void display() {
     drawPlant();
     drawCtrlViz();
 
-    ImGui::Begin("Maize Spline Editor");
-    bool needRebuild = false;
+    // --- UI ---
+    ImGui::Begin("Maize Generator");
 
-    ImGui::Separator(); ImGui::Text("File I/O");
-    if (ImGui::Button("New Plant")) {
-        Maize::plant() = PlantDesc{};
-        TillerDesc t; t.type = "main";
-        LeafDesc leaf1;
-        leaf1.id = 0; leaf1.distance = 0.10f;
-        leaf1.leafLength = 0.4f; leaf1.leafWidth = 0.1f;
-        t.leaves.push_back(leaf1);
-        Maize::plant().tillers.push_back(t);
-        gSelTiller = 0; gSelLeaf = 0;
-        needRebuild = true;
-    }
-    ImGui::SameLine();
-    ImGui::InputText("XML", gXmlPath, sizeof(gXmlPath));
-    if (ImGui::Button("Load XML")) { if (Descriptor::loadPlantXML(gXmlPath)) { needRebuild = true; gSelTiller = 0; gSelLeaf = 0; } }
-    ImGui::SameLine();
-    if (ImGui::Button("Save XML")) { Descriptor::savePlantXML(gXmlPath); }
-    if (ImGui::Button("Export OBJ")) { Maize::savePlantOBJ(gObjPath, gTexPath); }
+    bool needRegen = false; // Re-run generator (overwrites manual changes)
+    bool needUpdate = false; // Just rebuild mesh (preserves manual changes)
 
-    ImGui::Separator(); ImGui::Text("Lighting & View");
-    ImGui::Checkbox("Enable Lighting", &gLightingOn);
-    ImGui::Checkbox("Show Normals", &gShowNormals);
-    ImGui::Checkbox("Show Control Points", &gShowCtrlPts);
-    ImGui::Checkbox("Wireframe", &gWireframe);
+    ImGui::Text("Camera: Left Click=Rotate, WASD=Move, Scroll=Zoom");
 
-    ImGui::Separator(); ImGui::Text("Adaptive Mesh Resolution");
-    needRebuild |= ImGui::SliderFloat("Res Vertical", &Maize::gMeshDensityV(), 10.f, 200.f, "%.0f / m");
-    needRebuild |= ImGui::SliderFloat("Res Horizontal", &Maize::gMeshDensityU(), 10.f, 200.f, "%.0f / m");
-    ImGui::Text("Total Triangles: %d", Maize::getTriangleCount());
+    if (ImGui::CollapsingHeader("Procedural Generator", ImGuiTreeNodeFlags_DefaultOpen)) {
+        ImGui::TextWrapped("Edit the AVERAGE plant below. Set 'Std Dev' > 0 to add variation for batch generation.");
 
-    auto& plant = Maize::plant();
-    if (!plant.tillers.empty()) {
-        gSelTiller = std::min(gSelTiller, (int)plant.tillers.size() - 1);
-        auto& t = plant.tillers[gSelTiller];
-
-        ImGui::Separator(); ImGui::Text("Tiller");
-        needRebuild |= ImGui::DragFloat("Radius", &t.radius, 0.001f);
-        needRebuild |= ImGui::DragFloat("Azimuth Base", &t.azimuthDeg, 1.0f);
-
-        if (ImGui::Button("Add Leaf")) {
-            LeafDesc newLeaf = t.leaves.empty() ? LeafDesc() : t.leaves.back();
-            newLeaf.id = t.leaves.empty() ? 0 : t.leaves.back().id + 1;
-            t.leaves.push_back(newLeaf);
-            gSelLeaf = (int)t.leaves.size() - 1;
-            needRebuild = true;
+        if (ImGui::Button(gViewAverage ? "Mode: Viewing AVERAGE" : "Mode: Viewing RANDOM")) {
+            gViewAverage = !gViewAverage;
+            needRegen = true;
+        }
+        if (!gViewAverage) {
+            ImGui::SameLine();
+            if (ImGui::Button("Re-Roll Random")) needRegen = true;
         }
 
-        if (!t.leaves.empty()) {
-            gSelLeaf = std::min(gSelLeaf, (int)t.leaves.size() - 1);
-            ImGui::SliderInt("Select Leaf", &gSelLeaf, 0, (int)t.leaves.size() - 1);
-            auto& L = t.leaves[gSelLeaf];
+        auto DistUI = [&](const char* label, Dist& d, float v_min, float v_max, float sd_max) {
+            ImGui::PushID(label);
+            ImGui::Text("%s", label);
+            bool c = false;
+            c |= ImGui::SliderFloat("Mean", &d.mean, v_min, v_max);
+            c |= ImGui::SliderFloat("Std Dev", &d.stdDev, 0.0f, sd_max);
+            ImGui::PopID();
+            return c;
+            };
 
-            ImGui::Separator(); ImGui::Text("Leaf Parameters");
-            needRebuild |= ImGui::DragFloat("Distance", &L.distance, 0.01f);
-            needRebuild |= ImGui::DragFloat("Length", &L.leafLength, 0.01f);
-            needRebuild |= ImGui::DragFloat("Width", &L.leafWidth, 0.005f);
-            needRebuild |= ImGui::SliderFloat("Angle", &L.leafAngle, -90.f, 90.f);
-            needRebuild |= ImGui::SliderFloat("Droopiness", &L.droopiness, -80.f, 80.f);
-            needRebuild |= ImGui::SliderInt("Spline Pts", &L.splinePoints, 4, 40);
-            needRebuild |= ImGui::SliderFloat("Taper", &L.widthTaper, 0.05f, 10.0f);
-            needRebuild |= ImGui::SliderFloat("Twist", &L.leafTwist, -180.f, 180.f);
-            needRebuild |= ImGui::SliderFloat("Sheath Angle", &L.sheathEndAngle, 1.f, 1.5f);
-            needRebuild |= ImGui::SliderFloat("Sheath Open", &L.sheathOpeningStart, 0.9f, 1.f);
+        auto CurveUI = [&](const char* label, Curve& c) {
+            ImGui::PushID(label);
+            ImGui::Text("%s", label);
+            bool ch = false;
+            ch |= ImGui::SliderFloat("Base (Bottom)", &c.bottom, 0.1f, 2.0f);
+            ch |= ImGui::SliderFloat("Top (Tip)", &c.top, 0.1f, 2.0f);
+            ImGui::PopID();
+            return ch;
+            };
 
-            ImGui::Separator(); ImGui::Text("Leaf Waves");
-            needRebuild |= ImGui::SliderFloat("L Amp", &L.waveLAmp, 0.f, 0.05f);
-            needRebuild |= ImGui::SliderFloat("L Freq", &L.waveLFreq, 0.f, 1.f);
-            needRebuild |= ImGui::SliderFloat("R Amp", &L.waveRAmp, 0.f, 0.05f);
-            needRebuild |= ImGui::SliderFloat("R Freq", &L.waveRFreq, 0.f, 1.f);
+        if (ImGui::TreeNode("Structure")) {
+            needRegen |= DistUI("Height (m)", gGen.height, 0.5f, 4.0f, 1.0f);
+            needRegen |= DistUI("Stem Radius", gGen.stemRadius, 0.01f, 0.1f, 0.01f);
+            needRegen |= DistUI("Leaf Count", gGen.numLeaves, 3.0f, 20.0f, 5.0f);
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNode("Leaf Shape")) {
+            needRegen |= DistUI("Length Base", gGen.leafLengthBase, 0.2f, 1.5f, 0.5f);
+            needRegen |= CurveUI("Length Curve", gGen.leafLengthCurve);
+            ImGui::Separator();
+            needRegen |= DistUI("Width Base", gGen.leafWidthBase, 0.02f, 0.2f, 0.05f);
+            needRegen |= CurveUI("Width Curve", gGen.leafWidthCurve);
+            ImGui::Separator();
+            // --- NEW PARAMS IN UI ---
+            needRegen |= DistUI("Width Taper", gGen.widthTaper, 0.0f, 10.0f, 2.0f);
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNode("Orientation")) {
+            needRegen |= DistUI("Angle Base (deg)", gGen.leafAngleBase, 0.f, 90.f, 20.f);
+            needRegen |= CurveUI("Angle Curve", gGen.leafAngleCurve);
+            needRegen |= DistUI("Droopiness", gGen.droopinessBase, -80.f, 80.f, 10.f);
+            // --- NEW PARAMS IN UI ---
+            needRegen |= DistUI("Leaf Twist (deg)", gGen.leafTwist, -180.f, 180.f, 45.f);
+            ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNode("Details")) {
+            needRegen |= DistUI("Wave Amp", gGen.waveAmp, 0.f, 0.05f, 0.02f);
+            needRegen |= DistUI("Wave Freq", gGen.waveFreq, 0.f, 10.f, 5.f);
+            needRegen |= DistUI("Sheath End", gGen.sheathEndAngle, 0.f, 2.f, 0.5f);
+            needRegen |= DistUI("Sheath Open", gGen.sheathOpening, 0.f, 1.f, 0.5f);
+            ImGui::TreePop();
         }
     }
+
+    // --- RESTORED MANUAL OVERRIDES ---
+    if (ImGui::CollapsingHeader("Manual Overrides")) {
+        ImGui::TextWrapped("Select specific parts of the generated plant to tweak them manually.");
+        auto& plant = Maize::plant();
+        if (!plant.tillers.empty()) {
+            gSelTiller = std::min(gSelTiller, (int)plant.tillers.size() - 1);
+            auto& t = plant.tillers[gSelTiller];
+
+            ImGui::Separator(); ImGui::Text("Tiller");
+            needUpdate |= ImGui::DragFloat("Radius", &t.radius, 0.001f);
+            needUpdate |= ImGui::DragFloat("Azimuth Base", &t.azimuthDeg, 1.0f);
+            needUpdate |= ImGui::DragFloat("Azimuth Noise", &t.azimuthNoise, 0.5f);
+
+            if (!t.leaves.empty()) {
+                gSelLeaf = std::min(gSelLeaf, (int)t.leaves.size() - 1);
+                ImGui::SliderInt("Select Leaf", &gSelLeaf, 0, (int)t.leaves.size() - 1);
+                auto& L = t.leaves[gSelLeaf];
+
+                ImGui::Separator(); ImGui::Text("Leaf #%d Parameters", L.id);
+                needUpdate |= ImGui::DragFloat("Distance", &L.distance, 0.01f);
+                needUpdate |= ImGui::DragFloat("Length", &L.leafLength, 0.01f);
+                needUpdate |= ImGui::DragFloat("Width", &L.leafWidth, 0.005f);
+                needUpdate |= ImGui::SliderFloat("Angle", &L.leafAngle, -90.f, 90.f);
+                needUpdate |= ImGui::SliderFloat("Droopiness", &L.droopiness, -80.f, 80.f);
+                needUpdate |= ImGui::SliderInt("Spline Pts", &L.splinePoints, 4, 40);
+                needUpdate |= ImGui::SliderFloat("Taper", &L.widthTaper, 0.05f, 10.0f);
+                needUpdate |= ImGui::SliderFloat("Twist", &L.leafTwist, -180.f, 180.f);
+                needUpdate |= ImGui::SliderFloat("Sheath Angle", &L.sheathEndAngle, 0.f, 2.f);
+                needUpdate |= ImGui::SliderFloat("Sheath Open", &L.sheathOpeningStart, 0.f, 1.f);
+
+                ImGui::Text("Waves");
+                needUpdate |= ImGui::SliderFloat("L Amp", &L.waveLAmp, 0.f, 0.05f);
+                needUpdate |= ImGui::SliderFloat("L Freq", &L.waveLFreq, 0.f, 10.f);
+                needUpdate |= ImGui::SliderFloat("R Amp", &L.waveRAmp, 0.f, 0.05f);
+                needUpdate |= ImGui::SliderFloat("R Freq", &L.waveRFreq, 0.f, 10.f);
+            }
+        }
+    }
+
+    if (ImGui::CollapsingHeader("Batch Export")) {
+        ImGui::InputText("Output Dir", gOutputDir, sizeof(gOutputDir));
+        ImGui::InputInt("Count", &gBatchCount);
+        if (ImGui::Button("Generate Batch")) {
+            gGen.generateBatch(gBatchCount, gOutputDir, gTexPath);
+        }
+    }
+
+    ImGui::Separator();
+    if (ImGui::CollapsingHeader("Visual Settings")) {
+        ImGui::Checkbox("Show Normals", &gShowNormals);
+        ImGui::Checkbox("Show Control Points", &gShowCtrlPts);
+        ImGui::Checkbox("Wireframe", &gWireframe);
+        needUpdate |= ImGui::SliderFloat("Res Vertical", &Maize::gMeshDensityV(), 10.f, 200.f, "%.0f / m");
+        needUpdate |= ImGui::SliderFloat("Res Horizontal", &Maize::gMeshDensityU(), 10.f, 200.f, "%.0f / m");
+        ImGui::Text("Triangles: %d", Maize::getTriangleCount());
+    }
+
     ImGui::End();
 
-    if (needRebuild) Maize::rebuildGeometry();
+    if (needRegen) RebuildFromGenerator();
+    else if (needUpdate) Maize::rebuildGeometry();
 
     ImGui::Render(); ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
     glutSwapBuffers();
@@ -311,22 +367,12 @@ int main(int argc, char** argv) {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
     glutInitWindowSize(gWinW, gWinH);
-    glutCreateWindow("Maize Spline Editor");
+    glutCreateWindow("Maize Procedural Generator");
     ImGui::CreateContext();
     ImGui_ImplGLUT_Init(); ImGui_ImplGLUT_InstallFuncs(); ImGui_ImplOpenGL2_Init();
 
-    bool loaded = Descriptor::loadPlantXML(gXmlPath);
-    if (!loaded || Maize::plant().tillers.empty()) {
-        Maize::plant() = PlantDesc{};
-        TillerDesc t; t.type = "main";
-        LeafDesc leaf1;
-        leaf1.id = 0; leaf1.distance = 0.10f;
-        t.leaves.push_back(leaf1);
-        Maize::plant().tillers.push_back(t);
-    }
-
     loadTexture(gTexPath);
-    Maize::rebuildGeometry();
+    RebuildFromGenerator();
 
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);

@@ -137,7 +137,7 @@
     <ClInclude Include="include\Maize.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="MaizeGenerator.h">
+    <ClInclude Include="include\MaizeGenerator.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
   </ItemGroup>

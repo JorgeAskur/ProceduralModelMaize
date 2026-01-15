@@ -28,9 +28,9 @@ struct TillerDesc {
     std::string type = "main";
     float radius = 0.02f;
     float alphaDeg = 0.f;
-    float stemShrink = 0.002f;
+    float stemShrink = 0.001f;
     float azimuthDeg = 180.f;
-    float azimuthNoise = 5.f;
+    float azimuthNoise = 45.f;
     unsigned int randomSeed = 1337;
     std::vector<LeafDesc> leaves;
 };

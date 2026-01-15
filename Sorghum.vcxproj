@@ -52,6 +52,7 @@
     <ClInclude Include="include\imstb_textedit.h" />
     <ClInclude Include="include\imstb_truetype.h" />
     <ClInclude Include="include\Maize.h" />
+    <ClInclude Include="include\MaizeGenerator.h" />
     <ClInclude Include="include\math\matrix4d.h" />
     <ClInclude Include="include\math\vect3d.h" />
     <ClInclude Include="include\math\vect4d.h" />
@@ -59,7 +60,6 @@
     <ClInclude Include="include\stb_image\stb_image.h" />
     <ClInclude Include="include\stb_image\stb_image_write.h" />
     <ClInclude Include="include\trackball.h" />
-    <ClInclude Include="MaizeGenerator.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>

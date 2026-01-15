@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plant>
+    <species name="Maize_Procedural">
+        <Tiller type="main" radius="0.023025779" alpha="0" beta="180" randomSeed="1361216291" stemShrink="0.001">
+            <leaves number="9">
+                <leaf id="0" distance="0.15693496" leafLength="0.50963163" leafWidth="0.054151714" leafAngle="61.424084" droopiness="-25.660316" splinePoints="40" widthTaper="5.3634615" leafTwist="-1.6537613" waveLAmp="0.0070137554" waveLFreq="5.000946" waveRAmp="0.0070137554" waveRFreq="5.000946" sheathEndAngle="1.483" sheathOpeningStart="1"/>
+                <leaf id="1" distance="0.15693496" leafLength="0.49077418" leafWidth="0.059697565" leafAngle="72.057426" droopiness="-25.20059" splinePoints="40" widthTaper="4.9428082" leafTwist="5.8648777" waveLAmp="0.011120161" waveLFreq="4.6454592" waveRAmp="0.011120161" waveRFreq="4.6454592" sheathEndAngle="1.483" sheathOpeningStart="1"/>
+                <leaf id="2" distance="0.15693496" leafLength="0.51072878" leafWidth="0.069341339" leafAngle="66.975609" droopiness="-23.016863" splinePoints="40" widthTaper="5.2132931" leafTwist="9.1897383" waveLAmp="0.0093407715" waveLFreq="4.8224063" waveRAmp="0.0093407715" waveRFreq="4.8224063" sheathEndAngle="1.483" sheathOpeningStart="1"/>
+                <leaf id="3" distance="0.15693496" leafLength="0.45639288" leafWidth="0.062438946" leafAngle="79.654701" droopiness="-21.420435" splinePoints="40" widthTaper="5.1786447" leafTwist="14.341125" waveLAmp="0.0065338942" waveLFreq="4.5564842" waveRAmp="0.0065338942" waveRFreq="4.5564842" sheathEndAngle="1.483" sheathOpeningStart="1"/>
+                <leaf id="4" distance="0.15693496" leafLength="0.4150283" leafWidth="0.064927302" leafAngle="76.072731" droopiness="-27.311592" splinePoints="40" widthTaper="5.3951979" leafTwist="-5.6424375" waveLAmp="0.0080739707" waveLFreq="4.2938027" waveRAmp="0.0080739707" waveRFreq="4.2938027" sheathEndAngle="1.483" sheathOpeningStart="1"/>
+                <leaf id="5" distance="0.15693496" leafLength="0.3979058" leafWidth="0.06614811" leafAngle="86.999535" droopiness="-30.386906" splinePoints="40" widthTaper="5.4108162" leafTwist="-3.5590296" waveLAmp="0.013932414" waveLFreq="7.2259574" waveRAmp="0.013932414" waveRFreq="7.2259574" sheathEndAngle="1.483" sheathOpeningStart="1"/>
+                <leaf id="6" distance="0.15693496" leafLength="0.34196031" leafWidth="0.058645137" leafAngle="92.337067" droopiness="-29.103983" splinePoints="40" widthTaper="5.3554921" leafTwist="-15.825417" waveLAmp="0.00369702" waveLFreq="3.4962525" waveRAmp="0.00369702" waveRFreq="3.4962525" sheathEndAngle="1.483" sheathOpeningStart="1"/>
+                <leaf id="7" distance="0.15693496" leafLength="0.33124644" leafWidth="0.054811444" leafAngle="92.311249" droopiness="-25.520168" splinePoints="40" widthTaper="4.9039822" leafTwist="-18.287462" waveLAmp="0.0073972833" waveLFreq="2.7202146" waveRAmp="0.0073972833" waveRFreq="2.7202146" sheathEndAngle="1.483" sheathOpeningStart="1"/>
+                <leaf id="8" distance="0.15693496" leafLength="0.27637404" leafWidth="0.066843405" leafAngle="99.196617" droopiness="-27.016384" splinePoints="40" widthTaper="4.9014487" leafTwist="-0.7877087" waveLAmp="0.0087623391" waveLFreq="5.7744217" waveRAmp="0.0087623391" waveRFreq="5.7744217" sheathEndAngle="1.483" sheathOpeningStart="1"/>
+            </leaves>
+        </Tiller>
+    </species>
+</plant>
