@@ -3,13 +3,13 @@
   "spdxVersion": "SPDX-2.2",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "documentNamespace": "https://spdx.org/spdxdocs/opengl-x86-windows-2022-12-04#3-a5110747-e80e-478f-bb9e-b0c30b1c8a40",
-  "name": "opengl:x86-windows@2022-12-04#3 44f81371a67263500cf67d9a36657c0dc5616bde2e299335c66a90c18d25557e",
+  "documentNamespace": "https://spdx.org/spdxdocs/opengl-x86-windows-2022-12-04#3-ca6c3230-01a4-4b7c-a72e-3236b53a4b05",
+  "name": "opengl:x86-windows@2022-12-04#3 308abf4fd744d7f0fdcf737c02b92cdbf7e7c475bb8b32fac4b93d0855e53c88",
   "creationInfo": {
     "creators": [
-      "Tool: vcpkg-2025-06-02-145689e84b7637525510e2c9b4ee603fda046b56"
+      "Tool: vcpkg-2025-09-03-4580816534ed8fd9634ac83d46471440edd82dfe"
     ],
-    "created": "2025-08-28T21:45:07Z"
+    "created": "2026-01-16T02:42:16Z"
   },
   "relationships": [
     {
@@ -20,62 +20,97 @@
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-0"
+      "relatedSpdxElement": "SPDXRef-port-file-0"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-1"
+      "relatedSpdxElement": "SPDXRef-port-file-1"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-2"
+      "relatedSpdxElement": "SPDXRef-port-file-2"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-3"
+      "relatedSpdxElement": "SPDXRef-port-file-3"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-4"
+      "relatedSpdxElement": "SPDXRef-port-file-4"
+    },
+    {
+      "spdxElementId": "SPDXRef-port-file-4",
+      "relationshipType": "DEPENDENCY_MANIFEST_OF",
+      "relatedSpdxElement": "SPDXRef-port"
     },
     {
       "spdxElementId": "SPDXRef-binary",
-      "relationshipType": "GENERATED_FROM",
-      "relatedSpdxElement": "SPDXRef-port"
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-0"
     },
     {
-      "spdxElementId": "SPDXRef-file-0",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-1"
     },
     {
-      "spdxElementId": "SPDXRef-file-1",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-2"
     },
     {
-      "spdxElementId": "SPDXRef-file-2",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-3"
     },
     {
-      "spdxElementId": "SPDXRef-file-3",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-4"
     },
     {
-      "spdxElementId": "SPDXRef-file-4",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-5"
     },
     {
-      "spdxElementId": "SPDXRef-file-4",
-      "relationshipType": "DEPENDENCY_MANIFEST_OF",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-6"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-7"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-8"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-9"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-10"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-11"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-12"
     }
   ],
   "packages": [
@@ -84,7 +119,7 @@
       "SPDXID": "SPDXRef-port",
       "versionInfo": "2022-12-04#3",
       "downloadLocation": "git+https://github.com/microsoft/vcpkg@c3ae71738f88449ebcd781cef60d9a253fa091d4",
-      "licenseConcluded": "NOASSERTION",
+      "licenseConcluded": "LicenseRef-vcpkg-null",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "description": "Open Graphics Library (OpenGL)[3][4][5] is a cross-language, cross-platform application programming interface (API) for rendering 2D and 3D vector graphics.",
@@ -93,9 +128,9 @@
     {
       "name": "opengl:x86-windows",
       "SPDXID": "SPDXRef-binary",
-      "versionInfo": "44f81371a67263500cf67d9a36657c0dc5616bde2e299335c66a90c18d25557e",
+      "versionInfo": "308abf4fd744d7f0fdcf737c02b92cdbf7e7c475bb8b32fac4b93d0855e53c88",
       "downloadLocation": "NONE",
-      "licenseConcluded": "NOASSERTION",
+      "licenseConcluded": "LicenseRef-vcpkg-null",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "comment": "This is a binary package built by vcpkg."
@@ -104,7 +139,7 @@
   "files": [
     {
       "fileName": "./glu.pc.in",
-      "SPDXID": "SPDXRef-file-0",
+      "SPDXID": "SPDXRef-port-file-0",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -116,7 +151,7 @@
     },
     {
       "fileName": "./opengl.pc.in",
-      "SPDXID": "SPDXRef-file-1",
+      "SPDXID": "SPDXRef-port-file-1",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -128,7 +163,7 @@
     },
     {
       "fileName": "./portfile.cmake",
-      "SPDXID": "SPDXRef-file-2",
+      "SPDXID": "SPDXRef-port-file-2",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -140,7 +175,7 @@
     },
     {
       "fileName": "./usage",
-      "SPDXID": "SPDXRef-file-3",
+      "SPDXID": "SPDXRef-port-file-3",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -152,11 +187,167 @@
     },
     {
       "fileName": "./vcpkg.json",
-      "SPDXID": "SPDXRef-file-4",
+      "SPDXID": "SPDXRef-port-file-4",
       "checksums": [
         {
           "algorithm": "SHA256",
           "checksumValue": "220f239373c77aa668fb692ce1191013cb57d8c38881dfe154f74e14215e8c0f"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./BUILD_INFO",
+      "SPDXID": "SPDXRef-binary-file-0",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5e7f821ab4eb804deb535baa7b41edca682d0303cf21a91908c98d5c9a7dcf4d"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/lib/GlU32.Lib",
+      "SPDXID": "SPDXRef-binary-file-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1cc4d01dd76436aaec32f8da2617f28f05c2dcab7b48e49305c0f89e8154398c"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/lib/OpenGL32.Lib",
+      "SPDXID": "SPDXRef-binary-file-2",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "02d7adfb7d231009c62606b4436c8876c38e838a99b59676dc0ec4056e081b42"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/lib/pkgconfig/glu.pc",
+      "SPDXID": "SPDXRef-binary-file-3",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "8dce04503431c71b3e49705e5f7a28483f934005d1e754c994abd87e653ad7c1"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/lib/pkgconfig/opengl.pc",
+      "SPDXID": "SPDXRef-binary-file-4",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "86824a360e982c39b14ca17ac10e09830d478de1ce0e6b72ec276a871e6e1dbb"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/GL/gl.h",
+      "SPDXID": "SPDXRef-binary-file-5",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5a24c6fd7b416dd53b68a1c766c338ba2ee6f2b57a43ad7868bb5308d0e5fbb9"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/GL/glu.h",
+      "SPDXID": "SPDXRef-binary-file-6",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "db307251615fe0fc6c827e49b1d66de95a01c7b66f5bcc5924fae9b66bb10af6"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./lib/GlU32.Lib",
+      "SPDXID": "SPDXRef-binary-file-7",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1cc4d01dd76436aaec32f8da2617f28f05c2dcab7b48e49305c0f89e8154398c"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./lib/OpenGL32.Lib",
+      "SPDXID": "SPDXRef-binary-file-8",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "02d7adfb7d231009c62606b4436c8876c38e838a99b59676dc0ec4056e081b42"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./lib/pkgconfig/glu.pc",
+      "SPDXID": "SPDXRef-binary-file-9",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3c0a7cd2350e15c7c226dfae67605b32b87b261a518afe5c67dd4f7f58faac57"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./lib/pkgconfig/opengl.pc",
+      "SPDXID": "SPDXRef-binary-file-10",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "868b5e952afeffdf3cd9b06b5e564ece44fddd1db7b19214d74f2c88ede709f3"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/opengl/copyright",
+      "SPDXID": "SPDXRef-binary-file-11",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "222b59aa68905b150c26ece05550b48390ef40791ac9e13abbc194cdd60b5c54"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/opengl/usage",
+      "SPDXID": "SPDXRef-binary-file-12",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e89a9b1dc4f4af7ff9c5f91af4f6d8a0165958be547fbcd1b1a57e4765f5b13a"
         }
       ],
       "licenseConcluded": "NOASSERTION",

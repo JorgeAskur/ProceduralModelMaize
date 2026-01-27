@@ -26,7 +26,6 @@ using namespace std;
 #define M_PI 3.14159265358979323846
 #endif
 
-// --- GLOBALS ---
 static int   gWinW = 1280, gWinH = 860;
 static float gYaw = 30.f, gPitch = 18.f, gDist = 3.5f;
 static Vect3d gCamTarget = { 0.0f, 1.0f, 0.0f };
@@ -56,11 +55,10 @@ static char gTexPath[256] = "maize_leaf.png";
 static GLuint gTextureID = 0;
 static bool   gTextureOK = false;
 
-// Generator State
 static MaizeGenerator gGen;
 static bool gViewAverage = true;
 static int gBatchCount = 10;
-static char gOutputDir[256] = "C:/Users/jorge/Documents/Research Purdue/DigitalTwin/Sorghum/plants";
+static char gOutputDir[256] = "C:/Users/jorge/Documents/Research/MaizeProceduralModel/plants";
 
 static inline float clampf(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
 static inline float radiansf(float d) { return d * float(M_PI) / 180.f; }
@@ -168,8 +166,6 @@ static void drawGridAndAxes() {
 }
 
 static void RebuildFromGenerator() {
-    // If viewing average, we ignore variance (useMeansOnly = true)
-    // If viewing random preview, we use a random seed
     unsigned int seed = gViewAverage ? 1337 : rand();
     Maize::plant() = gGen.generate(seed, gViewAverage);
     Maize::rebuildGeometry();
@@ -181,7 +177,6 @@ static void display() {
     glViewport(0, 0, (GLsizei)io.DisplaySize.x, (GLsizei)io.DisplaySize.y);
     glClearColor(1.f, 1.f, 1.f, 1.f); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glEnable(GL_DEPTH_TEST);
 
-    // Camera
     glMatrixMode(GL_PROJECTION); glLoadIdentity();
     gluPerspective((GLdouble)gFovDeg, (GLdouble)io.DisplaySize.x / (GLdouble)io.DisplaySize.y, 0.1, 100.0);
     glMatrixMode(GL_MODELVIEW); glLoadIdentity();
@@ -212,11 +207,10 @@ static void display() {
     drawPlant();
     drawCtrlViz();
 
-    // --- UI ---
     ImGui::Begin("Maize Generator");
 
-    bool needRegen = false; // Re-run generator (overwrites manual changes)
-    bool needUpdate = false; // Just rebuild mesh (preserves manual changes)
+    bool needRegen = false;
+    bool needUpdate = false;
 
     ImGui::Text("Camera: Left Click=Rotate, WASD=Move, Scroll=Zoom");
 
@@ -266,7 +260,6 @@ static void display() {
             needRegen |= DistUI("Width Base", gGen.leafWidthBase, 0.02f, 0.2f, 0.05f);
             needRegen |= CurveUI("Width Curve", gGen.leafWidthCurve);
             ImGui::Separator();
-            // --- NEW PARAMS IN UI ---
             needRegen |= DistUI("Width Taper", gGen.widthTaper, 0.0f, 10.0f, 2.0f);
             ImGui::TreePop();
         }
@@ -275,7 +268,6 @@ static void display() {
             needRegen |= DistUI("Angle Base (deg)", gGen.leafAngleBase, 0.f, 90.f, 20.f);
             needRegen |= CurveUI("Angle Curve", gGen.leafAngleCurve);
             needRegen |= DistUI("Droopiness", gGen.droopinessBase, -80.f, 80.f, 10.f);
-            // --- NEW PARAMS IN UI ---
             needRegen |= DistUI("Leaf Twist (deg)", gGen.leafTwist, -180.f, 180.f, 45.f);
             ImGui::TreePop();
         }
@@ -285,11 +277,11 @@ static void display() {
             needRegen |= DistUI("Wave Freq", gGen.waveFreq, 0.f, 10.f, 5.f);
             needRegen |= DistUI("Sheath End", gGen.sheathEndAngle, 0.f, 2.f, 0.5f);
             needRegen |= DistUI("Sheath Open", gGen.sheathOpening, 0.f, 1.f, 0.5f);
+            needRegen |= ImGui::SliderFloat("Leaf Jitter", &gGen.leafJitterScale, 0.0f, 1.0f);
             ImGui::TreePop();
         }
     }
 
-    // --- RESTORED MANUAL OVERRIDES ---
     if (ImGui::CollapsingHeader("Manual Overrides")) {
         ImGui::TextWrapped("Select specific parts of the generated plant to tweak them manually.");
         auto& plant = Maize::plant();

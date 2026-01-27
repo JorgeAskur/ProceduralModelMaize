@@ -11,15 +11,11 @@
 #define M_PI 3.14159265358979323846
 #endif
 
-// --- HELPER FUNCTIONS ---
 static inline float clampf(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
 static inline float radiansf(float d) { return d * float(M_PI) / 180.f; }
 static inline Vect3d lerp_v3(const Vect3d& a, const Vect3d& b, float t) { return a * (1.f - t) + b * t; }
 
-static inline Vect3d lerp_color(const Vect3d& a, const Vect3d& b, float t) {
-    t = clampf(t, 0.f, 1.f);
-    return a * (1.f - t) + b * t;
-};
+static constexpr float kBladeBlendDistance = 0.15f;
 
 static float pseudoNoise(float x, float y) {
     int n = (int)(x * 57 + y * 131);
@@ -27,9 +23,7 @@ static float pseudoNoise(float x, float y) {
     return (1.0f - ((n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0f);
 }
 
-// Updated Color Function: Constant Color (Lighter Green)
 static Vect3d getColor(LeafGeom::GeomType type, float t_param) {
-    // Uniform Lighter Green for the whole plant
     return Vect3d(0.6f, 0.85f, 0.4f);
 };
 
@@ -105,25 +99,22 @@ namespace Maize {
         outOpening.push_back({ 0.0f, L.sheathEndAngle, 0 });
     }
 
-    // --- IMPROVED SPLINE GENERATION FOR SMOOTH TANGENTS ---
     void generateLeafSplines(const LeafDesc& L, float stemRadiusAtExit, std::vector<Vect3d>& outCenter, std::vector<Vect3d>& outLeft, std::vector<Vect3d>& outRight) {
         outCenter.clear(); outLeft.clear(); outRight.clear();
         if (L.splinePoints < 2) return;
 
-        // Initial Vector Calculation
-        // Instead of immediately using leafAngle, we start VERTICAL (Local Z) to match the sheath.
+        // Start vertical to match the sheath.
         Vect3d startDir(0.0f, 0.0f, 1.0f);
 
-        // Target Vector based on user angle (Local Y=Radial, Z=Up)
+        // Target direction based on leaf angle.
         float angleRad = radiansf(L.leafAngle);
 
         Vect3d targetDir(0.0f, std::cos(angleRad), std::sin(angleRad));
 
-        // P0 Calculation: Match Sheath Arc
+        // First control point follows the sheath arc.
         float halfAngle = (L.sheathEndAngle * M_PI) * 0.5f;
         outCenter.push_back({ 0.0f, stemRadiusAtExit, 0.0f });
 
-        // Base Nudge Application for P0
         float nudgeRadius = stemRadiusAtExit;
 
         float p0_lx = nudgeRadius * std::sin(-halfAngle);
@@ -139,26 +130,19 @@ namespace Maize {
         float gravityFactor = L.droopiness * 5.0f;
         float t_p1 = (L.splinePoints > 1) ? 1.0f / (float)(L.splinePoints - 1) : 1.0f;
 
-        // Direction State
         Vect3d currentDir = startDir;
 
         for (int i = 1; i < L.splinePoints; ++i) {
             float t = (float)i / (L.splinePoints - 1);
 
-            // --- TANGENT SMOOTHING START ---
-            // Blend from Vertical (startDir) to Target Angle (targetDir)
-            // CRITICAL FIX: Blend distance must match Geometry Blend (0.15f)
-            // This ensures the direction is fully set to 'leafAngle' exactly when the mesh becomes a blade.
-            float blendEnd = 0.15f;
+            // Blend direction from sheath to blade angle.
+            float blendEnd = kBladeBlendDistance;
             float t_blend = clampf(t / blendEnd, 0.f, 1.f);
 
-            // Smoothstep for nicer curve
             t_blend = t_blend * t_blend * (3.0f - 2.0f * t_blend);
 
             Vect3d baseDir = lerp_v3(startDir, targetDir, t_blend).GetNormalized();
-            // --- TANGENT SMOOTHING END ---
-
-            // Apply Gravity/Droopiness to the blended direction
+            // Apply droopiness rotation.
             float rotAmt = radiansf(gravityFactor * t);
             float cy = baseDir.y(), cz = baseDir.z();
             float newY = cy * std::cos(rotAmt) - cz * std::sin(rotAmt);
@@ -169,7 +153,6 @@ namespace Maize {
             currentPos = currentPos + currentDir * segmentLen;
             outCenter.push_back(currentPos);
 
-            // Widths
             float halfWidth = L.leafWidth * 0.5f;
             float current_halfWidth_x = halfWidth;
             float y_s = currentPos.y();
@@ -293,9 +276,7 @@ void MaizeModel::rebuildGeometry() {
                 return sheath_exit_pos + blade_x_axis * p_local.x() + blade_y_axis * p_local.z() + blade_z_axis * p_local.y();
                 };
 
-            // =========================================================
-            // PART 1: SHEATH (Open Cylinder)
-            // =========================================================
+            // Sheath (open cylinder).
             LeafGeom SheathG;
             SheathG.type = LeafGeom::GEOM_SHEATH;
 
@@ -335,18 +316,14 @@ void MaizeModel::rebuildGeometry() {
                     SheathG.pos[idx] = tiltP(SheathG.pos[idx]);
                     SheathG.col[idx] = getColor(LeafGeom::GEOM_SHEATH, s_sheath);
 
-                    // --- UV FIX FOR OBJ EXPORT ---
-                    // Normalize V to 0..1 range based on s_sheath.
-                    // Prevents texture repetition/wrapping issues in exported files.
+                    // Normalize UVs along the sheath length.
                     SheathG.uv[idx] = { u01, s_sheath };
                     SheathG.nrm[idx] = tiltP(offset.GetNormalized());
                 }
             }
             m_leafGeoms.push_back(std::move(SheathG));
 
-            // =========================================================
-            // PART 2: BLADE
-            // =========================================================
+            // Blade.
             LeafGeom BladeG;
             BladeG.type = LeafGeom::GEOM_BLADE;
 
@@ -357,9 +334,6 @@ void MaizeModel::rebuildGeometry() {
             BladeG.col.resize(BladeG.rows * BladeG.cols);
             BladeG.uv.resize(BladeG.rows * BladeG.cols);
             BladeG.nrm.resize(BladeG.rows * BladeG.cols);
-
-            float current_arc_len = sheath_world_len;
-            Vect3d prev_row_center_world = sheath_exit_pos;
 
             float openAngle = L.sheathEndAngle * M_PI;
             Vect3d stem_normal = rhat;
@@ -379,22 +353,17 @@ void MaizeModel::rebuildGeometry() {
                 Vect3d pC = bladeLocalToWorld(pC_local);
                 Vect3d pR = bladeLocalToWorld(pR_local);
 
-                // --- NEW GEOMETRIC BLEND LOGIC ---
-                // Instead of hard switch at i==0, blend from Cylinder (Arc) to Spline (Linear/V)
-                // SYNCED WITH SPLINE BLEND: Both must be 0.15f to ensure angle is met exactly at shape transition.
-                float blend_dist = 0.15f;
+                // Blend from sheath profile to blade profile.
+                float blend_dist = kBladeBlendDistance;
                 float t_shape = clampf(s_blade / blend_dist, 0.f, 1.f);
 
-                // Quadratic ease-in for smoother transition
                 t_shape = 1.0f - (1.0f - t_shape) * (1.0f - t_shape);
 
                 for (int j = 0; j < BladeG.cols; ++j) {
                     float u01 = (float)j / (float)(BladeG.cols - 1);
 
-                    // 1. Calculate Standard Spline Position (The "Blade" shape)
                     Vect3d p_spline = (u01 < 0.5f) ? lerp_v3(pL, pC, u01 * 2.f) : lerp_v3(pC, pR, (u01 - 0.5f) * 2.f);
 
-                    // Apply standard curvature/displacement to spline
                     float blend = clampf(s_blade * 4.0f, 0.f, 1.f);
                     float sagitta = global_radius * (1.0f - cos(openAngle * 0.5f));
                     float fromCenter = (u01 - 0.5f) * 2.0f;
@@ -409,32 +378,23 @@ void MaizeModel::rebuildGeometry() {
 
                     p_spline = p_spline + finalN * displacement;
 
-                    // 2. Calculate Ideal Cylinder Position (The "Sheath Extension" shape)
-                    // We project this around pC to ensure it follows the spine, even if bent
+                    // Sheath extension around the collar.
                     float angle = (u01 - 0.5f) * openAngle;
                     Vect3d offset = stem_normal * cos(angle) + stem_binormal * sin(angle);
 
-                    // Blend Source: Static cylinder cap at the connection point
                     Vect3d p_cylinder = sheath_center_pos + offset * final_radius_at_collar;
 
-                    // 3. Final Blend
                     Vect3d p_final = lerp_v3(p_cylinder, p_spline, t_shape);
 
                     int idx = i * BladeG.cols + j;
                     BladeG.pos[idx] = tiltP(p_final);
                     BladeG.col[idx] = getColor(LeafGeom::GEOM_BLADE, s_blade);
 
-                    // --- UV FIX FOR OBJ EXPORT ---
-                    // Normalize V to 0..1 range based on s_blade.
-                    // Prevents texture repetition/wrapping issues in exported files.
                     BladeG.uv[idx] = { u01, s_blade };
                 }
 
-                if (i > 0) current_arc_len += (pC - prev_row_center_world).Length();
-                prev_row_center_world = pC;
             }
 
-            // Normals
             for (int i = 0; i < BladeG.rows; ++i) {
                 for (int j = 0; j < BladeG.cols; ++j) {
                     int ip = std::min(BladeG.rows - 1, i + 1), im = std::max(0, i - 1);
@@ -445,7 +405,6 @@ void MaizeModel::rebuildGeometry() {
                 }
             }
 
-            // Viz
             auto transformBladeSplineForViz = [&](const std::vector<Vect3d>& local_ctrl) {
                 std::vector<Vect3d> world_ctrl;
                 for (const auto& p : local_ctrl) world_ctrl.push_back(tiltP(bladeLocalToWorld(p)));

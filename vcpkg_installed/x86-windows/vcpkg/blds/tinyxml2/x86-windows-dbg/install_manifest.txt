@@ -1,0 +1,8 @@
+C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml2_x86-windows/debug/lib/tinyxml2.lib
+C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml2_x86-windows/debug/bin/tinyxml2.dll
+C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml2_x86-windows/debug/lib/cmake/tinyxml2/tinyxml2-shared-targets.cmake
+C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml2_x86-windows/debug/lib/cmake/tinyxml2/tinyxml2-shared-targets-debug.cmake
+C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml2_x86-windows/debug/lib/cmake/tinyxml2/tinyxml2-config.cmake
+C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml2_x86-windows/debug/lib/cmake/tinyxml2/tinyxml2-config-version.cmake
+C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml2_x86-windows/debug/include/tinyxml2.h
+C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml2_x86-windows/debug/lib/pkgconfig/tinyxml2.pc

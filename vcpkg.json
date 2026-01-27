@@ -1,6 +1,6 @@
 {
   "dependencies": [
-    "tinyxml2",
-    "freeglut"
+    "freeglut",
+    "tinyxml2"
   ]
 }

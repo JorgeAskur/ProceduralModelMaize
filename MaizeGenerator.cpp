@@ -2,13 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
-#include <filesystem> // C++17 for directory creation
-
-// Helper to clamp values
-template <typename T>
-T clampVal(T val, T minVal, T maxVal) {
-    return (val < minVal) ? minVal : ((val > maxVal) ? maxVal : val);
-}
+#include <filesystem>
 
 PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     std::mt19937 gen(seed);
@@ -22,47 +16,62 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     mainTiller.azimuthNoise = 15.0f;
     mainTiller.randomSeed = seed;
 
-    // Integer counts need rounding
     float nLeavesFloat = numLeaves.get(gen, useMeansOnly);
     int nLeaves = (std::max)(3, (int)std::round(nLeavesFloat));
 
     float totalH = std::max(0.1f, height.get(gen, useMeansOnly));
 
+    float lenBasePlant = leafLengthBase.get(gen, useMeansOnly);
+    float widthBasePlant = leafWidthBase.get(gen, useMeansOnly);
+    float widthTaperPlant = widthTaper.get(gen, useMeansOnly);
+    float angleBasePlant = leafAngleBase.get(gen, useMeansOnly);
+    float leafTwistPlant = leafTwist.get(gen, useMeansOnly);
+    float droopinessPlant = droopinessBase.get(gen, useMeansOnly);
+    float waveAmpPlant = waveAmp.get(gen, useMeansOnly);
+    float waveFreqPlant = waveFreq.get(gen, useMeansOnly);
+    float sheathEndAnglePlant = sheathEndAngle.get(gen, useMeansOnly);
+    float sheathOpeningPlant = sheathOpening.get(gen, useMeansOnly);
+
+    auto applyLeafJitter = [&](float base, const Dist& dist) {
+        if (useMeansOnly || dist.stdDev <= 0.0001f || leafJitterScale <= 0.0f) return base;
+        std::normal_distribution<float> jitter(0.0f, dist.stdDev * leafJitterScale);
+        return base + jitter(gen);
+        };
+
     for (int i = 0; i < nLeaves; ++i) {
-        float t = (float)i / (float)(nLeaves - 1); // 0..1 height factor
+        float t = (float)i / (float)(nLeaves - 1);
 
         LeafDesc L;
         L.id = i;
-        L.distance = totalH / (float)nLeaves; // Even spacing
+        L.distance = totalH / (float)nLeaves;
 
-        // Apply Stats
-        float lenBase = leafLengthBase.get(gen, useMeansOnly);
+        float lenBase = applyLeafJitter(lenBasePlant, leafLengthBase);
         L.leafLength = (std::max)(0.1f, lenBase * leafLengthCurve.get(t));
 
-        float widthBase = leafWidthBase.get(gen, useMeansOnly);
+        float widthBase = applyLeafJitter(widthBasePlant, leafWidthBase);
         L.leafWidth = (std::max)(0.01f, widthBase * leafWidthCurve.get(t));
 
-        // New Params
-        L.widthTaper = (std::max)(0.1f, widthTaper.get(gen, useMeansOnly));
+        float widthTaperValue = applyLeafJitter(widthTaperPlant, widthTaper);
+        L.widthTaper = (std::max)(0.1f, widthTaperValue);
 
-        float angleBase = leafAngleBase.get(gen, useMeansOnly);
+        float angleBase = applyLeafJitter(angleBasePlant, leafAngleBase);
         L.leafAngle = angleBase * leafAngleCurve.get(t);
 
-        L.leafTwist = leafTwist.get(gen, useMeansOnly);
+        L.leafTwist = applyLeafJitter(leafTwistPlant, leafTwist);
 
-        L.droopiness = droopinessBase.get(gen, useMeansOnly);
+        L.droopiness = applyLeafJitter(droopinessPlant, droopinessBase);
 
-        // Defaults
         L.splinePoints = 40;
 
-        // Noise
-        L.waveLAmp = (std::max)(0.f, waveAmp.get(gen, useMeansOnly));
-        L.waveLFreq = (std::max)(1.f, waveFreq.get(gen, useMeansOnly));
+        float waveAmpValue = applyLeafJitter(waveAmpPlant, waveAmp);
+        float waveFreqValue = applyLeafJitter(waveFreqPlant, waveFreq);
+        L.waveLAmp = (std::max)(0.f, waveAmpValue);
+        L.waveLFreq = (std::max)(1.f, waveFreqValue);
         L.waveRAmp = L.waveLAmp;
         L.waveRFreq = L.waveLFreq;
 
-        L.sheathEndAngle = sheathEndAngle.get(gen, useMeansOnly);
-        L.sheathOpeningStart = sheathOpening.get(gen, useMeansOnly);
+        L.sheathEndAngle = applyLeafJitter(sheathEndAnglePlant, sheathEndAngle);
+        L.sheathOpeningStart = applyLeafJitter(sheathOpeningPlant, sheathOpening);
 
         mainTiller.leaves.push_back(L);
     }
@@ -71,11 +80,10 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
 }
 
 void MaizeGenerator::generateBatch(int count, const std::string& outputDir, const std::string& texPath) {
-    // std::filesystem::create_directories(outputDir); 
     std::random_device rd;
     for (int i = 0; i < count; ++i) {
         unsigned int seed = rd();
-        PlantDesc p = generate(seed, false); // Use Variance
+        PlantDesc p = generate(seed, false);
         std::string baseName = outputDir + "/plant_" + std::to_string(i);
         Maize::GeneratePlant(p, baseName, texPath);
         std::cout << "Generated " << baseName << ".obj" << std::endl;

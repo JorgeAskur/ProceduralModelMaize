@@ -32,32 +32,34 @@ class MaizeGenerator {
 public:
     // Tiller Parameters
     Dist height = { 2.0f, 0.2f };
-    Dist stemRadius = { 0.025f, 0.002f };
-    Dist numLeaves = { 12.0f, 1.0f };
+    Dist stemRadius = { 0.02f, 0.002f };
+    Dist numLeaves = { 8.0f, 1.0f };
 
     // Leaf Parameters
-    Dist leafLengthBase = { 0.8f, 0.1f };
-    Curve leafLengthCurve = { 0.5f, 1.0f };
+    Dist leafLengthBase = { 0.4f, 0.1f };
+    Curve leafLengthCurve = { 1.2f, 1.0f };
 
     Dist leafWidthBase = { 0.1f, 0.01f };
-    Curve leafWidthCurve = { 1.0f, 0.7f };
+    Curve leafWidthCurve = { 1.0f, 1.0f };
 
-    Dist widthTaper = { 1.0f, 0.1f }; // NEW
+    Dist widthTaper = { 5.0f, 0.1f }; // NEW
 
     Dist leafAngleBase = { 45.0f, 5.0f };
-    Curve leafAngleCurve = { 1.0f, 0.5f };
+    Curve leafAngleCurve = { 0.80f, 1.5f };
 
-    Dist leafTwist = { 0.0f, 10.0f }; // NEW (Degrees)
+    Dist leafTwist = { 10.0f, 10.0f }; // NEW (Degrees)
 
-    Dist droopinessBase = { 0.5f, 0.1f };
+    Dist droopinessBase = { -20.0f, 5.f };
 
     // Noise / Organic Feel
     Dist waveAmp = { 0.01f, 0.005f };
     Dist waveFreq = { 5.0f, 1.0f };
 
     // Sheath
-    Dist sheathEndAngle = { 2.0f, 0.1f };
-    Dist sheathOpening = { 0.0f, 0.1f };
+    Dist sheathEndAngle = { 1.50f, 0.1f };
+    Dist sheathOpening = { 0.90f, 0.1f };
+
+    float leafJitterScale = 0.2f;
 
     // Generates a single plant description
     // If useMeansOnly is true, stdDev is ignored (creates the "Average Plant")

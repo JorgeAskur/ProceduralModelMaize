@@ -1,0 +1,10 @@
+prefix=C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml2_x86-windows
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: TinyXML2
+Description: simple, small, C++ XML parser
+Version: 9.0.0
+Libs: -L${libdir} -ltinyxml2
+Cflags: -I${includedir}
