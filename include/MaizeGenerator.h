@@ -50,10 +50,12 @@ public:
     Dist leafTwist = { 10.0f, 10.0f }; // NEW (Degrees)
 
     Dist droopinessBase = { -20.0f, 5.f };
+    Curve droopinessCurve = { 1.0f, 1.0f };
 
     // Noise / Organic Feel
     Dist waveAmp = { 0.01f, 0.005f };
-    Dist waveFreq = { 5.0f, 1.0f };
+    Dist waveFreq = { 8.0f, 2.0f };
+    Dist wavePhaseShift = { 0.0f, 1.0f };
 
     // Sheath
     Dist sheathEndAngle = { 1.50f, 0.1f };

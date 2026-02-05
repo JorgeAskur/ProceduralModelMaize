@@ -268,13 +268,15 @@ static void display() {
             needRegen |= DistUI("Angle Base (deg)", gGen.leafAngleBase, 0.f, 90.f, 20.f);
             needRegen |= CurveUI("Angle Curve", gGen.leafAngleCurve);
             needRegen |= DistUI("Droopiness", gGen.droopinessBase, -80.f, 80.f, 10.f);
+            needRegen |= CurveUI("Droopiness Curve", gGen.droopinessCurve);
             needRegen |= DistUI("Leaf Twist (deg)", gGen.leafTwist, -180.f, 180.f, 45.f);
             ImGui::TreePop();
         }
 
         if (ImGui::TreeNode("Details")) {
             needRegen |= DistUI("Wave Amp", gGen.waveAmp, 0.f, 0.05f, 0.02f);
-            needRegen |= DistUI("Wave Freq", gGen.waveFreq, 0.f, 10.f, 5.f);
+            needRegen |= DistUI("Wave Freq", gGen.waveFreq, 0.f, 40.f, 10.f);
+            needRegen |= DistUI("Wave Phase", gGen.wavePhaseShift, -6.283f, 6.283f, 3.1415f);
             needRegen |= DistUI("Sheath End", gGen.sheathEndAngle, 0.f, 2.f, 0.5f);
             needRegen |= DistUI("Sheath Open", gGen.sheathOpening, 0.f, 1.f, 0.5f);
             needRegen |= ImGui::SliderFloat("Leaf Jitter", &gGen.leafJitterScale, 0.0f, 1.0f);
@@ -313,9 +315,11 @@ static void display() {
 
                 ImGui::Text("Waves");
                 needUpdate |= ImGui::SliderFloat("L Amp", &L.waveLAmp, 0.f, 0.05f);
-                needUpdate |= ImGui::SliderFloat("L Freq", &L.waveLFreq, 0.f, 10.f);
+                needUpdate |= ImGui::SliderFloat("L Freq", &L.waveLFreq, 0.f, 20.f);
+                needUpdate |= ImGui::SliderFloat("L Phase", &L.waveLPhase, -6.283f, 6.283f);
                 needUpdate |= ImGui::SliderFloat("R Amp", &L.waveRAmp, 0.f, 0.05f);
-                needUpdate |= ImGui::SliderFloat("R Freq", &L.waveRFreq, 0.f, 10.f);
+                needUpdate |= ImGui::SliderFloat("R Freq", &L.waveRFreq, 0.f, 20.f);
+                needUpdate |= ImGui::SliderFloat("R Phase", &L.waveRPhase, -6.283f, 6.283f);
             }
         }
     }

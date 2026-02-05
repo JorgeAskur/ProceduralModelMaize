@@ -9,28 +9,40 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     PlantDesc plant;
     plant.species = "Maize_Procedural";
 
+    float plantZ = 0.0f;
+    if (!useMeansOnly) {
+        std::normal_distribution<float> zDist(0.0f, 1.0f);
+        plantZ = zDist(gen);
+    }
+
+    auto sampleFromZ = [&](const Dist& dist) {
+        if (useMeansOnly || dist.stdDev <= 0.0001f) return dist.mean;
+        return dist.mean + dist.stdDev * plantZ;
+        };
+
     TillerDesc mainTiller;
     mainTiller.type = "main";
-    mainTiller.radius = std::max(0.005f, stemRadius.get(gen, useMeansOnly));
+    mainTiller.radius = std::max(0.005f, sampleFromZ(stemRadius));
     mainTiller.azimuthDeg = 180.0f;
     mainTiller.azimuthNoise = 15.0f;
     mainTiller.randomSeed = seed;
 
-    float nLeavesFloat = numLeaves.get(gen, useMeansOnly);
+    float nLeavesFloat = sampleFromZ(numLeaves);
     int nLeaves = (std::max)(3, (int)std::round(nLeavesFloat));
 
-    float totalH = std::max(0.1f, height.get(gen, useMeansOnly));
+    float totalH = std::max(0.1f, sampleFromZ(height));
 
-    float lenBasePlant = leafLengthBase.get(gen, useMeansOnly);
-    float widthBasePlant = leafWidthBase.get(gen, useMeansOnly);
-    float widthTaperPlant = widthTaper.get(gen, useMeansOnly);
-    float angleBasePlant = leafAngleBase.get(gen, useMeansOnly);
-    float leafTwistPlant = leafTwist.get(gen, useMeansOnly);
-    float droopinessPlant = droopinessBase.get(gen, useMeansOnly);
-    float waveAmpPlant = waveAmp.get(gen, useMeansOnly);
-    float waveFreqPlant = waveFreq.get(gen, useMeansOnly);
-    float sheathEndAnglePlant = sheathEndAngle.get(gen, useMeansOnly);
-    float sheathOpeningPlant = sheathOpening.get(gen, useMeansOnly);
+    float lenBasePlant = sampleFromZ(leafLengthBase);
+    float widthBasePlant = sampleFromZ(leafWidthBase);
+    float widthTaperPlant = sampleFromZ(widthTaper);
+    float angleBasePlant = sampleFromZ(leafAngleBase);
+    float leafTwistPlant = sampleFromZ(leafTwist);
+    float droopinessPlant = sampleFromZ(droopinessBase);
+    float waveAmpPlant = sampleFromZ(waveAmp);
+    float waveFreqPlant = sampleFromZ(waveFreq);
+	float wavePhaseShiftPlant = sampleFromZ(wavePhaseShift);
+    float sheathEndAnglePlant = sampleFromZ(sheathEndAngle);
+    float sheathOpeningPlant = sampleFromZ(sheathOpening);
 
     auto applyLeafJitter = [&](float base, const Dist& dist) {
         if (useMeansOnly || dist.stdDev <= 0.0001f || leafJitterScale <= 0.0f) return base;
@@ -59,16 +71,19 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
 
         L.leafTwist = applyLeafJitter(leafTwistPlant, leafTwist);
 
-        L.droopiness = applyLeafJitter(droopinessPlant, droopinessBase);
+        L.droopiness = applyLeafJitter(droopinessPlant, droopinessBase) * droopinessCurve.get(t);
 
         L.splinePoints = 40;
 
         float waveAmpValue = applyLeafJitter(waveAmpPlant, waveAmp);
         float waveFreqValue = applyLeafJitter(waveFreqPlant, waveFreq);
+        float wavePhaseValue = applyLeafJitter(wavePhaseShiftPlant, wavePhaseShift);
         L.waveLAmp = (std::max)(0.f, waveAmpValue);
         L.waveLFreq = (std::max)(1.f, waveFreqValue);
+        L.waveLPhase = wavePhaseValue;
         L.waveRAmp = L.waveLAmp;
         L.waveRFreq = L.waveLFreq;
+		L.waveRPhase = wavePhaseValue + 3.1415f; // Offset by pi for right side
 
         L.sheathEndAngle = applyLeafJitter(sheathEndAnglePlant, sheathEndAngle);
         L.sheathOpeningStart = applyLeafJitter(sheathOpeningPlant, sheathOpening);

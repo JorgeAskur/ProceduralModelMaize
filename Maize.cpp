@@ -15,12 +15,9 @@ static inline float clampf(float x, float a, float b) { return x < a ? a : (x > 
 static inline float radiansf(float d) { return d * float(M_PI) / 180.f; }
 static inline Vect3d lerp_v3(const Vect3d& a, const Vect3d& b, float t) { return a * (1.f - t) + b * t; }
 
-static constexpr float kBladeBlendDistance = 0.15f;
 
 static float pseudoNoise(float x, float y) {
-    int n = (int)(x * 57 + y * 131);
-    n = (n << 13) ^ n;
-    return (1.0f - ((n * (n * n * 15731 + 789221) + 1376312589) & 0x7fffffff) / 1073741824.0f);
+    return std::sin(x + y);
 }
 
 static Vect3d getColor(LeafGeom::GeomType type, float t_param) {
@@ -95,8 +92,8 @@ namespace Maize {
 
     void generateOpeningSpline(const LeafDesc& L, std::vector<Vect3d>& outOpening) {
         outOpening.clear();
-        outOpening.push_back({ 0.0f, 2.0f, 0 });
-        outOpening.push_back({ 0.0f, L.sheathEndAngle, 0 });
+        outOpening.push_back({ 0.0f, 2.0f, 0.0f });
+        outOpening.push_back({ 0.0f, L.sheathEndAngle, 0.0f });
     }
 
     void generateLeafSplines(const LeafDesc& L, float stemRadiusAtExit, std::vector<Vect3d>& outCenter, std::vector<Vect3d>& outLeft, std::vector<Vect3d>& outRight) {
@@ -132,28 +129,77 @@ namespace Maize {
 
         Vect3d currentDir = startDir;
 
-        for (int i = 1; i < L.splinePoints; ++i) {
+        const int extraCtrlPoints = 2;
+        const bool insertExtra = L.splinePoints > 2;
+        float halfWidth = L.leafWidth * 0.5f;
+
+        float t_first = (L.splinePoints > 1) ? 1.0f / (L.splinePoints - 1) : 1.0f;
+        float blendEnd = (stemRadiusAtExit * 2.0f) / std::max(L.leafLength, 1e-6f);
+        blendEnd = clampf(blendEnd, 0.001f, 1.0f);
+        float t_blend_first = clampf(t_first / blendEnd, 0.f, 1.f);
+        t_blend_first = t_blend_first * t_blend_first * (3.0f - 2.0f * t_blend_first);
+        Vect3d baseDirFirst = lerp_v3(startDir, targetDir, t_blend_first).GetNormalized();
+        float droopinessFactorFirst = t_first * t_first;
+        float rotAmtFirst = radiansf(gravityFactor * droopinessFactorFirst);
+        float cyFirst = baseDirFirst.y(), czFirst = baseDirFirst.z();
+        float newYFirst = cyFirst * std::cos(rotAmtFirst) - czFirst * std::sin(rotAmtFirst);
+        float newZFirst = cyFirst * std::sin(rotAmtFirst) + czFirst * std::cos(rotAmtFirst);
+        Vect3d firstDir = baseDirFirst;
+        firstDir.SetY(newYFirst); firstDir.SetZ(newZFirst);
+        firstDir = firstDir.GetNormalized();
+        Vect3d firstPos = currentPos + firstDir * segmentLen;
+
+        if (insertExtra) {
+            for (int k = 1; k <= extraCtrlPoints; ++k) {
+                float t_seg = (float)k / (float)(extraCtrlPoints + 1);
+                Vect3d interpPos = lerp_v3(currentPos, firstPos, t_seg);
+                float target_x_left = -halfWidth;
+                float target_x_right = halfWidth;
+                float blended_x_left = lerp_v3(Vect3d(p0_lx, 0, 0), Vect3d(target_x_left, 0, 0), t_seg).x();
+                float blended_x_right = lerp_v3(Vect3d(p0_rx, 0, 0), Vect3d(target_x_right, 0, 0), t_seg).x();
+                float y_seg = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, interpPos.y(), 0), t_seg).y();
+                outCenter.push_back(interpPos);
+                outLeft.push_back({ blended_x_left, y_seg, interpPos.z() });
+                outRight.push_back({ blended_x_right, y_seg, interpPos.z() });
+            }
+        }
+
+        currentDir = firstDir;
+        currentPos = firstPos;
+        outCenter.push_back(currentPos);
+        {
+            float t_seg = 1.0f;
+            float target_x_left = -halfWidth;
+            float target_x_right = halfWidth;
+            float blended_x_left = lerp_v3(Vect3d(p0_lx, 0, 0), Vect3d(target_x_left, 0, 0), t_seg).x();
+            float blended_x_right = lerp_v3(Vect3d(p0_rx, 0, 0), Vect3d(target_x_right, 0, 0), t_seg).x();
+            float y_seg = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, currentPos.y(), 0), t_seg).y();
+            outLeft.push_back({ blended_x_left, y_seg, currentPos.z() });
+            outRight.push_back({ blended_x_right, y_seg, currentPos.z() });
+        }
+
+        for (int i = 2; i < L.splinePoints; ++i) {
             float t = (float)i / (L.splinePoints - 1);
 
             // Blend direction from sheath to blade angle.
-            float blendEnd = kBladeBlendDistance;
             float t_blend = clampf(t / blendEnd, 0.f, 1.f);
 
             t_blend = t_blend * t_blend * (3.0f - 2.0f * t_blend);
 
             Vect3d baseDir = lerp_v3(startDir, targetDir, t_blend).GetNormalized();
-            // Apply droopiness rotation.
-            float rotAmt = radiansf(gravityFactor * t);
+            float droopinessFactor = t * t;
+            float rotAmt = radiansf(gravityFactor * droopinessFactor);
             float cy = baseDir.y(), cz = baseDir.z();
             float newY = cy * std::cos(rotAmt) - cz * std::sin(rotAmt);
             float newZ = cy * std::sin(rotAmt) + cz * std::cos(rotAmt);
-            currentDir.SetY(newY); currentDir.SetZ(newZ);
-            currentDir = currentDir.GetNormalized();
+            Vect3d targetStepDir = baseDir;
+            targetStepDir.SetY(newY); targetStepDir.SetZ(newZ);
+            targetStepDir = targetStepDir.GetNormalized();
+            currentDir = lerp_v3(currentDir, targetStepDir, 0.5f).GetNormalized();
 
             currentPos = currentPos + currentDir * segmentLen;
             outCenter.push_back(currentPos);
 
-            float halfWidth = L.leafWidth * 0.5f;
             float current_halfWidth_x = halfWidth;
             float y_s = currentPos.y();
             float z_s = currentPos.z();
@@ -180,8 +226,8 @@ namespace Maize {
                 if (t > 0.8f) tipMask = (1.0f - t) / 0.2f;
                 else if (t < 0.1f) tipMask = t / 0.1f;
 
-                if (L.waveLAmp > 0.0f) noiseL = pseudoNoise(t * L.waveLFreq, (float)L.id) * L.waveLAmp * tipMask;
-                if (L.waveRAmp > 0.0f) noiseR = pseudoNoise(t * L.waveRFreq, (float)L.id + 100.0f) * L.waveRAmp * tipMask;
+                if (L.waveLAmp > 0.0f) noiseL = pseudoNoise(t * L.waveLFreq, (float)L.id + L.waveLPhase) * L.waveLAmp * tipMask;
+                if (L.waveRAmp > 0.0f) noiseR = pseudoNoise(t * L.waveRFreq, (float)L.id + 100.0f + L.waveRPhase) * L.waveRAmp * tipMask;
 
                 outLeft.push_back({ -current_halfWidth_x, y_s, z_s + noiseL });
                 outRight.push_back({ current_halfWidth_x, y_s, z_s + noiseR });
@@ -343,6 +389,12 @@ void MaizeModel::rebuildGeometry() {
             Vect3d openingParamsLast = localCtrlOpening[1];
             float final_radius_at_collar = global_radius + openingParamsLast.x();
 
+            float blendLength = std::max(0.001f, final_radius_at_collar * 2.0f);
+            float approxRowLen = L.leafLength / (float)std::max(1, BladeG.rows - 1);
+            blendLength = std::max(blendLength, approxRowLen * 3.0f);
+            float arcLen = 0.0f;
+            Vect3d prevCenter = sheath_exit_pos;
+
             for (int i = 0; i < BladeG.rows; ++i) {
                 float s_blade = (float)i / (float)(BladeG.rows - 1);
 
@@ -353,9 +405,11 @@ void MaizeModel::rebuildGeometry() {
                 Vect3d pC = bladeLocalToWorld(pC_local);
                 Vect3d pR = bladeLocalToWorld(pR_local);
 
-                // Blend from sheath profile to blade profile.
-                float blend_dist = kBladeBlendDistance;
-                float t_shape = clampf(s_blade / blend_dist, 0.f, 1.f);
+                if (i > 0) {
+                    arcLen += (pC - prevCenter).Length();
+                }
+                prevCenter = pC;
+                float t_shape = clampf(arcLen / blendLength, 0.f, 1.f);
 
                 t_shape = 1.0f - (1.0f - t_shape) * (1.0f - t_shape);
 
@@ -364,7 +418,7 @@ void MaizeModel::rebuildGeometry() {
 
                     Vect3d p_spline = (u01 < 0.5f) ? lerp_v3(pL, pC, u01 * 2.f) : lerp_v3(pC, pR, (u01 - 0.5f) * 2.f);
 
-                    float blend = clampf(s_blade * 4.0f, 0.f, 1.f);
+                    float blend = t_shape;
                     float sagitta = global_radius * (1.0f - cos(openAngle * 0.5f));
                     float fromCenter = (u01 - 0.5f) * 2.0f;
                     float curveAmt = fromCenter * fromCenter;

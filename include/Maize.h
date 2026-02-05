@@ -18,8 +18,10 @@ struct LeafDesc {
     float leafTwist = 0.0f;
     float waveLAmp = 0.0f;
     float waveLFreq = 0.0f;
+    float waveLPhase = 0.0f;
     float waveRAmp = 0.0f;
     float waveRFreq = 0.0f;
+    float waveRPhase = 0.0f;
     float sheathEndAngle = 2.0f;
     float sheathOpeningStart = 0.0f;
 };

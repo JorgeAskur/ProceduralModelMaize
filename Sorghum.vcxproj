@@ -67,6 +67,7 @@
     <ProjectGuid>{695a72e9-7cde-42e8-8a17-021448984387}</ProjectGuid>
     <RootNamespace>Sorghum</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Maize</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
