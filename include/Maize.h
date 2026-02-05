@@ -13,6 +13,7 @@ struct LeafDesc {
     float leafWidth = 0.08f;
     float leafAngle = 45.0f;
     float droopiness = 0.5f;
+    float stemInclinationDeg = 0.0f;
     int   splinePoints = 20;
     float widthTaper = 1.0f;
     float leafTwist = 0.0f;
@@ -24,6 +25,10 @@ struct LeafDesc {
     float waveRPhase = 0.0f;
     float sheathEndAngle = 2.0f;
     float sheathOpeningStart = 0.0f;
+    bool useCtrlOverrides = false;
+    std::vector<Vect3d> ctrlCenterOverride;
+    std::vector<Vect3d> ctrlLeftOverride;
+    std::vector<Vect3d> ctrlRightOverride;
 };
 
 struct TillerDesc {

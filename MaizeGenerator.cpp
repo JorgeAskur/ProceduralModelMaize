@@ -38,6 +38,7 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     float angleBasePlant = sampleFromZ(leafAngleBase);
     float leafTwistPlant = sampleFromZ(leafTwist);
     float droopinessPlant = sampleFromZ(droopinessBase);
+    float stemInclinationPlant = sampleFromZ(stemInclination);
     float waveAmpPlant = sampleFromZ(waveAmp);
     float waveFreqPlant = sampleFromZ(waveFreq);
 	float wavePhaseShiftPlant = sampleFromZ(wavePhaseShift);
@@ -58,20 +59,22 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
         L.distance = totalH / (float)nLeaves;
 
         float lenBase = applyLeafJitter(lenBasePlant, leafLengthBase);
-        L.leafLength = (std::max)(0.1f, lenBase * leafLengthCurve.get(t));
+        L.leafLength = (std::max)(0.1f, lenBase);
 
         float widthBase = applyLeafJitter(widthBasePlant, leafWidthBase);
-        L.leafWidth = (std::max)(0.01f, widthBase * leafWidthCurve.get(t));
+        L.leafWidth = (std::max)(0.01f, widthBase);
 
         float widthTaperValue = applyLeafJitter(widthTaperPlant, widthTaper);
         L.widthTaper = (std::max)(0.1f, widthTaperValue);
 
         float angleBase = applyLeafJitter(angleBasePlant, leafAngleBase);
-        L.leafAngle = angleBase * leafAngleCurve.get(t);
+        L.leafAngle = angleBase;
 
         L.leafTwist = applyLeafJitter(leafTwistPlant, leafTwist);
 
-        L.droopiness = applyLeafJitter(droopinessPlant, droopinessBase) * droopinessCurve.get(t);
+        L.droopiness = applyLeafJitter(droopinessPlant, droopinessBase);
+
+        L.stemInclinationDeg = applyLeafJitter(stemInclinationPlant, stemInclination);
 
         L.splinePoints = 40;
 

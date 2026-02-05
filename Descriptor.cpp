@@ -85,6 +85,7 @@ namespace Descriptor {
                 leaf_elem->SetAttribute("leafWidth", L.leafWidth);
                 leaf_elem->SetAttribute("leafAngle", L.leafAngle);
                 leaf_elem->SetAttribute("droopiness", L.droopiness);
+                leaf_elem->SetAttribute("stemInclinationDeg", L.stemInclinationDeg);
                 leaf_elem->SetAttribute("splinePoints", L.splinePoints);
                 leaf_elem->SetAttribute("widthTaper", L.widthTaper);
                 leaf_elem->SetAttribute("leafTwist", L.leafTwist);
@@ -92,12 +93,21 @@ namespace Descriptor {
                 // --- ADDED ---
                 leaf_elem->SetAttribute("waveLAmp", L.waveLAmp);
                 leaf_elem->SetAttribute("waveLFreq", L.waveLFreq);
+                leaf_elem->SetAttribute("waveLPhase", L.waveLPhase);
                 leaf_elem->SetAttribute("waveRAmp", L.waveRAmp);
                 leaf_elem->SetAttribute("waveRFreq", L.waveRFreq);
+                leaf_elem->SetAttribute("waveRPhase", L.waveRPhase);
 
                 // --- NEW ---
                 leaf_elem->SetAttribute("sheathEndAngle", L.sheathEndAngle);
                 leaf_elem->SetAttribute("sheathOpeningStart", L.sheathOpeningStart);
+
+                if (L.useCtrlOverrides && !L.ctrlCenterOverride.empty()) {
+                    leaf_elem->SetAttribute("useCtrlOverrides", 1);
+                    saveSplineAsAttributes(leaf_elem, "ctrlCenter", L.ctrlCenterOverride);
+                    saveSplineAsAttributes(leaf_elem, "ctrlLeft", L.ctrlLeftOverride);
+                    saveSplineAsAttributes(leaf_elem, "ctrlRight", L.ctrlRightOverride);
+                }
 
                 leaves_elem->InsertEndChild(leaf_elem);
             }
@@ -139,6 +149,7 @@ namespace Descriptor {
                     L.leafWidth = 0.08f;
                     L.leafAngle = 45.0f;
                     L.droopiness = 0.5f;
+                    L.stemInclinationDeg = 0.0f;
                     L.splinePoints = 4; // Default
                     L.widthTaper = 1.0f;
                     L.leafTwist = 0.0f;
@@ -146,8 +157,10 @@ namespace Descriptor {
                     // --- ADDED ---
                     L.waveLAmp = 0.0f;
                     L.waveLFreq = 0.0f;
+                    L.waveLPhase = 0.0f;
                     L.waveRAmp = 0.0f;
                     L.waveRFreq = 0.0f;
+                    L.waveRPhase = 0.0f;
 
                     // --- NEW ---
                     L.sheathEndAngle = 2.0f;
@@ -158,6 +171,7 @@ namespace Descriptor {
                     lf->QueryFloatAttribute("leafWidth", &L.leafWidth);
                     lf->QueryFloatAttribute("leafAngle", &L.leafAngle);
                     lf->QueryFloatAttribute("droopiness", &L.droopiness);
+                    lf->QueryFloatAttribute("stemInclinationDeg", &L.stemInclinationDeg);
                     lf->QueryIntAttribute("splinePoints", &L.splinePoints);
                     lf->QueryFloatAttribute("widthTaper", &L.widthTaper);
                     lf->QueryFloatAttribute("leafTwist", &L.leafTwist);
@@ -165,12 +179,23 @@ namespace Descriptor {
                     // --- ADDED ---
                     lf->QueryFloatAttribute("waveLAmp", &L.waveLAmp);
                     lf->QueryFloatAttribute("waveLFreq", &L.waveLFreq);
+                    lf->QueryFloatAttribute("waveLPhase", &L.waveLPhase);
                     lf->QueryFloatAttribute("waveRAmp", &L.waveRAmp);
                     lf->QueryFloatAttribute("waveRFreq", &L.waveRFreq);
+                    lf->QueryFloatAttribute("waveRPhase", &L.waveRPhase);
 
                     // --- NEW ---
                     lf->QueryFloatAttribute("sheathEndAngle", &L.sheathEndAngle);
                     lf->QueryFloatAttribute("sheathOpeningStart", &L.sheathOpeningStart);
+
+                    int useOverrides = 0;
+                    lf->QueryIntAttribute("useCtrlOverrides", &useOverrides);
+                    if (useOverrides) {
+                        loadSplineFromAttributes(lf, "ctrlCenter", L.ctrlCenterOverride);
+                        loadSplineFromAttributes(lf, "ctrlLeft", L.ctrlLeftOverride);
+                        loadSplineFromAttributes(lf, "ctrlRight", L.ctrlRightOverride);
+                        L.useCtrlOverrides = !L.ctrlCenterOverride.empty();
+                    }
 
                     // Clamp it just in case
                     L.splinePoints = std::max(4, std::min(L.splinePoints, 40));

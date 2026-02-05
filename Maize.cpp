@@ -100,8 +100,9 @@ namespace Maize {
         outCenter.clear(); outLeft.clear(); outRight.clear();
         if (L.splinePoints < 2) return;
 
-        // Start vertical to match the sheath.
-        Vect3d startDir(0.0f, 0.0f, 1.0f);
+        // Start parallel to match the sheath.
+        float inclinationRad = radiansf(90.0f);
+        Vect3d startDir(0.0f, std::sin(inclinationRad), std::cos(inclinationRad));
 
         // Target direction based on leaf angle.
         float angleRad = radiansf(L.leafAngle);
@@ -234,6 +235,13 @@ namespace Maize {
             }
         }
 
+        if (L.useCtrlOverrides && !L.ctrlCenterOverride.empty() && L.ctrlCenterOverride.size() == L.ctrlLeftOverride.size() && L.ctrlCenterOverride.size() == L.ctrlRightOverride.size()) {
+            outCenter = L.ctrlCenterOverride;
+            outLeft = L.ctrlLeftOverride;
+            outRight = L.ctrlRightOverride;
+            return;
+        }
+
         outLeft.back().SetX(0.0f); outLeft.back().SetZ(outCenter.back().z());
         outRight.back().SetX(0.0f); outRight.back().SetZ(outCenter.back().z());
     }
@@ -274,8 +282,13 @@ void MaizeModel::rebuildGeometry() {
             yAt.push_back(current_y);
         }
 
+        float cumulativeInclinationDeg = 0.0f;
+
         for (size_t li = 0; li < td.leaves.size(); ++li) {
             const auto& L = td.leaves[li];
+            cumulativeInclinationDeg += L.stemInclinationDeg;
+            LeafDesc LInclined = L;
+            LInclined.stemInclinationDeg = cumulativeInclinationDeg;
             unsigned int leaf_seed = td.randomSeed + (unsigned int)li;
             float noise_val = hash_to_float_minus1_1(leaf_seed);
             float leafAzimuth = td.azimuthDeg * (li)+(noise_val * td.azimuthNoise);
@@ -285,8 +298,8 @@ void MaizeModel::rebuildGeometry() {
             std::vector<Vect3d> localCtrlC, localCtrlL, localCtrlR, localCtrlOpening;
             float global_radius = std::max(0.001f, td.radius - td.stemShrink * li);
 
-            Maize::generateLeafSplines(L, global_radius, localCtrlC, localCtrlL, localCtrlR);
-            Maize::generateOpeningSpline(L, localCtrlOpening);
+            Maize::generateLeafSplines(LInclined, global_radius, localCtrlC, localCtrlL, localCtrlR);
+            Maize::generateOpeningSpline(LInclined, localCtrlOpening);
 
             if (L.leafTwist != 0.0f && L.splinePoints > 1) {
                 auto twistSpline = [&](std::vector<Vect3d>& ctrl) {
@@ -318,6 +331,13 @@ void MaizeModel::rebuildGeometry() {
             Vect3d blade_z_axis = rhat;
             Vect3d blade_x_axis = blade_y_axis.Cross(blade_z_axis).GetNormalized();
 
+            float inclinationRad = radiansf(LInclined.stemInclinationDeg);
+            auto inclineP = [&](const Vect3d& p)->Vect3d {
+                return Vect3d::rotateAroundAxis(p, blade_x_axis, inclinationRad);
+            };
+
+            sheath_exit_pos = inclineP(sheath_exit_pos);
+
             auto bladeLocalToWorld = [&](const Vect3d& p_local) {
                 return sheath_exit_pos + blade_x_axis * p_local.x() + blade_y_axis * p_local.z() + blade_z_axis * p_local.y();
                 };
@@ -326,8 +346,10 @@ void MaizeModel::rebuildGeometry() {
             LeafGeom SheathG;
             SheathG.type = LeafGeom::GEOM_SHEATH;
 
-            SheathG.rows = std::max(4, (int)(L.leafLength * m_densityV));
-            SheathG.cols = std::max(6, (int)(L.leafWidth * m_densityU));
+            float sheathDensityV = m_densityV;
+            float sheathDensityU = m_densityU;
+            SheathG.rows = std::max(4, (int)(L.leafLength * sheathDensityV));
+            SheathG.cols = std::max(6, (int)(L.leafWidth * sheathDensityU));
 
             SheathG.pos.resize(SheathG.rows * SheathG.cols);
             SheathG.col.resize(SheathG.rows * SheathG.cols);
@@ -358,13 +380,13 @@ void MaizeModel::rebuildGeometry() {
                     Vect3d offset = stem_normal * cos(angle) + stem_binormal * sin(angle);
 
                     int idx = i * SheathG.cols + j;
-                    SheathG.pos[idx] = pC + offset * final_radius;
+                    SheathG.pos[idx] = inclineP(pC + offset * final_radius);
                     SheathG.pos[idx] = tiltP(SheathG.pos[idx]);
                     SheathG.col[idx] = getColor(LeafGeom::GEOM_SHEATH, s_sheath);
 
                     // Normalize UVs along the sheath length.
                     SheathG.uv[idx] = { u01, s_sheath };
-                    SheathG.nrm[idx] = tiltP(offset.GetNormalized());
+                    SheathG.nrm[idx] = tiltP(inclineP(offset.GetNormalized()));
                 }
             }
             m_leafGeoms.push_back(std::move(SheathG));
@@ -384,7 +406,7 @@ void MaizeModel::rebuildGeometry() {
             float openAngle = L.sheathEndAngle * M_PI;
             Vect3d stem_normal = rhat;
             Vect3d stem_binormal = Vect3d::Cross(globalUp, stem_normal).GetNormalized();
-            Vect3d sheath_center_pos = { 0, y_sheath_end, 0 };
+            Vect3d sheath_center_pos = sheath_exit_pos;
 
             Vect3d openingParamsLast = localCtrlOpening[1];
             float final_radius_at_collar = global_radius + openingParamsLast.x();
