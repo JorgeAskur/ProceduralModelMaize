@@ -23,8 +23,6 @@ struct LeafDesc {
     float waveRAmp = 0.0f;
     float waveRFreq = 0.0f;
     float waveRPhase = 0.0f;
-    float sheathEndAngle = 2.0f;
-    float sheathOpeningStart = 0.0f;
     bool useCtrlOverrides = false;
     std::vector<Vect3d> ctrlCenterOverride;
     std::vector<Vect3d> ctrlLeftOverride;
@@ -39,6 +37,8 @@ struct TillerDesc {
     float azimuthDeg = 180.f;
     float azimuthNoise = 45.f;
     unsigned int randomSeed = 1337;
+    bool useStemCtrlOverrides = false;
+    std::vector<Vect3d> stemCtrlOverride;
     std::vector<LeafDesc> leaves;
 };
 
@@ -70,33 +70,38 @@ public:
     // Replaced fixed rows/cols with Adaptive Resolution settings
     float m_densityV; // Segments per Meter (Length)
     float m_densityU; // Segments per Meter (Width)
+    float m_stemDensityScale; // Stem density multiplier
+    int m_stemRowOverride; // 0 = auto
+    float m_stemRibbonSpacing; // meters per ribbon repeat
 
 public:
-    MaizeModel() : m_densityV(60.0f), m_densityU(120.0f) {}
+    MaizeModel() : m_densityV(60.0f), m_densityU(120.0f), m_stemDensityScale(0.45f), m_stemRowOverride(0), m_stemRibbonSpacing(0.3f) {}
 
     PlantDesc& plant() { return m_plant; }
     const std::vector<LeafGeom>& leafGeoms() const { return m_leafGeoms; }
 
     void rebuildGeometry();
     int getTriangleCount() const;
-    bool savePlantOBJ(const char* path, const char* textureFullPath);
-    bool saveMTL(const char* mtlPath, const char* textureFileNameOnly);
+    bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath = nullptr);
+    bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly);
 };
 
 namespace Maize {
     // Resolution Accessors
     float& gMeshDensityV();
     float& gMeshDensityU();
+    float& gStemDensityScale();
+    int& gStemRowOverride();
+    float& gStemRibbonSpacing();
 
     PlantDesc& plant();
     const std::vector<LeafGeom>& leafGeoms();
     void rebuildGeometry();
     int getTriangleCount();
     Vect3d deBoor(float u, const std::vector<Vect3d>& P);
-    void generateOpeningSpline(const LeafDesc& L, std::vector<Vect3d>& outOpening);
     void generateLeafSplines(const LeafDesc& L, float startRadius, std::vector<Vect3d>& outCenter, std::vector<Vect3d>& outLeft, std::vector<Vect3d>& outRight);
-    bool savePlantOBJ(const char* path, const char* textureFullPath);
-    bool saveMTL(const char* mtlPath, const char* textureFileNameOnly);
+    bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath = nullptr);
+    bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly);
     std::string dirFromPath(const std::string& p);
-    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& texturePath = "");
+    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath = "", const std::string& stemTexturePath = "");
 }

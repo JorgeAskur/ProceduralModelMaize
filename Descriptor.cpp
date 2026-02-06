@@ -68,6 +68,10 @@ namespace Descriptor {
             tiller_elem->SetAttribute("beta", td.azimuthDeg);
             tiller_elem->SetAttribute("randomSeed", td.randomSeed);
             tiller_elem->SetAttribute("stemShrink", td.stemShrink);
+            if (td.useStemCtrlOverrides && !td.stemCtrlOverride.empty()) {
+                tiller_elem->SetAttribute("useStemCtrlOverrides", 1);
+                saveSplineAsAttributes(tiller_elem, "stemCtrl", td.stemCtrlOverride);
+            }
 
             XMLElement* leaves_elem = doc.NewElement("leaves");
             leaves_elem->SetAttribute("number", (int)td.leaves.size());
@@ -97,10 +101,6 @@ namespace Descriptor {
                 leaf_elem->SetAttribute("waveRAmp", L.waveRAmp);
                 leaf_elem->SetAttribute("waveRFreq", L.waveRFreq);
                 leaf_elem->SetAttribute("waveRPhase", L.waveRPhase);
-
-                // --- NEW ---
-                leaf_elem->SetAttribute("sheathEndAngle", L.sheathEndAngle);
-                leaf_elem->SetAttribute("sheathOpeningStart", L.sheathOpeningStart);
 
                 if (L.useCtrlOverrides && !L.ctrlCenterOverride.empty()) {
                     leaf_elem->SetAttribute("useCtrlOverrides", 1);
@@ -136,6 +136,12 @@ namespace Descriptor {
             t->QueryFloatAttribute("beta", &td.azimuthDeg);
             t->QueryUnsignedAttribute("randomSeed", &td.randomSeed);
             t->QueryFloatAttribute("stemShrink", &td.stemShrink);
+            int useStemOverrides = 0;
+            t->QueryIntAttribute("useStemCtrlOverrides", &useStemOverrides);
+            if (useStemOverrides) {
+                loadSplineFromAttributes(t, "stemCtrl", td.stemCtrlOverride);
+                td.useStemCtrlOverrides = !td.stemCtrlOverride.empty();
+            }
 
             if (const XMLElement* leaves = t->FirstChildElement("leaves")) {
                 for (const XMLElement* lf = leaves->FirstChildElement("leaf"); lf; lf = lf->NextSiblingElement("leaf")) {
@@ -162,10 +168,6 @@ namespace Descriptor {
                     L.waveRFreq = 0.0f;
                     L.waveRPhase = 0.0f;
 
-                    // --- NEW ---
-                    L.sheathEndAngle = 2.0f;
-                    L.sheathOpeningStart = 0.0f;
-
                     // Now try to load them from XML
                     lf->QueryFloatAttribute("leafLength", &L.leafLength);
                     lf->QueryFloatAttribute("leafWidth", &L.leafWidth);
@@ -183,10 +185,6 @@ namespace Descriptor {
                     lf->QueryFloatAttribute("waveRAmp", &L.waveRAmp);
                     lf->QueryFloatAttribute("waveRFreq", &L.waveRFreq);
                     lf->QueryFloatAttribute("waveRPhase", &L.waveRPhase);
-
-                    // --- NEW ---
-                    lf->QueryFloatAttribute("sheathEndAngle", &L.sheathEndAngle);
-                    lf->QueryFloatAttribute("sheathOpeningStart", &L.sheathOpeningStart);
 
                     int useOverrides = 0;
                     lf->QueryIntAttribute("useCtrlOverrides", &useOverrides);

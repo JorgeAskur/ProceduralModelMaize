@@ -15,5 +15,5 @@ Ka 0 0 0
 Kd 1 1 1
 Ks 0.05 0.05 0.05
 illum 2
-map_Kd maize_leaf.png
-map_d maize_leaf.png
+map_Kd maize_stem_texture.png
+map_d maize_stem_texture.png

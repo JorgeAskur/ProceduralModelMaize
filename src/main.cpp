@@ -49,26 +49,29 @@ static float gMatSpec[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
 static float gShininess = 32.0f;
 
 static char gTexPath[256] = "maize_leaf.png";
+static char gStemTexPath[256] = "maize_stem_texture.png";
 static char gExportBasePath[256] = "plant_export/plant";
 static char gXmlPath[256] = "plant_spline.xml";
 static char gObjPath[256] = "plant_spline.obj";
 
 static GLuint gTextureID = 0;
 static bool   gTextureOK = false;
+static GLuint gStemTextureID = 0;
+static bool   gStemTextureOK = false;
 
 static MaizeGenerator gGen;
 
 static inline float clampf(float x, float a, float b) { return x < a ? a : (x > b ? b : x); }
 static inline float radiansf(float d) { return d * float(M_PI) / 180.f; }
 
-static void loadTexture(const char* path) {
-    if (gTextureID) { glDeleteTextures(1, &gTextureID); gTextureID = 0; }
-    gTextureOK = false;
+static void loadTexture(const char* path, GLuint* textureId, bool* textureOk) {
+    if (*textureId) { glDeleteTextures(1, textureId); *textureId = 0; }
+    *textureOk = false;
     int w, h, n;
     unsigned char* data = stbi_load(path, &w, &h, &n, 4);
     if (data) {
-        glGenTextures(1, &gTextureID);
-        glBindTexture(GL_TEXTURE_2D, gTextureID);
+        glGenTextures(1, textureId);
+        glBindTexture(GL_TEXTURE_2D, *textureId);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 #ifndef GL_CLAMP_TO_EDGE
@@ -78,8 +81,15 @@ static void loadTexture(const char* path) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         stbi_image_free(data);
-        gTextureOK = true;
+        *textureOk = true;
     }
+}
+
+static const LeafGeom* GetStemGeom() {
+    for (const auto& G : Maize::leafGeoms()) {
+        if (G.type == LeafGeom::GEOM_SHEATH && !G.ctrlCenter.empty()) return &G;
+    }
+    return nullptr;
 }
 
 static void setupLighting() {
@@ -101,10 +111,20 @@ static void drawPlant() {
     glShadeModel(GL_SMOOTH);
 
     glColor4f(1.f, 1.f, 1.f, 1.f);
-    if (gTextureOK) { glEnable(GL_TEXTURE_2D); glBindTexture(GL_TEXTURE_2D, gTextureID); glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE); }
+    bool textureEnabled = false;
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     glPolygonMode(GL_FRONT_AND_BACK, gWireframe ? GL_LINE : GL_FILL);
 
     for (const auto& G : Maize::leafGeoms()) {
+        bool useTexture = (G.type == LeafGeom::GEOM_SHEATH) ? gStemTextureOK : gTextureOK;
+        GLuint texId = (G.type == LeafGeom::GEOM_SHEATH) ? gStemTextureID : gTextureID;
+        if (useTexture) {
+            if (!textureEnabled) { glEnable(GL_TEXTURE_2D); textureEnabled = true; }
+            glBindTexture(GL_TEXTURE_2D, texId);
+        } else if (textureEnabled) {
+            glDisable(GL_TEXTURE_2D);
+            textureEnabled = false;
+        }
         if (G.rows <= 1 || G.cols <= 1) continue;
 
         for (int i = 0; i < G.rows - 1; ++i) {
@@ -127,7 +147,7 @@ static void drawPlant() {
         }
     }
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    if (gTextureOK) glDisable(GL_TEXTURE_2D);
+    if (textureEnabled) glDisable(GL_TEXTURE_2D);
     if (gLightingOn) glDisable(GL_LIGHTING);
 }
 
@@ -158,6 +178,9 @@ static void drawCtrlViz() {
         if (gShowCtrlPts) { glPointSize(5.0f); glBegin(GL_POINTS); for (const auto& p : ctrl) glVertex3f(p.x(), p.y(), p.z()); glEnd(); }
         };
     for (const auto& G : Maize::leafGeoms()) {
+        if (G.type == LeafGeom::GEOM_SHEATH && !G.ctrlCenter.empty()) {
+            drawSpline(G.ctrlCenter, 0.2f, 0.8f, 0.2f);
+        }
         if (G.type == LeafGeom::GEOM_BLADE) {
             drawSpline(G.ctrlCenter, 1.f, 0.5f, 0.f);
             drawSpline(G.ctrlLeft, 0.2f, 0.6f, 1.f);
@@ -330,8 +353,6 @@ static void display() {
         needRegen |= DistUI("Wave Amp", gGen.waveAmp, 0.f, 0.05f, 0.02f);
         needRegen |= DistUI("Wave Freq", gGen.waveFreq, 0.f, 40.f, 10.f);
         needRegen |= DistUI("Wave Phase", gGen.wavePhaseShift, -6.283f, 6.283f, 3.1415f);
-        needRegen |= DistUI("Sheath End", gGen.sheathEndAngle, 0.f, 2.f, 0.5f);
-        needRegen |= DistUI("Sheath Open", gGen.sheathOpening, 0.f, 1.f, 0.5f);
         needRegen |= ImGui::SliderFloat("Leaf Jitter", &gGen.leafJitterScale, 0.0f, 1.0f);
 
     }
@@ -347,6 +368,48 @@ static void display() {
             needUpdate |= ImGui::DragFloat("Radius", &t.radius, 0.001f);
             needUpdate |= ImGui::DragFloat("Azimuth Base", &t.azimuthDeg, 1.0f);
             needUpdate |= ImGui::DragFloat("Azimuth Noise", &t.azimuthNoise, 0.5f);
+
+            ImGui::Separator();
+            bool useStemOverrides = t.useStemCtrlOverrides;
+            if (ImGui::Checkbox("Edit Stem Control Points", &useStemOverrides)) {
+                t.useStemCtrlOverrides = useStemOverrides;
+                if (!t.useStemCtrlOverrides) {
+                    t.stemCtrlOverride.clear();
+                } else if (t.stemCtrlOverride.empty()) {
+                    if (const auto* stemGeom = GetStemGeom()) {
+                        t.stemCtrlOverride = stemGeom->ctrlCenter;
+                    }
+                }
+                needUpdate = true;
+            }
+
+            if (t.useStemCtrlOverrides) {
+                if (ImGui::Button("Copy Current Stem Control Points")) {
+                    if (const auto* stemGeom = GetStemGeom()) {
+                        t.stemCtrlOverride = stemGeom->ctrlCenter;
+                        needUpdate = true;
+                    }
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Reset Stem Control Points")) {
+                    t.useStemCtrlOverrides = false;
+                    t.stemCtrlOverride.clear();
+                    needUpdate = true;
+                }
+
+                if (ImGui::TreeNode("Stem Control Points")) {
+                    for (size_t i = 0; i < t.stemCtrlOverride.size(); ++i) {
+                        float v[3] = { t.stemCtrlOverride[i].x(), t.stemCtrlOverride[i].y(), t.stemCtrlOverride[i].z() };
+                        ImGui::PushID((int)i);
+                        if (ImGui::DragFloat3("##stempt", v, 0.01f)) {
+                            t.stemCtrlOverride[i].Set(v[0], v[1], v[2]);
+                            needUpdate = true;
+                        }
+                        ImGui::PopID();
+                    }
+                    ImGui::TreePop();
+                }
+            }
 
             if (!t.leaves.empty()) {
                 gSelLeaf = std::min(gSelLeaf, (int)t.leaves.size() - 1);
@@ -370,9 +433,6 @@ static void display() {
                 }
                 needUpdate |= ImGui::SliderFloat("Taper", &L.widthTaper, 0.05f, 10.0f);
                 needUpdate |= ImGui::SliderFloat("Twist", &L.leafTwist, -180.f, 180.f);
-                needUpdate |= ImGui::SliderFloat("Sheath Angle", &L.sheathEndAngle, 0.f, 2.f);
-                needUpdate |= ImGui::SliderFloat("Sheath Open", &L.sheathOpeningStart, 0.f, 1.f);
-
                 ImGui::Text("Waves");
                 needUpdate |= ImGui::SliderFloat("L Amp", &L.waveLAmp, 0.f, 0.05f);
                 needUpdate |= ImGui::SliderFloat("L Freq", &L.waveLFreq, 0.f, 20.f);
@@ -447,7 +507,7 @@ static void display() {
 
         ImGui::InputText("OBJ Path", gObjPath, sizeof(gObjPath));
         if (ImGui::Button("Save OBJ")) {
-            Maize::savePlantOBJ(gObjPath, gTexPath);
+            Maize::savePlantOBJ(gObjPath, gTexPath, gStemTexPath);
         }
     }
 
@@ -457,6 +517,13 @@ static void display() {
         ImGui::Checkbox("Show Normals", &gShowNormals);
         ImGui::Checkbox("Show Control Points", &gShowCtrlPts);
         ImGui::Checkbox("Wireframe", &gWireframe);
+        needUpdate |= ImGui::SliderFloat("Stem Density", &Maize::gStemDensityScale(), 0.1f, 1.0f, "%.2f");
+        int stemRows = Maize::gStemRowOverride();
+        if (ImGui::SliderInt("Stem Rows", &stemRows, 4, 400)) {
+            Maize::gStemRowOverride() = stemRows;
+            needUpdate = true;
+        }
+        needUpdate |= ImGui::SliderFloat("Stem Ribbon Spacing", &Maize::gStemRibbonSpacing(), 0.05f, 1.0f, "%.2f m");
         needUpdate |= ImGui::SliderFloat("Res Vertical", &Maize::gMeshDensityV(), 10.f, 200.f, "%.0f / m");
         needUpdate |= ImGui::SliderFloat("Res Horizontal", &Maize::gMeshDensityU(), 10.f, 200.f, "%.0f / m");
         ImGui::Text("Triangles: %d", Maize::getTriangleCount());
@@ -487,7 +554,8 @@ int main(int argc, char** argv) {
     ImGui::CreateContext();
     ImGui_ImplGLUT_Init(); ImGui_ImplGLUT_InstallFuncs(); ImGui_ImplOpenGL2_Init();
 
-    loadTexture(gTexPath);
+    loadTexture(gTexPath, &gTextureID, &gTextureOK);
+    loadTexture(gStemTexPath, &gStemTextureID, &gStemTextureOK);
     RebuildFromGenerator();
 
     glutDisplayFunc(display);

@@ -42,8 +42,6 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     float waveAmpPlant = sampleFromZ(waveAmp);
     float waveFreqPlant = sampleFromZ(waveFreq);
 	float wavePhaseShiftPlant = sampleFromZ(wavePhaseShift);
-    float sheathEndAnglePlant = sampleFromZ(sheathEndAngle);
-    float sheathOpeningPlant = sampleFromZ(sheathOpening);
 
     auto applyLeafJitter = [&](float base, const Dist& dist) {
         if (useMeansOnly || dist.stdDev <= 0.0001f || leafJitterScale <= 0.0f) return base;
@@ -88,9 +86,6 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
         L.waveRFreq = L.waveLFreq;
 		L.waveRPhase = wavePhaseValue + 3.1415f; // Offset by pi for right side
 
-        L.sheathEndAngle = applyLeafJitter(sheathEndAnglePlant, sheathEndAngle);
-        L.sheathOpeningStart = applyLeafJitter(sheathOpeningPlant, sheathOpening);
-
         mainTiller.leaves.push_back(L);
     }
     plant.tillers.push_back(mainTiller);
@@ -103,7 +98,7 @@ void MaizeGenerator::generateBatch(int count, const std::string& outputDir, cons
         unsigned int seed = rd();
         PlantDesc p = generate(seed, false);
         std::string baseName = outputDir + "/plant_" + std::to_string(i);
-        Maize::GeneratePlant(p, baseName, texPath);
+        Maize::GeneratePlant(p, baseName, texPath, "");
         std::cout << "Generated " << baseName << ".obj" << std::endl;
     }
 }

@@ -55,10 +55,6 @@ public:
     Dist waveFreq = { 8.0f, 2.0f };
     Dist wavePhaseShift = { 0.0f, 1.0f };
 
-    // Sheath
-    Dist sheathEndAngle = { 1.50f, 0.1f };
-    Dist sheathOpening = { 0.90f, 0.1f };
-
     float leafJitterScale = 0.2f;
 
     // Generates a single plant description
