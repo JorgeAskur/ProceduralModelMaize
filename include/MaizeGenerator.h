@@ -40,11 +40,11 @@ public:
 
     Dist leafWidthBase = { 0.1f, 0.01f };
 
-    Dist widthTaper = { 5.0f, 0.1f }; // NEW
+    Dist widthTaper = { 5.0f, 0.1f };
 
     Dist leafAngleBase = { 45.0f, 5.0f };
 
-    Dist leafTwist = { 10.0f, 10.0f }; // NEW (Degrees)
+    Dist leafTwist = { 10.0f, 10.0f };
 
     Dist droopinessBase = { -20.0f, 5.f };
 

@@ -67,7 +67,6 @@ private:
     std::vector<LeafGeom> m_leafGeoms;
 
 public:
-    // Replaced fixed rows/cols with Adaptive Resolution settings
     float m_densityV; // Segments per Meter (Length)
     float m_densityU; // Segments per Meter (Width)
     float m_stemDensityScale; // Stem density multiplier
@@ -87,7 +86,6 @@ public:
 };
 
 namespace Maize {
-    // Resolution Accessors
     float& gMeshDensityV();
     float& gMeshDensityU();
     float& gStemDensityScale();

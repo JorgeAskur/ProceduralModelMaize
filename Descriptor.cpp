@@ -78,12 +78,10 @@ namespace Descriptor {
 
             for (size_t li = 0; li < td.leaves.size(); ++li) {
                 const auto& L = td.leaves[li];
-                // const LeafKey key{ (int)ti, (int)li }; // No longer needed
                 XMLElement* leaf_elem = doc.NewElement("leaf");
                 leaf_elem->SetAttribute("id", L.id);
                 leaf_elem->SetAttribute("distance", L.distance);
 
-                // --- MODIFIED ---
                 // Save new high-level parameters
                 leaf_elem->SetAttribute("leafLength", L.leafLength);
                 leaf_elem->SetAttribute("leafWidth", L.leafWidth);
@@ -94,7 +92,6 @@ namespace Descriptor {
                 leaf_elem->SetAttribute("widthTaper", L.widthTaper);
                 leaf_elem->SetAttribute("leafTwist", L.leafTwist);
 
-                // --- ADDED ---
                 leaf_elem->SetAttribute("waveLAmp", L.waveLAmp);
                 leaf_elem->SetAttribute("waveLFreq", L.waveLFreq);
                 leaf_elem->SetAttribute("waveLPhase", L.waveLPhase);
@@ -149,18 +146,16 @@ namespace Descriptor {
                     lf->QueryIntAttribute("id", &L.id);
                     lf->QueryFloatAttribute("distance", &L.distance);
 
-                    // --- MODIFIED ---
                     // Set defaults first, in case they aren't in the XML
                     L.leafLength = 0.7f;
                     L.leafWidth = 0.08f;
                     L.leafAngle = 45.0f;
                     L.droopiness = 0.5f;
                     L.stemInclinationDeg = 0.0f;
-                    L.splinePoints = 4; // Default
+                    L.splinePoints = 4; 
                     L.widthTaper = 1.0f;
                     L.leafTwist = 0.0f;
 
-                    // --- ADDED ---
                     L.waveLAmp = 0.0f;
                     L.waveLFreq = 0.0f;
                     L.waveLPhase = 0.0f;
@@ -178,7 +173,6 @@ namespace Descriptor {
                     lf->QueryFloatAttribute("widthTaper", &L.widthTaper);
                     lf->QueryFloatAttribute("leafTwist", &L.leafTwist);
 
-                    // --- ADDED ---
                     lf->QueryFloatAttribute("waveLAmp", &L.waveLAmp);
                     lf->QueryFloatAttribute("waveLFreq", &L.waveLFreq);
                     lf->QueryFloatAttribute("waveLPhase", &L.waveLPhase);
