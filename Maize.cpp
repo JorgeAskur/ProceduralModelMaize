@@ -1,4 +1,4 @@
-﻿#include "Maize.h"
+#include "Maize.h"
 #include "Descriptor.h"
 #include <algorithm>
 #include <cmath>

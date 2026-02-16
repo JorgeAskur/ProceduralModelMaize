@@ -63,6 +63,7 @@ public:
     Dist wavePhaseShift = { 0.0f, 1.0f };
 
     float leafJitterScale = 0.2f;
+    float stemRibbonSpacing = 0.3f;
 
     // Generates a single plant description
     // If useMeansOnly is true, stdDev is ignored (creates the "Average Plant")

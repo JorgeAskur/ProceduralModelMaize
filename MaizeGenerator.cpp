@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cmath>
 #include <iostream>
+#include <random>
 #include <filesystem>
 #include "tinyxml2.h"
 
@@ -57,21 +58,24 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
         L.id = i;
         L.distance = totalH / (float)nLeaves;
 
-        float lenBase = applyLeafJitter(lenBasePlant, leafLengthBase);
-        L.leafLength = (std::max)(0.1f, lenBase * leafLengthCurve.get(t));
+        float lenBase = applyLeafJitter(useLeafLengthCurve ? leafLengthCurve.get(t) : lenBasePlant, leafLengthBase);
+        L.leafLength = (std::max)(0.1f, lenBase);
 
-        float widthBase = applyLeafJitter(widthBasePlant, leafWidthBase);
-        L.leafWidth = (std::max)(0.01f, widthBase * leafWidthCurve.get(t));
+        float widthBase = applyLeafJitter(useLeafWidthCurve ? leafWidthCurve.get(t) : widthBasePlant, leafWidthBase);
+        L.leafWidth = (std::max)(0.01f, widthBase);
 
         float widthTaperValue = applyLeafJitter(widthTaperPlant, widthTaper);
         L.widthTaper = (std::max)(0.1f, widthTaperValue * widthTaperCurve.get(t));
 
-        float angleBase = applyLeafJitter(angleBasePlant, leafAngleBase);
-        L.leafAngle = angleBase * leafAngleCurve.get(t);
+        float angleBase = applyLeafJitter(useLeafAngleCurve ? leafAngleCurve.get(t) : angleBasePlant, leafAngleBase);
+        L.leafAngle = angleBase;
+
+        float twistBase = useLeafTwistCurve ? leafTwistCurve.get(t) : leafTwistPlant;
+        L.leafTwist = applyLeafJitter(twistBase, leafTwist);
 
         L.leafTwist = applyLeafJitter(leafTwistPlant, leafTwist) * leafTwistCurve.get(t);
 
-        L.droopiness = applyLeafJitter(droopinessPlant, droopinessBase) * droopinessCurve.get(t);
+        L.stemInclinationDeg = applyLeafJitter(stemInclinationPlant, stemInclination);
 
         L.stemInclinationDeg = applyLeafJitter(stemInclinationPlant, stemInclination);
 
@@ -98,6 +102,7 @@ void MaizeGenerator::generateBatch(int count, const std::string& outputDir, cons
     for (int i = 0; i < count; ++i) {
         unsigned int seed = rd();
         PlantDesc p = generate(seed, false);
+        Maize::gStemRibbonSpacing() = stemRibbonSpacing;
         std::string baseName = outputDir + "/plant_" + std::to_string(i);
         Maize::GeneratePlant(p, baseName, leafTexPath, stemTexPath);
         std::cout << "Generated " << baseName << ".obj" << std::endl;

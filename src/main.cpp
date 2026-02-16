@@ -335,7 +335,6 @@ static void display() {
         if (ImGui::Button("Generate Batch")) {
             gGen.generateBatch(gBatchCount, gBatchOutputDir, gBatchLeafTexPath, gBatchStemTexPath);
         }
-    }
 
     if (ImGui::CollapsingHeader("Export")) {
         ImGui::InputText("XML Path", gXmlPath, sizeof(gXmlPath));
