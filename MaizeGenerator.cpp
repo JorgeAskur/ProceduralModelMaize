@@ -3,6 +3,7 @@
 #include <cmath>
 #include <iostream>
 #include <filesystem>
+#include "tinyxml2.h"
 
 PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     std::mt19937 gen(seed);
@@ -57,20 +58,20 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
         L.distance = totalH / (float)nLeaves;
 
         float lenBase = applyLeafJitter(lenBasePlant, leafLengthBase);
-        L.leafLength = (std::max)(0.1f, lenBase);
+        L.leafLength = (std::max)(0.1f, lenBase * leafLengthCurve.get(t));
 
         float widthBase = applyLeafJitter(widthBasePlant, leafWidthBase);
-        L.leafWidth = (std::max)(0.01f, widthBase);
+        L.leafWidth = (std::max)(0.01f, widthBase * leafWidthCurve.get(t));
 
         float widthTaperValue = applyLeafJitter(widthTaperPlant, widthTaper);
-        L.widthTaper = (std::max)(0.1f, widthTaperValue);
+        L.widthTaper = (std::max)(0.1f, widthTaperValue * widthTaperCurve.get(t));
 
         float angleBase = applyLeafJitter(angleBasePlant, leafAngleBase);
-        L.leafAngle = angleBase;
+        L.leafAngle = angleBase * leafAngleCurve.get(t);
 
-        L.leafTwist = applyLeafJitter(leafTwistPlant, leafTwist);
+        L.leafTwist = applyLeafJitter(leafTwistPlant, leafTwist) * leafTwistCurve.get(t);
 
-        L.droopiness = applyLeafJitter(droopinessPlant, droopinessBase);
+        L.droopiness = applyLeafJitter(droopinessPlant, droopinessBase) * droopinessCurve.get(t);
 
         L.stemInclinationDeg = applyLeafJitter(stemInclinationPlant, stemInclination);
 
@@ -92,13 +93,108 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     return plant;
 }
 
-void MaizeGenerator::generateBatch(int count, const std::string& outputDir, const std::string& texPath) {
+void MaizeGenerator::generateBatch(int count, const std::string& outputDir, const std::string& leafTexPath, const std::string& stemTexPath) {
     std::random_device rd;
     for (int i = 0; i < count; ++i) {
         unsigned int seed = rd();
         PlantDesc p = generate(seed, false);
         std::string baseName = outputDir + "/plant_" + std::to_string(i);
-        Maize::GeneratePlant(p, baseName, texPath, "");
+        Maize::GeneratePlant(p, baseName, leafTexPath, stemTexPath);
         std::cout << "Generated " << baseName << ".obj" << std::endl;
     }
+}
+
+bool MaizeGenerator::saveConfig(const std::string& path) const {
+    using namespace tinyxml2;
+    XMLDocument doc;
+    doc.InsertFirstChild(doc.NewDeclaration());
+    XMLElement* root = doc.NewElement("MaizeGeneratorConfig");
+    doc.InsertEndChild(root);
+
+    auto saveDist = [&](const char* name, const Dist& d) {
+        XMLElement* elem = doc.NewElement(name);
+        elem->SetAttribute("mean", d.mean);
+        elem->SetAttribute("stdDev", d.stdDev);
+        root->InsertEndChild(elem);
+    };
+
+    auto saveCurve = [&](const char* name, const Curve& c) {
+        XMLElement* elem = doc.NewElement(name);
+        elem->SetAttribute("bottom", c.bottom);
+        elem->SetAttribute("middle", c.middle);
+        elem->SetAttribute("top", c.top);
+        root->InsertEndChild(elem);
+    };
+
+    saveDist("height", height);
+    saveDist("stemRadius", stemRadius);
+    saveDist("numLeaves", numLeaves);
+    saveDist("leafLengthBase", leafLengthBase);
+    saveDist("leafWidthBase", leafWidthBase);
+    saveDist("widthTaper", widthTaper);
+    saveDist("leafAngleBase", leafAngleBase);
+    saveDist("leafTwist", leafTwist);
+    saveDist("droopinessBase", droopinessBase);
+    saveDist("stemInclination", stemInclination);
+    saveDist("waveAmp", waveAmp);
+    saveDist("waveFreq", waveFreq);
+    saveDist("wavePhaseShift", wavePhaseShift);
+
+    saveCurve("leafLengthCurve", leafLengthCurve);
+    saveCurve("leafWidthCurve", leafWidthCurve);
+    saveCurve("widthTaperCurve", widthTaperCurve);
+    saveCurve("leafAngleCurve", leafAngleCurve);
+    saveCurve("leafTwistCurve", leafTwistCurve);
+    saveCurve("droopinessCurve", droopinessCurve);
+
+    root->SetAttribute("leafJitterScale", leafJitterScale);
+
+    return doc.SaveFile(path.c_str()) == XML_SUCCESS;
+}
+
+bool MaizeGenerator::loadConfig(const std::string& path) {
+    using namespace tinyxml2;
+    XMLDocument doc;
+    if (doc.LoadFile(path.c_str()) != XML_SUCCESS) return false;
+    const XMLElement* root = doc.FirstChildElement("MaizeGeneratorConfig");
+    if (!root) return false;
+
+    auto loadDist = [&](const char* name, Dist& d) {
+        if (const XMLElement* elem = root->FirstChildElement(name)) {
+            elem->QueryFloatAttribute("mean", &d.mean);
+            elem->QueryFloatAttribute("stdDev", &d.stdDev);
+        }
+    };
+
+    auto loadCurve = [&](const char* name, Curve& c) {
+        if (const XMLElement* elem = root->FirstChildElement(name)) {
+            elem->QueryFloatAttribute("bottom", &c.bottom);
+            elem->QueryFloatAttribute("middle", &c.middle);
+            elem->QueryFloatAttribute("top", &c.top);
+        }
+    };
+
+    loadDist("height", height);
+    loadDist("stemRadius", stemRadius);
+    loadDist("numLeaves", numLeaves);
+    loadDist("leafLengthBase", leafLengthBase);
+    loadDist("leafWidthBase", leafWidthBase);
+    loadDist("widthTaper", widthTaper);
+    loadDist("leafAngleBase", leafAngleBase);
+    loadDist("leafTwist", leafTwist);
+    loadDist("droopinessBase", droopinessBase);
+    loadDist("stemInclination", stemInclination);
+    loadDist("waveAmp", waveAmp);
+    loadDist("waveFreq", waveFreq);
+    loadDist("wavePhaseShift", wavePhaseShift);
+
+    loadCurve("leafLengthCurve", leafLengthCurve);
+    loadCurve("leafWidthCurve", leafWidthCurve);
+    loadCurve("widthTaperCurve", widthTaperCurve);
+    loadCurve("leafAngleCurve", leafAngleCurve);
+    loadCurve("leafTwistCurve", leafTwistCurve);
+    loadCurve("droopinessCurve", droopinessCurve);
+
+    root->QueryFloatAttribute("leafJitterScale", &leafJitterScale);
+    return true;
 }
