@@ -60,13 +60,16 @@ namespace Maize {
 
     float& gMeshDensityV() { return getModel().m_densityV; }
     float& gMeshDensityU() { return getModel().m_densityU; }
+    float& gStemDensityScale() { return getModel().m_stemDensityScale; }
+    int& gStemRowOverride() { return getModel().m_stemRowOverride; }
+    float& gStemRibbonSpacing() { return getModel().m_stemRibbonSpacing; }
 
     PlantDesc& plant() { return getModel().plant(); }
     const std::vector<LeafGeom>& leafGeoms() { return getModel().leafGeoms(); }
     void rebuildGeometry() { getModel().rebuildGeometry(); }
     int getTriangleCount() { return getModel().getTriangleCount(); }
-    bool savePlantOBJ(const char* path, const char* textureFullPath) { return getModel().savePlantOBJ(path, textureFullPath); }
-    bool saveMTL(const char* mtlPath, const char* textureFileNameOnly) { return getModel().saveMTL(mtlPath, textureFileNameOnly); }
+    bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath) { return getModel().savePlantOBJ(path, leafTextureFullPath, stemTextureFullPath); }
+    bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly) { return getModel().saveMTL(mtlPath, leafTextureFileNameOnly, stemTextureFileNameOnly); }
 
     Vect3d deBoor(float u, const std::vector<Vect3d>& P) {
         if (P.size() < 2) return P.empty() ? Vect3d() : P.front();
@@ -247,13 +250,13 @@ namespace Maize {
         return (pos == std::string::npos) ? std::string() : p.substr(0, pos);
     }
 
-    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& texturePath) {
+    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath, const std::string& stemTexturePath) {
         Maize::plant() = plantDesc;
         Maize::rebuildGeometry();
         std::string xmlPath = baseFileName + ".xml";
         std::string objPath = baseFileName + ".obj";
         Descriptor::savePlantXML(xmlPath.c_str());
-        Maize::savePlantOBJ(objPath.c_str(), texturePath.c_str());
+        Maize::savePlantOBJ(objPath.c_str(), leafTexturePath.c_str(), stemTexturePath.empty() ? nullptr : stemTexturePath.c_str());
     }
 }
 
@@ -326,8 +329,12 @@ void MaizeModel::rebuildGeometry() {
             LeafGeom SheathG;
             SheathG.type = LeafGeom::GEOM_SHEATH;
 
-            SheathG.rows = std::max(4, (int)(L.leafLength * m_densityV));
-            SheathG.cols = std::max(6, (int)(L.leafWidth * m_densityU));
+            float sheathDensityV = m_densityV * m_stemDensityScale;
+            float sheathDensityU = m_densityU * m_stemDensityScale;
+            SheathG.rows = std::max(4, (int)(L.leafLength * sheathDensityV));
+            if (m_stemRowOverride > 0)
+                SheathG.rows = m_stemRowOverride;
+            SheathG.cols = std::max(6, (int)(L.leafWidth * sheathDensityU));
 
             SheathG.pos.resize(SheathG.rows * SheathG.cols);
             SheathG.col.resize(SheathG.rows * SheathG.cols);
@@ -336,6 +343,10 @@ void MaizeModel::rebuildGeometry() {
 
             for (int i = 0; i < SheathG.rows; ++i) {
                 float s_sheath = (float)i / (float)(SheathG.rows - 1);
+                float ribbonSpacing = std::max(0.01f, m_stemRibbonSpacing);
+                float sheathRepeats = std::max(1.0f, sheath_world_len / ribbonSpacing);
+                float v_repeat = s_sheath * sheathRepeats;
+                float v_wrapped = v_repeat - std::floor(v_repeat);
                 float current_y = y_sheath_start + s_sheath * sheath_world_len;
                 Vect3d pC = { 0, current_y, 0 };
                 Vect3d stem_normal = rhat;
@@ -363,7 +374,7 @@ void MaizeModel::rebuildGeometry() {
                     SheathG.col[idx] = getColor(LeafGeom::GEOM_SHEATH, s_sheath);
 
                     // Normalize UVs along the sheath length.
-                    SheathG.uv[idx] = { u01, s_sheath };
+                    SheathG.uv[idx] = { u01, v_wrapped };
                     SheathG.nrm[idx] = tiltP(offset.GetNormalized());
                 }
             }
@@ -481,7 +492,7 @@ int MaizeModel::getTriangleCount() const {
     return count;
 }
 
-bool MaizeModel::savePlantOBJ(const char* path, const char* textureFullPath) {
+bool MaizeModel::savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath) {
     if (!path) return false;
     const std::string objPath(path), objDir = Maize::dirFromPath(objPath);
     const std::string mtlFileName = "maize.mtl", mtlPath = objDir.empty() ? mtlFileName : (objDir + "/" + mtlFileName);
@@ -492,7 +503,7 @@ bool MaizeModel::savePlantOBJ(const char* path, const char* textureFullPath) {
     f = std::fopen(path, "w");
 #endif
     if (!f) return false;
-    std::fprintf(f, "# Maize export\nmtllib %s\nusemtl maize\n", mtlFileName.c_str());
+    std::fprintf(f, "# Maize export\nmtllib %s\n", mtlFileName.c_str());
 
     for (const auto& G : m_leafGeoms) {
         for (size_t i = 0; i < G.pos.size(); ++i) {
@@ -506,6 +517,8 @@ bool MaizeModel::savePlantOBJ(const char* path, const char* textureFullPath) {
 
     size_t vOffset = 1, vtOffset = 1, vnOffset = 1;
     for (const auto& G : m_leafGeoms) {
+        const char* material = (G.type == LeafGeom::GEOM_SHEATH) ? "maize_stem" : "maize_leaf";
+        std::fprintf(f, "usemtl %s\n", material);
         for (int i = 0; i < G.rows - 1; ++i) {
             for (int j = 0; j < G.cols - 1; ++j) {
                 const int a = int(vOffset + i * G.cols + j), b = int(vOffset + (i + 1) * G.cols + j);
@@ -521,15 +534,25 @@ bool MaizeModel::savePlantOBJ(const char* path, const char* textureFullPath) {
         vOffset += G.pos.size(); vtOffset += G.uv.size(); vnOffset += G.nrm.size();
     }
     std::fclose(f);
-    const char* texName = nullptr; std::string texTmp;
-    if (textureFullPath && textureFullPath[0]) {
-        texTmp = baseNameFromPath(textureFullPath); texName = texTmp.c_str();
+    const char* leafTexName = nullptr;
+    const char* stemTexName = nullptr;
+    std::string leafTexTmp;
+    std::string stemTexTmp;
+    if (leafTextureFullPath && leafTextureFullPath[0]) {
+        leafTexTmp = baseNameFromPath(leafTextureFullPath);
+        leafTexName = leafTexTmp.c_str();
     }
-    saveMTL(mtlPath.c_str(), texName);
+    if (stemTextureFullPath && stemTextureFullPath[0]) {
+        stemTexTmp = baseNameFromPath(stemTextureFullPath);
+        stemTexName = stemTexTmp.c_str();
+    } else {
+        stemTexName = leafTexName;
+    }
+    saveMTL(mtlPath.c_str(), leafTexName, stemTexName);
     return true;
 }
 
-bool MaizeModel::saveMTL(const char* mtlPath, const char* textureFileNameOnly) {
+bool MaizeModel::saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly) {
     FILE* m = nullptr;
 #ifdef _MSC_VER
     fopen_s(&m, mtlPath, "w");
@@ -537,8 +560,10 @@ bool MaizeModel::saveMTL(const char* mtlPath, const char* textureFileNameOnly) {
     m = std::fopen(mtlPath, "w");
 #endif
     if (!m) return false;
-    std::fprintf(m, "newmtl maize\nKa 0 0 0\nKd 1 1 1\nKs 0.04 0.04 0.04\nNs 18\nillum 2\n");
-    if (textureFileNameOnly && textureFileNameOnly[0]) std::fprintf(m, "map_Kd %s\n", textureFileNameOnly);
+    std::fprintf(m, "newmtl maize_leaf\nKa 0 0 0\nKd 1 1 1\nKs 0.04 0.04 0.04\nNs 18\nillum 2\n");
+    if (leafTextureFileNameOnly && leafTextureFileNameOnly[0]) std::fprintf(m, "map_Kd %s\n", leafTextureFileNameOnly);
+    std::fprintf(m, "\nnewmtl maize_stem\nKa 0 0 0\nKd 1 1 1\nKs 0.04 0.04 0.04\nNs 18\nillum 2\n");
+    if (stemTextureFileNameOnly && stemTextureFileNameOnly[0]) std::fprintf(m, "map_Kd %s\n", stemTextureFileNameOnly);
     std::fclose(m);
     return true;
 }
