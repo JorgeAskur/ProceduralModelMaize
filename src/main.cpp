@@ -47,11 +47,11 @@ static float gShininess = 32.0f;
 
 static char gTexPath[256] = "maize_leaf.png";
 static char gStemTexPath[256] = "maize_stem_texture.png";
-static char gExportBasePath[256] = "plant_export/plant";
+static char gExportBasePath[256] = "plants";
 static char gXmlPath[256] = "plant_spline.xml";
 static char gObjPath[256] = "plant_spline.obj";
 static char gConfigPath[256] = "maize_generator_config.xml";
-static char gBatchOutputDir[256] = "plant_export";
+static char gBatchOutputDir[256] = "plants";
 static char gBatchLeafTexPath[256] = "maize_leaf.png";
 static char gBatchStemTexPath[256] = "maize_stem_texture.png";
 static int gBatchCount = 10;
