@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<generator leafJitterScale="0.2" stemRibbonSpacing="0.30000001">
+    <height mean="0.95899999" stdDev="0.2"/>
+    <stemRadius mean="0.013" stdDev="0.0020000001"/>
+    <numLeaves mean="8" stdDev="0.972"/>
+    <leafLengthBase mean="0.301" stdDev="0.050999999"/>
+    <leafWidthBase mean="0.064999998" stdDev="0.0049999999"/>
+    <widthTaper mean="7.0209999" stdDev="0.1"/>
+    <leafAngleBase mean="45" stdDev="7.2340002"/>
+    <leafTwist mean="19.149" stdDev="37.021"/>
+    <droopinessBase mean="-20" stdDev="5.6030002"/>
+    <stemInclination mean="0" stdDev="1.029"/>
+    <waveAmp mean="0.003" stdDev="0"/>
+    <waveFreq mean="35.943001" stdDev="2"/>
+    <wavePhaseShift mean="-2.0050001" stdDev="1.37"/>
+    <leafLengthCurve enabled="1" bottom="0.303" middle="0.46000001" top="0.28"/>
+    <leafWidthCurve enabled="1" bottom="0.056000002" middle="0.072999999" top="0.059"/>
+    <leafAngleCurve enabled="1" bottom="17.872" middle="60.957001" top="48.830002"/>
+    <droopinessCurve enabled="1" bottom="-31.915001" middle="-18.156" top="-3.5469999"/>
+    <leafTwistCurve enabled="1" bottom="-147.216" middle="180" top="-80.253998"/>
+</generator>
