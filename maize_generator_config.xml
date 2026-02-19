@@ -4,7 +4,7 @@
     <stemRadius mean="0.015" stdDev="0.0020000001"/>
     <numLeaves mean="8" stdDev="2.2420001"/>
     <leafLengthBase mean="0.40000001" stdDev="0.046999998"/>
-    <leafWidthBase mean="0.071000002" stdDev="0.0080000004"/>
+    <leafWidthBase mean="0.050000001" stdDev="0.0080000004"/>
     <widthTaper mean="7.1810002" stdDev="0.1"/>
     <leafAngleBase mean="45.905998" stdDev="10.134"/>
     <leafTwist mean="73.691002" stdDev="45"/>
