@@ -39,6 +39,7 @@ public:
     Dist height = { 2.0f, 0.2f };
     Dist stemRadius = { 0.02f, 0.002f };
     Dist numLeaves = { 8.0f, 1.0f };
+    Dist stemShrinkPerLeaf = { 0.002f, 0.0005f };
 
     // Leaf Parameters
     Dist leafLengthBase = { 0.4f, 0.1f };

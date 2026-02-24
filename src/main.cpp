@@ -282,6 +282,15 @@ static void display() {
         needRegen |= DistUI("Height (m)", gGen.height, 0.25f, 4.0f, 1.0f);
         needRegen |= DistUI("Stem Radius", gGen.stemRadius, 0.01f, 0.1f, 0.01f);
         needRegen |= DistUI("Leaf Count", gGen.numLeaves, 3.0f, 20.0f, 5.0f);
+        {
+            ImGui::PushID("Stem Shrink / Leaf");
+            ImGui::Text("Stem Shrink / Leaf");
+            bool c = false;
+            c |= ImGui::DragFloat("Mean", &gGen.stemShrinkPerLeaf.mean, 0.0001f, 0.0f, 0.005f, "%.4f");
+            c |= ImGui::DragFloat("Std Dev", &gGen.stemShrinkPerLeaf.stdDev, 0.0001f, 0.0f, 0.005f, "%.4f");
+            ImGui::PopID();
+            needRegen |= c;
+        }
 
         ImGui::Separator();
         ImGui::Text("Leaf Defaults");

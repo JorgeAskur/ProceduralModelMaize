@@ -3,12 +3,14 @@
     <height mean="0.88800001" stdDev="0.2"/>
     <stemRadius mean="0.015" stdDev="0.0020000001"/>
     <numLeaves mean="8" stdDev="2.2420001"/>
+    <stemShrinkPerLeaf mean="0.001" stdDev="0.00019999999"/>
     <leafLengthBase mean="0.40000001" stdDev="0.046999998"/>
     <leafWidthBase mean="0.050000001" stdDev="0.0080000004"/>
     <widthTaper mean="7.1810002" stdDev="0.1"/>
     <leafAngleBase mean="45.905998" stdDev="10.134"/>
     <leafTwist mean="73.691002" stdDev="45"/>
     <droopinessBase mean="-25.771" stdDev="5.8390002"/>
+    <leafCurlBase mean="0" stdDev="0.1"/>
     <stemInclination mean="0" stdDev="1.073"/>
     <waveAmp mean="0.0060000001" stdDev="0.0020000001"/>
     <waveFreq mean="12.027" stdDev="2"/>
@@ -19,4 +21,5 @@
     <leafAngleCurve bottom="0.41100001" middle="1.501" top="0.89700001"/>
     <leafTwistCurve bottom="1.346" middle="0.921" top="0.2"/>
     <droopinessCurve bottom="1.415" middle="0.76700002" top="0.2"/>
+    <leafCurlCurve bottom="1" middle="1" top="1"/>
 </MaizeGeneratorConfig>

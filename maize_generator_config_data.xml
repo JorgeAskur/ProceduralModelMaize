@@ -3,6 +3,7 @@
     <height mean="1.416" stdDev="0.50199997"/>
     <stemRadius mean="0.017999999" stdDev="0.0040000002"/>
     <numLeaves mean="8" stdDev="4.027"/>
+    <stemShrinkPerLeaf mean="0.001" stdDev="0.00019999999"/>
     <leafLengthBase mean="0.75199997" stdDev="0.1"/>
     <leafWidthBase mean="0.085000001" stdDev="0.0099999998"/>
     <widthTaper mean="10" stdDev="0.1"/>

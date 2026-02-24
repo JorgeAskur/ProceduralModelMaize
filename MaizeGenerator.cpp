@@ -24,6 +24,7 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     TillerDesc mainTiller;
     mainTiller.type = "main";
     mainTiller.radius = std::max(0.005f, sampleFromZ(stemRadius));
+    mainTiller.stemShrink = 0.0f;
     mainTiller.azimuthDeg = 180.0f;
     mainTiller.azimuthNoise = 15.0f;
     mainTiller.randomSeed = seed;
@@ -32,6 +33,7 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     int nLeaves = (std::max)(3, (int)std::round(nLeavesFloat));
 
     float totalH = std::max(0.1f, sampleFromZ(height));
+    float stemShrinkPerLeafPlant = sampleFromZ(stemShrinkPerLeaf);
 
     float lenBasePlant = sampleFromZ(leafLengthBase);
     float widthBasePlant = sampleFromZ(leafWidthBase);
@@ -92,6 +94,7 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
 
         mainTiller.leaves.push_back(L);
     }
+    mainTiller.stemShrink = std::max(0.0f, stemShrinkPerLeafPlant) * (float)nLeaves;
     plant.tillers.push_back(mainTiller);
     return plant;
 }
@@ -132,6 +135,7 @@ bool MaizeGenerator::saveConfig(const std::string& path) const {
     saveDist("height", height);
     saveDist("stemRadius", stemRadius);
     saveDist("numLeaves", numLeaves);
+    saveDist("stemShrinkPerLeaf", stemShrinkPerLeaf);
     saveDist("leafLengthBase", leafLengthBase);
     saveDist("leafWidthBase", leafWidthBase);
     saveDist("widthTaper", widthTaper);
@@ -182,6 +186,7 @@ bool MaizeGenerator::loadConfig(const std::string& path) {
     loadDist("height", height);
     loadDist("stemRadius", stemRadius);
     loadDist("numLeaves", numLeaves);
+    loadDist("stemShrinkPerLeaf", stemShrinkPerLeaf);
     loadDist("leafLengthBase", leafLengthBase);
     loadDist("leafWidthBase", leafWidthBase);
     loadDist("widthTaper", widthTaper);
