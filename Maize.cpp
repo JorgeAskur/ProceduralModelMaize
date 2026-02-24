@@ -130,6 +130,16 @@ namespace Maize {
         float segmentLen = L.leafLength / (float)(L.splinePoints - 1);
         float gravityFactor = L.droopiness * 5.0f;
         float t_p1 = (L.splinePoints > 1) ? 1.0f / (float)(L.splinePoints - 1) : 1.0f;
+        float curlAmount = clampf(L.leafCurl, -1.f, 1.f);
+        auto applyCurl = [&](float x, float z, float /*t*/) {
+            if (std::abs(curlAmount) <= 1e-5f) return Vect3d(x, 0.f, z);
+            float curl = curlAmount;
+            float absX = std::abs(x);
+            float curlMagnitude = std::min(1.0f, std::abs(curl));
+            float newX = std::copysign(absX * (1.f - curlMagnitude), x);
+            float newZ = z - absX * curl;
+            return Vect3d(newX, 0.f, newZ);
+        };
 
         Vect3d currentDir = startDir;
 
@@ -140,9 +150,7 @@ namespace Maize {
         float t_first = (L.splinePoints > 1) ? 1.0f / (L.splinePoints - 1) : 1.0f;
         float blendEnd = (stemRadiusAtExit * 2.0f) / std::max(L.leafLength, 1e-6f);
         blendEnd = clampf(blendEnd, 0.001f, 1.0f);
-        float t_blend_first = clampf(t_first / blendEnd, 0.f, 1.f);
-        t_blend_first = t_blend_first * t_blend_first * (3.0f - 2.0f * t_blend_first);
-        Vect3d baseDirFirst = lerp_v3(startDir, targetDir, t_blend_first).GetNormalized();
+        Vect3d baseDirFirst = targetDir.GetNormalized();
         float droopinessFactorFirst = t_first * t_first;
         float rotAmtFirst = radiansf(gravityFactor * droopinessFactorFirst);
         float cyFirst = baseDirFirst.y(), czFirst = baseDirFirst.z();
@@ -162,9 +170,12 @@ namespace Maize {
                 float blended_x_left = lerp_v3(Vect3d(p0_lx, 0, 0), Vect3d(target_x_left, 0, 0), t_seg).x();
                 float blended_x_right = lerp_v3(Vect3d(p0_rx, 0, 0), Vect3d(target_x_right, 0, 0), t_seg).x();
                 float y_seg = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, interpPos.y(), 0), t_seg).y();
+                float t_overall = t_seg * t_first;
+                Vect3d leftCurl = applyCurl(blended_x_left, interpPos.z(), t_overall);
+                Vect3d rightCurl = applyCurl(blended_x_right, interpPos.z(), t_overall);
                 outCenter.push_back(interpPos);
-                outLeft.push_back({ blended_x_left, y_seg, interpPos.z() });
-                outRight.push_back({ blended_x_right, y_seg, interpPos.z() });
+                outLeft.push_back({ leftCurl.x(), y_seg, leftCurl.z() });
+                outRight.push_back({ rightCurl.x(), y_seg, rightCurl.z() });
             }
         }
 
@@ -178,8 +189,10 @@ namespace Maize {
             float blended_x_left = lerp_v3(Vect3d(p0_lx, 0, 0), Vect3d(target_x_left, 0, 0), t_seg).x();
             float blended_x_right = lerp_v3(Vect3d(p0_rx, 0, 0), Vect3d(target_x_right, 0, 0), t_seg).x();
             float y_seg = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, currentPos.y(), 0), t_seg).y();
-            outLeft.push_back({ blended_x_left, y_seg, currentPos.z() });
-            outRight.push_back({ blended_x_right, y_seg, currentPos.z() });
+            Vect3d leftCurl = applyCurl(blended_x_left, currentPos.z(), t_first);
+            Vect3d rightCurl = applyCurl(blended_x_right, currentPos.z(), t_first);
+            outLeft.push_back({ leftCurl.x(), y_seg, leftCurl.z() });
+            outRight.push_back({ rightCurl.x(), y_seg, rightCurl.z() });
         }
 
         for (int i = 2; i < L.splinePoints; ++i) {
@@ -190,7 +203,7 @@ namespace Maize {
 
             t_blend = t_blend * t_blend * (3.0f - 2.0f * t_blend);
 
-            Vect3d baseDir = lerp_v3(startDir, targetDir, t_blend).GetNormalized();
+            Vect3d baseDir = targetDir.GetNormalized();
             float droopinessFactor = t * t;
             float rotAmt = radiansf(gravityFactor * droopinessFactor);
             float cy = baseDir.y(), cz = baseDir.z();
@@ -216,8 +229,10 @@ namespace Maize {
                 float blended_x_right = lerp_v3(Vect3d(p0_rx, 0, 0), Vect3d(target_x_right, 0, 0), t_seg).x();
                 y_s = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, currentPos.y(), 0), t_seg).y();
 
-                outLeft.push_back({ blended_x_left, y_s, z_s });
-                outRight.push_back({ blended_x_right, y_s, z_s });
+                Vect3d leftCurl = applyCurl(blended_x_left, z_s, t);
+                Vect3d rightCurl = applyCurl(blended_x_right, z_s, t);
+                outLeft.push_back({ leftCurl.x(), y_s, leftCurl.z() });
+                outRight.push_back({ rightCurl.x(), y_s, rightCurl.z() });
             }
             else {
                 float t_remap = (t - t_p1) / (1.0f - t_p1);
@@ -229,12 +244,25 @@ namespace Maize {
                 float tipMask = 1.0f;
                 if (t > 0.8f) tipMask = (1.0f - t) / 0.2f;
                 else if (t < 0.1f) tipMask = t / 0.1f;
+                float baseMask = clampf((t - 0.1f) / 0.2f, 0.0f, 1.0f);
+                baseMask = baseMask * baseMask * (3.0f - 2.0f * baseMask);
+                float edgeMask = baseMask * tipMask;
 
-                if (L.waveLAmp > 0.0f) noiseL = hashNoise(t * L.waveLFreq, (float)L.id + L.waveLPhase) * L.waveLAmp * tipMask;
-                if (L.waveRAmp > 0.0f) noiseR = hashNoise(t * L.waveRFreq, (float)L.id + 100.0f + L.waveRPhase) * L.waveRAmp * tipMask;
+                if (L.waveLAmp > 0.0f) {
+                    float lowFreq = std::sin((t * L.waveLFreq * 0.25f + L.waveLPhase) * (float)M_PI * 2.0f);
+                    float highFreq = hashNoise(t * L.waveLFreq, (float)L.id + L.waveLPhase);
+                    noiseL = (0.6f * lowFreq + 0.4f * highFreq) * L.waveLAmp * edgeMask;
+                }
+                if (L.waveRAmp > 0.0f) {
+                    float lowFreq = std::sin((t * L.waveRFreq * 0.25f + L.waveRPhase + 0.37f) * (float)M_PI * 2.0f);
+                    float highFreq = hashNoise(t * L.waveRFreq, (float)L.id + 100.0f + L.waveRPhase);
+                    noiseR = (0.55f * lowFreq + 0.45f * highFreq) * (L.waveRAmp * 0.9f) * edgeMask;
+                }
 
-                outLeft.push_back({ -current_halfWidth_x, y_s, z_s + noiseL });
-                outRight.push_back({ current_halfWidth_x, y_s, z_s + noiseR });
+                Vect3d leftCurl = applyCurl(-current_halfWidth_x, z_s + noiseL, t);
+                Vect3d rightCurl = applyCurl(current_halfWidth_x, z_s + noiseR, t);
+                outLeft.push_back({ leftCurl.x(), y_s, leftCurl.z() });
+                outRight.push_back({ rightCurl.x(), y_s, rightCurl.z() });
             }
         }
 
@@ -492,8 +520,10 @@ void MaizeModel::rebuildGeometry() {
                     float sagitta = global_radius * (1.0f - cos(openAngle * 0.5f));
                     float fromCenter = (u01 - 0.5f) * 2.0f;
                     float curveAmt = fromCenter * fromCenter;
-                    float bladeDepth = 0.02f * L.leafWidth * curveAmt;
-                    float sheathDepth = sagitta * (1.0f - curveAmt);
+                    float baseCurvatureMask = clampf(s_blade / 0.15f, 0.0f, 1.0f);
+                    baseCurvatureMask = baseCurvatureMask * baseCurvatureMask * (3.0f - 2.0f * baseCurvatureMask);
+                    float bladeDepth = 0.02f * L.leafWidth * curveAmt * baseCurvatureMask;
+                    float sheathDepth = sagitta * (1.0f - curveAmt) * baseCurvatureMask;
 
                     Vect3d sheathN = blade_z_axis;
                     Vect3d bladeN = blade_y_axis;
@@ -502,8 +532,15 @@ void MaizeModel::rebuildGeometry() {
 
                     p_spline = p_spline + finalN * displacement;
 
-                    float surfaceNoise = hashNoise(u01 * 8.0f, s_blade * 8.0f + (float)L.id * 0.13f);
-                    float surfaceAmp = 0.01f * L.leafWidth;
+                    float tipMask = 1.0f;
+                    if (s_blade > 0.8f) tipMask = (1.0f - s_blade) / 0.2f;
+                    else if (s_blade < 0.1f) tipMask = s_blade / 0.1f;
+                    float surfMask = clampf((s_blade - 0.1f) / 0.6f, 0.0f, 1.0f);
+                    surfMask = surfMask * surfMask * (3.0f - 2.0f * surfMask);
+                    float lowFreq = std::sin((s_blade * 2.0f + u01 * 0.5f + (float)L.id * 0.07f) * (float)M_PI * 2.0f);
+                    float highFreq = hashNoise(u01 * 6.0f, s_blade * 7.0f + (float)L.id * 0.13f);
+                    float surfaceNoise = 0.6f * lowFreq + 0.4f * highFreq;
+                    float surfaceAmp = 0.008f * L.leafWidth * (0.6f + 0.4f * tipMask) * surfMask;
                     p_spline = p_spline + finalN * (surfaceNoise * surfaceAmp);
 
                     // Sheath extension around the collar.

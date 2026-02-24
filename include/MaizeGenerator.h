@@ -9,7 +9,6 @@ struct Dist {
     float mean = 0.0f;
     float stdDev = 0.0f;
 
-    // Added forceMean to allow generating the "Average Plant"
     float get(std::mt19937& gen, bool forceMean = false) const {
         if (forceMean) return mean;
         if (stdDev <= 0.0001f) return mean;
@@ -50,14 +49,16 @@ public:
     Curve leafAngleCurve = { 1.0f, 1.0f };
     Curve leafTwistCurve = { 1.0f, 1.0f };
     Curve droopinessCurve = { 1.0f, 1.0f };
+    Curve leafCurlCurve = { 1.0f, 1.0f };
 
     Dist widthTaper = { 5.0f, 0.1f };
     Dist leafAngleBase = { 45.0f, 5.0f };
     Dist leafTwist = { 10.0f, 10.0f };
     Dist droopinessBase = { -20.0f, 5.f };
+    Dist leafCurlBase = { 0.0f, 0.1f };
     Dist stemInclination = { 0.0f, 5.0f };
 
-    // Noise / Organic Feel
+    // Noise
     Dist waveAmp = { 0.01f, 0.005f };
     Dist waveFreq = { 8.0f, 2.0f };
     Dist wavePhaseShift = { 0.0f, 1.0f };
@@ -65,7 +66,6 @@ public:
     float leafJitterScale = 0.2f;
 
     // Generates a single plant description
-    // If useMeansOnly is true, stdDev is ignored (creates the "Average Plant")
     PlantDesc generate(unsigned int seed, bool useMeansOnly = false);
 
     // Generates N plants and saves them to disk

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<MaizeGeneratorConfig leafJitterScale="0.50199997">
+    <height mean="1.416" stdDev="0.50199997"/>
+    <stemRadius mean="0.017999999" stdDev="0.0040000002"/>
+    <numLeaves mean="8" stdDev="4.027"/>
+    <leafLengthBase mean="0.75199997" stdDev="0.1"/>
+    <leafWidthBase mean="0.085000001" stdDev="0.0099999998"/>
+    <widthTaper mean="10" stdDev="0.1"/>
+    <leafAngleBase mean="45.689999" stdDev="15.019"/>
+    <leafTwist mean="-50.284" stdDev="45"/>
+    <droopinessBase mean="-25.671" stdDev="10"/>
+    <leafCurlBase mean="-0.106" stdDev="0.1"/>
+    <stemInclination mean="0.662" stdDev="0.26100001"/>
+    <waveAmp mean="0.011" stdDev="0.0020000001"/>
+    <waveFreq mean="16.865999" stdDev="5.0219998"/>
+    <wavePhaseShift mean="-1.9220001" stdDev="1"/>
+    <leafLengthCurve bottom="0.70300001" middle="1" top="0.48500001"/>
+    <leafWidthCurve bottom="1" middle="1" top="1"/>
+    <widthTaperCurve bottom="0.77600002" middle="1.007" top="0.74900001"/>
+    <leafAngleCurve bottom="0.486" middle="0.94099998" top="1.29"/>
+    <leafTwistCurve bottom="1.729" middle="1.351" top="0.2"/>
+    <droopinessCurve bottom="1.011" middle="0.77600002" top="0.345"/>
+    <leafCurlCurve bottom="1" middle="1" top="1"/>
+</MaizeGeneratorConfig>

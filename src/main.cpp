@@ -279,19 +279,20 @@ static void display() {
             return changed;
             };
 
-        needRegen |= DistUI("Height (m)", gGen.height, 0.5f, 4.0f, 1.0f);
+        needRegen |= DistUI("Height (m)", gGen.height, 0.25f, 4.0f, 1.0f);
         needRegen |= DistUI("Stem Radius", gGen.stemRadius, 0.01f, 0.1f, 0.01f);
         needRegen |= DistUI("Leaf Count", gGen.numLeaves, 3.0f, 20.0f, 5.0f);
 
         ImGui::Separator();
         ImGui::Text("Leaf Defaults");
-        needRegen |= DistUI("Length", gGen.leafLengthBase, 0.2f, 1.5f, 0.5f);
+        needRegen |= DistUI("Length", gGen.leafLengthBase, 0.02f, 1.5f, 0.5f);
         needRegen |= DistUI("Width", gGen.leafWidthBase, 0.02f, 0.2f, 0.05f);
         needRegen |= DistUI("Width Taper", gGen.widthTaper, 0.0f, 10.0f, 2.0f);
         needRegen |= DistUI("Angle", gGen.leafAngleBase, 0.f, 90.f, 20.f);
         needRegen |= DistUI("Droopiness", gGen.droopinessBase, -80.f, 80.f, 10.f);
         needRegen |= DistUI("Stem Inclination", gGen.stemInclination, -90.f, 90.f, 10.f);
         needRegen |= DistUI("Leaf Twist", gGen.leafTwist, -180.f, 180.f, 45.f);
+        needRegen |= DistUI("Leaf Curl", gGen.leafCurlBase, -1.0f, 1.0f, 0.5f);
 
         ImGui::Separator();
         ImGui::Text("Wave Defaults");
@@ -311,6 +312,7 @@ static void display() {
         needRegen |= CurveUI("Angle Curve", gGen.leafAngleCurve, 0.2f, 2.0f);
         needRegen |= CurveUI("Droopiness Curve", gGen.droopinessCurve, 0.2f, 2.0f);
         needRegen |= CurveUI("Leaf Twist Curve", gGen.leafTwistCurve, 0.2f, 2.0f);
+        needRegen |= CurveUI("Leaf Curl Curve", gGen.leafCurlCurve, 0.2f, 2.0f);
 
     }
 

@@ -91,6 +91,7 @@ namespace Descriptor {
                 leaf_elem->SetAttribute("splinePoints", L.splinePoints);
                 leaf_elem->SetAttribute("widthTaper", L.widthTaper);
                 leaf_elem->SetAttribute("leafTwist", L.leafTwist);
+                leaf_elem->SetAttribute("leafCurl", L.leafCurl);
 
                 leaf_elem->SetAttribute("waveLAmp", L.waveLAmp);
                 leaf_elem->SetAttribute("waveLFreq", L.waveLFreq);
@@ -155,6 +156,7 @@ namespace Descriptor {
                     L.splinePoints = 4; 
                     L.widthTaper = 1.0f;
                     L.leafTwist = 0.0f;
+                    L.leafCurl = 0.0f;
 
                     L.waveLAmp = 0.0f;
                     L.waveLFreq = 0.0f;
@@ -172,6 +174,7 @@ namespace Descriptor {
                     lf->QueryIntAttribute("splinePoints", &L.splinePoints);
                     lf->QueryFloatAttribute("widthTaper", &L.widthTaper);
                     lf->QueryFloatAttribute("leafTwist", &L.leafTwist);
+                    lf->QueryFloatAttribute("leafCurl", &L.leafCurl);
 
                     lf->QueryFloatAttribute("waveLAmp", &L.waveLAmp);
                     lf->QueryFloatAttribute("waveLFreq", &L.waveLFreq);
@@ -189,7 +192,6 @@ namespace Descriptor {
                         L.useCtrlOverrides = !L.ctrlCenterOverride.empty();
                     }
 
-                    // Clamp it just in case
                     L.splinePoints = std::max(4, std::min(L.splinePoints, 40));
 
                     td.leaves.push_back(L);

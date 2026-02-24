@@ -39,6 +39,7 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     float angleBasePlant = sampleFromZ(leafAngleBase);
     float leafTwistPlant = sampleFromZ(leafTwist);
     float droopinessPlant = sampleFromZ(droopinessBase);
+    float leafCurlPlant = sampleFromZ(leafCurlBase);
     float stemInclinationPlant = sampleFromZ(stemInclination);
     float waveAmpPlant = sampleFromZ(waveAmp);
     float waveFreqPlant = sampleFromZ(waveFreq);
@@ -58,7 +59,7 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
         L.distance = totalH / (float)nLeaves;
 
         float lenBase = applyLeafJitter(lenBasePlant, leafLengthBase);
-        L.leafLength = (std::max)(0.1f, lenBase * leafLengthCurve.get(t));
+        L.leafLength = (std::max)(0.01f, lenBase * leafLengthCurve.get(t));
 
         float widthBase = applyLeafJitter(widthBasePlant, leafWidthBase);
         L.leafWidth = (std::max)(0.01f, widthBase * leafWidthCurve.get(t));
@@ -72,6 +73,8 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
         L.leafTwist = applyLeafJitter(leafTwistPlant, leafTwist) * leafTwistCurve.get(t);
 
         L.droopiness = applyLeafJitter(droopinessPlant, droopinessBase) * droopinessCurve.get(t);
+
+        L.leafCurl = applyLeafJitter(leafCurlPlant, leafCurlBase) * leafCurlCurve.get(t);
 
         L.stemInclinationDeg = applyLeafJitter(stemInclinationPlant, stemInclination);
 
@@ -135,6 +138,7 @@ bool MaizeGenerator::saveConfig(const std::string& path) const {
     saveDist("leafAngleBase", leafAngleBase);
     saveDist("leafTwist", leafTwist);
     saveDist("droopinessBase", droopinessBase);
+    saveDist("leafCurlBase", leafCurlBase);
     saveDist("stemInclination", stemInclination);
     saveDist("waveAmp", waveAmp);
     saveDist("waveFreq", waveFreq);
@@ -146,6 +150,7 @@ bool MaizeGenerator::saveConfig(const std::string& path) const {
     saveCurve("leafAngleCurve", leafAngleCurve);
     saveCurve("leafTwistCurve", leafTwistCurve);
     saveCurve("droopinessCurve", droopinessCurve);
+    saveCurve("leafCurlCurve", leafCurlCurve);
 
     root->SetAttribute("leafJitterScale", leafJitterScale);
 
@@ -183,6 +188,7 @@ bool MaizeGenerator::loadConfig(const std::string& path) {
     loadDist("leafAngleBase", leafAngleBase);
     loadDist("leafTwist", leafTwist);
     loadDist("droopinessBase", droopinessBase);
+    loadDist("leafCurlBase", leafCurlBase);
     loadDist("stemInclination", stemInclination);
     loadDist("waveAmp", waveAmp);
     loadDist("waveFreq", waveFreq);
@@ -194,6 +200,7 @@ bool MaizeGenerator::loadConfig(const std::string& path) {
     loadCurve("leafAngleCurve", leafAngleCurve);
     loadCurve("leafTwistCurve", leafTwistCurve);
     loadCurve("droopinessCurve", droopinessCurve);
+    loadCurve("leafCurlCurve", leafCurlCurve);
 
     root->QueryFloatAttribute("leafJitterScale", &leafJitterScale);
     return true;

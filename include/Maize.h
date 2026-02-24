@@ -17,6 +17,7 @@ struct LeafDesc {
     int   splinePoints = 20;
     float widthTaper = 1.0f;
     float leafTwist = 0.0f;
+    float leafCurl = 0.0f;
     float waveLAmp = 0.0f;
     float waveLFreq = 0.0f;
     float waveLPhase = 0.0f;
