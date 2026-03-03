@@ -378,3 +378,6 @@ FodyWeavers.xsd
 /plants/plant_7.xml
 /plants/plant_8.xml
 /plants/plant_9.xml
+/.github
+/Sorghum.vcxproj.filters
+/vcpkg.json
