@@ -3,14 +3,14 @@ Version: 2022-02-06
 Port-Version: 1
 Architecture: x64-windows
 Multi-Arch: same
-Abi: 931bb2542632b1c68b910f8b6ca112ef3baf623f652e4f1438713c7ed3c83376
+Abi: 133c66f2bd0ccd5048aca67cc9e2808e51287824a985f52d0ba51c48cba83821
 Status: install ok installed
 
 Package: vcpkg-cmake
 Version: 2023-05-04
 Architecture: x64-windows
 Multi-Arch: same
-Abi: 38d3e3efb419e4c5164d4ff4bbbbb9f1cb27b0985bf9cd01dfe7a6a0a70f3820
+Abi: e386114931bfa602a62e053970d299fb1a6bd32699109783bcef08c10aabfef9
 Status: install ok installed
 
 Package: tinyxml2
@@ -19,7 +19,7 @@ Port-Version: 2
 Depends: vcpkg-cmake:x64-windows, vcpkg-cmake-config:x64-windows
 Architecture: x86-windows
 Multi-Arch: same
-Abi: 2ac034bdb4adac62120e02ade39f0439ea6beb0987b965d9595133a3286787ff
+Abi: 8553ba117cec6be225e6064591499cb271ca701739a7b47fa56353c79c939d69
 Description: A simple, small, efficient, C++ XML parser
 Status: install ok installed
 
@@ -27,7 +27,7 @@ Package: egl-registry
 Version: 2024-01-25
 Architecture: x86-windows
 Multi-Arch: same
-Abi: 46a845631af2b45c0c1d9e51c01fe4fb9caa31cdcd9c9bcc2e95db74da38bb3c
+Abi: 56ac8427ef46ab09571734272717b5b71f143b296d17adc94bc46c8c15feab09
 Description: EGL API and Extension Registry
 Status: install ok installed
 
@@ -37,7 +37,7 @@ Port-Version: 1
 Depends: egl-registry
 Architecture: x86-windows
 Multi-Arch: same
-Abi: a413f0b193800501962e3d0f5c93ecd1cf9e362f098b751d1040a6fe93413bc0
+Abi: ba4af47d15d8a91657edfa85f576f4b3f736c8abe12bd7f52de0f463e1c1f939
 Description: OpenGL, OpenGL ES, and OpenGL ES-SC API and Extension Registry
 Status: install ok installed
 
@@ -47,7 +47,7 @@ Port-Version: 3
 Depends: opengl-registry
 Architecture: x86-windows
 Multi-Arch: same
-Abi: 308abf4fd744d7f0fdcf737c02b92cdbf7e7c475bb8b32fac4b93d0855e53c88
+Abi: 967ede18fc82796fd48cd6821a1ef82d84e26508234be2c6c8dec74e0048b16a
 Description: Open Graphics Library (OpenGL)[3][4][5] is a cross-language, cross-platform application programming interface (API) for rendering 2D and 3D vector graphics.
 Status: install ok installed
 
@@ -57,7 +57,17 @@ Port-Version: 1
 Depends: opengl, vcpkg-cmake:x64-windows, vcpkg-cmake-config:x64-windows
 Architecture: x86-windows
 Multi-Arch: same
-Abi: ca11f3e720135270be5a0be7955616de8d1b3dddb3c531c999cdb095158df2be
+Abi: 6975f2e4a026ed753ed3ad434696bf3cc105351c8f57c826b35b0b7e40771f4b
 Description: A free OpenGL utility toolkit, the open-sourced alternative to the GLUT library.
+Status: install ok installed
+
+Package: tinyxml
+Version: 2.6.2
+Port-Version: 10
+Depends: vcpkg-cmake:x64-windows, vcpkg-cmake-config:x64-windows
+Architecture: x86-windows
+Multi-Arch: same
+Abi: 3b19233a3219c7534e009d53c5b16addb185778eb2ad918b427c1e6959bc8ed7
+Description: A simple, small, minimal, C++ XML parser that can be easily integrating into other programs.
 Status: install ok installed
 

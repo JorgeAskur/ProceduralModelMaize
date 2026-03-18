@@ -4,5 +4,5 @@ Port-Version: 2
 Depends: vcpkg-cmake, vcpkg-cmake-config
 Architecture: x64-windows
 Multi-Arch: same
-Abi: a44a3d4596ad759368965f57ca6aed721d594eb75ae0cf2621fe7f92d7abd21b
+Abi: d55f890e0860138c3d1893052a7dcb07bc9262c69f4c07a8a18f66c75a43f292
 Description: A simple, small, efficient, C++ XML parser

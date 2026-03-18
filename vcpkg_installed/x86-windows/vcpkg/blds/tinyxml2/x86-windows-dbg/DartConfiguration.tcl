@@ -4,8 +4,8 @@
 
 
 # Configuration directories and files
-SourceDirectory: C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/blds/tinyxml2/src/9.0.0-b11083b41f.clean
-BuildDirectory: C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/blds/tinyxml2/x86-windows-dbg
+SourceDirectory: C:/Users/jorge/Documents/Research/MaizeModel/ProceduralModelMaize/vcpkg_installed/x86-windows/vcpkg/blds/tinyxml2/src/9.0.0-b11083b41f.clean
+BuildDirectory: C:/Users/jorge/Documents/Research/MaizeModel/ProceduralModelMaize/vcpkg_installed/x86-windows/vcpkg/blds/tinyxml2/x86-windows-dbg
 
 # Where to place the cost data store
 CostDataFile: 
@@ -27,8 +27,8 @@ SubmitInactivityTimeout:
 NightlyStartTime: 00:00:00 EDT
 
 # Commands for the build/test/submit cycle
-ConfigureCommand: "C:/Users/jorge/AppData/Local/vcpkg/downloads/tools/cmake-3.30.1-windows/cmake-3.30.1-windows-i386/bin/cmake.exe" "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x86-windows/vcpkg/blds/tinyxml2/src/9.0.0-b11083b41f.clean"
-MakeCommand: C:\Users\jorge\AppData\Local\vcpkg\downloads\tools\cmake-3.30.1-windows\cmake-3.30.1-windows-i386\bin\cmake.exe --build . --config "${CTEST_CONFIGURATION_TYPE}"
+ConfigureCommand: "C:/Users/jorge/AppData/Local/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/bin/cmake.exe" "C:/Users/jorge/Documents/Research/MaizeModel/ProceduralModelMaize/vcpkg_installed/x86-windows/vcpkg/blds/tinyxml2/src/9.0.0-b11083b41f.clean"
+MakeCommand: C:\Users\jorge\AppData\Local\vcpkg\downloads\tools\cmake-3.31.10-windows\cmake-3.31.10-windows-x86_64\bin\cmake.exe --build . --config "${CTEST_CONFIGURATION_TYPE}"
 DefaultCTestConfigurationType: Release
 
 # version control
@@ -63,8 +63,8 @@ UpdateOptions:
 UpdateType: 
 
 # Compiler info
-Compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.44.35207/bin/HostX64/x86/cl.exe
-CompilerVersion: 19.44.35221.0
+Compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x86/cl.exe
+CompilerVersion: 19.50.35726.0
 
 # Dynamic analysis (MemCheck)
 PurifyCommand: 

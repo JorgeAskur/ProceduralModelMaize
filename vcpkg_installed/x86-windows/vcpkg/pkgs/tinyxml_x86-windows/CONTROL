@@ -1,0 +1,8 @@
+Package: tinyxml
+Version: 2.6.2
+Port-Version: 10
+Depends: vcpkg-cmake:x64-windows, vcpkg-cmake-config:x64-windows
+Architecture: x86-windows
+Multi-Arch: same
+Abi: 3b19233a3219c7534e009d53c5b16addb185778eb2ad918b427c1e6959bc8ed7
+Description: A simple, small, minimal, C++ XML parser that can be easily integrating into other programs.

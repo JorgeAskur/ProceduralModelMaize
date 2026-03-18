@@ -3,13 +3,13 @@
   "spdxVersion": "SPDX-2.2",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "documentNamespace": "https://spdx.org/spdxdocs/freeglut-x64-windows-3.4.0#1-9a169f8c-4fd0-492e-90a4-2e486ce1a4eb",
-  "name": "freeglut:x64-windows@3.4.0#1 3594df5e0128a25337fac5eb2dfa80293966fd385c74f04f2f74aa20152619ab",
+  "documentNamespace": "https://spdx.org/spdxdocs/freeglut-x64-windows-3.4.0#1-14f0061c-0a0b-40a2-9ba5-fd6fe639b931",
+  "name": "freeglut:x64-windows@3.4.0#1 2389e862c46c9b01a7bdf9767f53f7c5a8417756414b5b68dddf51d8edd9056b",
   "creationInfo": {
     "creators": [
-      "Tool: vcpkg-2024-12-09-1005b78fa1bf1dde1a20c2734cba4ea61ca94d9a"
+      "Tool: vcpkg-2025-12-16-44bb3ce006467fc13ba37ca099f64077b8bbf84d"
     ],
-    "created": "2025-08-28T18:54:53Z"
+    "created": "2026-03-17T19:59:48Z"
   },
   "relationships": [
     {
@@ -20,87 +20,167 @@
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-0"
+      "relatedSpdxElement": "SPDXRef-port-file-0"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-1"
+      "relatedSpdxElement": "SPDXRef-port-file-1"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-2"
+      "relatedSpdxElement": "SPDXRef-port-file-2"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-3"
+      "relatedSpdxElement": "SPDXRef-port-file-3"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-4"
+      "relatedSpdxElement": "SPDXRef-port-file-4"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-5"
+      "relatedSpdxElement": "SPDXRef-port-file-5"
+    },
+    {
+      "spdxElementId": "SPDXRef-port-file-5",
+      "relationshipType": "DEPENDENCY_MANIFEST_OF",
+      "relatedSpdxElement": "SPDXRef-port"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-6"
+      "relatedSpdxElement": "SPDXRef-port-file-6"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-7"
+      "relatedSpdxElement": "SPDXRef-port-file-7"
     },
     {
       "spdxElementId": "SPDXRef-binary",
-      "relationshipType": "GENERATED_FROM",
-      "relatedSpdxElement": "SPDXRef-port"
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-0"
     },
     {
-      "spdxElementId": "SPDXRef-file-0",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-1"
     },
     {
-      "spdxElementId": "SPDXRef-file-1",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-2"
     },
     {
-      "spdxElementId": "SPDXRef-file-2",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-3"
     },
     {
-      "spdxElementId": "SPDXRef-file-3",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-4"
     },
     {
-      "spdxElementId": "SPDXRef-file-4",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-5"
     },
     {
-      "spdxElementId": "SPDXRef-file-5",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-6"
     },
     {
-      "spdxElementId": "SPDXRef-file-6",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-7"
     },
     {
-      "spdxElementId": "SPDXRef-file-7",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-8"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-9"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-10"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-11"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-12"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-13"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-14"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-15"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-16"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-17"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-18"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-19"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-20"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-21"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-22"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-23"
     }
   ],
   "packages": [
@@ -110,7 +190,7 @@
       "versionInfo": "3.4.0#1",
       "downloadLocation": "git+https://github.com/microsoft/vcpkg@f948f7bed9cac147c0687d4b170b99bc6b59f157",
       "homepage": "https://sourceforge.net/projects/freeglut/",
-      "licenseConcluded": "NOASSERTION",
+      "licenseConcluded": "LicenseRef-vcpkg-null",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "description": "A free OpenGL utility toolkit, the open-sourced alternative to the GLUT library.",
@@ -119,9 +199,9 @@
     {
       "name": "freeglut:x64-windows",
       "SPDXID": "SPDXRef-binary",
-      "versionInfo": "3594df5e0128a25337fac5eb2dfa80293966fd385c74f04f2f74aa20152619ab",
+      "versionInfo": "2389e862c46c9b01a7bdf9767f53f7c5a8417756414b5b68dddf51d8edd9056b",
       "downloadLocation": "NONE",
-      "licenseConcluded": "NOASSERTION",
+      "licenseConcluded": "LicenseRef-vcpkg-null",
       "licenseDeclared": "NOASSERTION",
       "copyrightText": "NOASSERTION",
       "comment": "This is a binary package built by vcpkg."
@@ -143,8 +223,8 @@
   ],
   "files": [
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/f948f7bed9cac147c0687d4b170b99bc6b59f157/fix-debug-macro.patch",
-      "SPDXID": "SPDXRef-file-0",
+      "fileName": "./fix-debug-macro.patch",
+      "SPDXID": "SPDXRef-port-file-0",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -155,8 +235,8 @@
       "copyrightText": "NOASSERTION"
     },
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/f948f7bed9cac147c0687d4b170b99bc6b59f157/no_x64_enforcement.patch",
-      "SPDXID": "SPDXRef-file-1",
+      "fileName": "./no_x64_enforcement.patch",
+      "SPDXID": "SPDXRef-port-file-1",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -167,8 +247,8 @@
       "copyrightText": "NOASSERTION"
     },
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/f948f7bed9cac147c0687d4b170b99bc6b59f157/portfile.cmake",
-      "SPDXID": "SPDXRef-file-2",
+      "fileName": "./portfile.cmake",
+      "SPDXID": "SPDXRef-port-file-2",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -179,8 +259,8 @@
       "copyrightText": "NOASSERTION"
     },
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/f948f7bed9cac147c0687d4b170b99bc6b59f157/usage",
-      "SPDXID": "SPDXRef-file-3",
+      "fileName": "./usage",
+      "SPDXID": "SPDXRef-port-file-3",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -191,8 +271,8 @@
       "copyrightText": "NOASSERTION"
     },
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/f948f7bed9cac147c0687d4b170b99bc6b59f157/vcpkg-cmake-wrapper.cmake",
-      "SPDXID": "SPDXRef-file-4",
+      "fileName": "./vcpkg-cmake-wrapper.cmake",
+      "SPDXID": "SPDXRef-port-file-4",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -203,8 +283,8 @@
       "copyrightText": "NOASSERTION"
     },
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/f948f7bed9cac147c0687d4b170b99bc6b59f157/vcpkg.json",
-      "SPDXID": "SPDXRef-file-5",
+      "fileName": "./vcpkg.json",
+      "SPDXID": "SPDXRef-port-file-5",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -215,8 +295,8 @@
       "copyrightText": "NOASSERTION"
     },
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/f948f7bed9cac147c0687d4b170b99bc6b59f157/windows-output-name.patch",
-      "SPDXID": "SPDXRef-file-6",
+      "fileName": "./windows-output-name.patch",
+      "SPDXID": "SPDXRef-port-file-6",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -227,12 +307,300 @@
       "copyrightText": "NOASSERTION"
     },
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/f948f7bed9cac147c0687d4b170b99bc6b59f157/x11-dependencies-export.patch",
-      "SPDXID": "SPDXRef-file-7",
+      "fileName": "./x11-dependencies-export.patch",
+      "SPDXID": "SPDXRef-port-file-7",
       "checksums": [
         {
           "algorithm": "SHA256",
           "checksumValue": "752593e7264116d19fd81f217512584a47b11cea7fbea2f90f5c5a1440b37652"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./bin/freeglut.dll",
+      "SPDXID": "SPDXRef-binary-file-0",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "2562f78ea1c7d99cbeb998c4e264ea80596b9e5e4d2a393da465e6e02cf6bb9a"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./bin/freeglut.pdb",
+      "SPDXID": "SPDXRef-binary-file-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "7ca1ffed94ee998ffb8985f7490d9460b19fdaaa0f8a7a9b03f92379fd8514e3"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./BUILD_INFO",
+      "SPDXID": "SPDXRef-binary-file-2",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5e7f821ab4eb804deb535baa7b41edca682d0303cf21a91908c98d5c9a7dcf4d"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/bin/freeglutd.dll",
+      "SPDXID": "SPDXRef-binary-file-3",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "4165839d706a6b42867b0a7cc952daa1b8e1a7907ca235462c671cf0946c1474"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/bin/freeglutd.pdb",
+      "SPDXID": "SPDXRef-binary-file-4",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a12d087ec90e93b17c2ca66f3e57a4682c70287f0d37edcfe2917a2469dfda3e"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/lib/freeglutd.lib",
+      "SPDXID": "SPDXRef-binary-file-5",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "a28b6381bd93391b516d3faa337496d683678c8ea40c56e2dbd4ac396399b370"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/lib/pkgconfig/freeglut.pc",
+      "SPDXID": "SPDXRef-binary-file-6",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ab0939f73f670a03d6c7f45e088198fff41015f7b69c09a5859493bf7f28d14b"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/lib/pkgconfig/glut.pc",
+      "SPDXID": "SPDXRef-binary-file-7",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ab0939f73f670a03d6c7f45e088198fff41015f7b69c09a5859493bf7f28d14b"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/GL/freeglut.h",
+      "SPDXID": "SPDXRef-binary-file-8",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e5a823629d7b4ed8f3ec9497161ae2765bf5f13e32bb7928f6f1bf8eef2a3109"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/GL/freeglut_ext.h",
+      "SPDXID": "SPDXRef-binary-file-9",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "af00415f9ca3aa9f09163a686faf1ca402220642900cd489797a036102f526f0"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/GL/freeglut_std.h",
+      "SPDXID": "SPDXRef-binary-file-10",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5eb4bc6141452142ac54e93a506a245c70ed196b40669afb2c870a37ad8155dd"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/GL/freeglut_ucall.h",
+      "SPDXID": "SPDXRef-binary-file-11",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "27ddc012acc455901262a9b5edeffff39d5109da17f3d445b006549b47882d53"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/GL/glut.h",
+      "SPDXID": "SPDXRef-binary-file-12",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e3ffcfd1147cd45a9ddb49ab9791e8fc6269f52732f0c02f10f2daf9cc0e730b"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./lib/freeglut.lib",
+      "SPDXID": "SPDXRef-binary-file-13",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "10729a4b32880c6e9c96e74b3b0565b2d3e1625912f39729e569e79ae568d48f"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./lib/pkgconfig/freeglut.pc",
+      "SPDXID": "SPDXRef-binary-file-14",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3aba8805b878478430876a7327d395dad238a655ab7485c1bd2bddf084ba1c50"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./lib/pkgconfig/glut.pc",
+      "SPDXID": "SPDXRef-binary-file-15",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3aba8805b878478430876a7327d395dad238a655ab7485c1bd2bddf084ba1c50"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/freeglut/copyright",
+      "SPDXID": "SPDXRef-binary-file-16",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "b6593d5ec4c113a274abb85b10e8615895cb0ddb89f7912af5fe5aa8df38a275"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/freeglut/FreeGLUTConfig.cmake",
+      "SPDXID": "SPDXRef-binary-file-17",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "27800d5fe85e51dc9ad2c7ab2aaccb5cc180b6d640c2232916e8181c9c5697ca"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/freeglut/FreeGLUTConfigVersion.cmake",
+      "SPDXID": "SPDXRef-binary-file-18",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "293a93b0e0682fe02988ec1f8da54d93a07dc30dfd7c06192e579d5eab50ba52"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/freeglut/FreeGLUTTargets-debug.cmake",
+      "SPDXID": "SPDXRef-binary-file-19",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1c212f2b8c43e376b085de5dd2c0f7fca6fd2c2c70c2d8b65b8f5ed99cb31eb6"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/freeglut/FreeGLUTTargets-release.cmake",
+      "SPDXID": "SPDXRef-binary-file-20",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "1f10ddab61d688f4617a5d13d735cbc2e648941996871937d564892689a62888"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/freeglut/FreeGLUTTargets.cmake",
+      "SPDXID": "SPDXRef-binary-file-21",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5182fd6757f5339b51e83033645c6408c95f7d427c79b00821a4acd99705c82c"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/freeglut/usage",
+      "SPDXID": "SPDXRef-binary-file-22",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e9f67ec07d750b0ed4741b098d91b38d301b927fdebfdd5085ee5b26e197ef39"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/glut/vcpkg-cmake-wrapper.cmake",
+      "SPDXID": "SPDXRef-binary-file-23",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "77ad638d0af744c979462edef16a74c0d7e065b0ffd346f03b967372f760ccf5"
         }
       ],
       "licenseConcluded": "NOASSERTION",

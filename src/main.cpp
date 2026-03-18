@@ -37,6 +37,8 @@ static int gSelLeaf = 0;
 
 static bool gShowCtrlPts = false;
 static bool gShowCtrlPoly = false;
+static bool gShowSkeletonSpline = false;
+static bool gSkeletonOnlyView = false;
 static bool gWireframe = false;
 static bool gShowNormals = false;
 
@@ -52,7 +54,9 @@ static char gTexPath[256] = "maize_leaf.png";
 static char gStemTexPath[256] = "maize_stem_texture.png";
 static char gExportBasePath[256] = "plant_export/plant";
 static char gXmlPath[256] = "plant_spline.xml";
+static char gSkeletonXmlPath[256] = "plant_skeleton.xml";
 static char gObjPath[256] = "plant_spline.obj";
+static char gSkeletonObjPath[256] = "plant_skeleton.obj";
 
 static GLuint gTextureID = 0;
 static bool   gTextureOK = false;
@@ -83,6 +87,23 @@ static void loadTexture(const char* path, GLuint* textureId, bool* textureOk) {
         stbi_image_free(data);
         *textureOk = true;
     }
+}
+
+static void drawSkeletonViz() {
+    if (!gShowSkeletonSpline) return;
+    glDisable(GL_LIGHTING);
+    glDisable(GL_DEPTH_TEST);
+    glLineWidth(2.0f);
+    glColor3f(0.0f, 0.0f, 0.0f);
+    for (const auto& G : Maize::leafGeoms()) {
+        if (G.ctrlCenter.size() < 2) continue;
+        glBegin(GL_LINE_STRIP);
+        for (const auto& p : G.ctrlCenter) {
+            glVertex3f(p.x(), p.y(), p.z());
+        }
+        glEnd();
+    }
+    glEnable(GL_DEPTH_TEST);
 }
 
 static const LeafGeom* GetStemGeom() {
@@ -310,9 +331,12 @@ static void display() {
     gluLookAt(eye.x(), eye.y(), eye.z(), gCamTarget.x(), gCamTarget.y(), gCamTarget.z(), 0, 1, 0);
 
     drawGridAndAxes();
-    drawPlant();
-    drawNormals();
-    drawCtrlViz();
+    if (!gSkeletonOnlyView) {
+        drawPlant();
+        drawNormals();
+        drawCtrlViz();
+    }
+    drawSkeletonViz();
 
     ImGui::Begin("Maize Generator");
 
@@ -324,35 +348,83 @@ static void display() {
     if (ImGui::CollapsingHeader("Global Traits", ImGuiTreeNodeFlags_DefaultOpen)) {
         ImGui::TextWrapped("Edit global traits and defaults for the plant.");
 
-        auto DistUI = [&](const char* label, Dist& d, float v_min, float v_max, float sd_max) {
+        auto DistUI = [&](const char* label, Dist& d, float v_min, float v_max) {
             ImGui::PushID(label);
             ImGui::Text("%s", label);
             bool c = false;
-            c |= ImGui::SliderFloat("Mean", &d.mean, v_min, v_max);
-            c |= ImGui::SliderFloat("Std Dev", &d.stdDev, 0.0f, sd_max);
+            c |= ImGui::SliderFloat("Value", &d.mean, v_min, v_max);
             ImGui::PopID();
             return c;
             };
 
-        needRegen |= DistUI("Height (m)", gGen.height, 0.5f, 4.0f, 1.0f);
-        needRegen |= DistUI("Stem Radius", gGen.stemRadius, 0.01f, 0.1f, 0.01f);
-        needRegen |= DistUI("Leaf Count", gGen.numLeaves, 3.0f, 20.0f, 5.0f);
+        auto Curve3UI = [&](const char* label, Curve3& c, float v_min, float v_max) {
+            ImGui::PushID(label);
+            ImGui::Text("%s", label);
+            bool changed = false;
+            changed |= ImGui::SliderFloat("Bottom", &c.bottom, v_min, v_max);
+            changed |= ImGui::SliderFloat("Middle", &c.middle, v_min, v_max);
+            changed |= ImGui::SliderFloat("Top", &c.top, v_min, v_max);
+            ImGui::PopID();
+            return changed;
+            };
+
+        needRegen |= DistUI("Height (m)", gGen.height, 0.5f, 4.0f);
+        needRegen |= DistUI("Stem Radius", gGen.stemRadius, 0.01f, 0.1f);
+        needRegen |= DistUI("Leaf Count", gGen.numLeaves, 3.0f, 20.0f);
+        needRegen |= ImGui::SliderFloat("Tiller Azimuth Base", &gGen.tillerAzimuthDeg, -360.0f, 360.0f);
+        needRegen |= ImGui::SliderFloat("Tiller Azimuth Noise", &gGen.tillerAzimuthNoise, 0.0f, 90.0f);
+        needRegen |= ImGui::SliderFloat("Stem Shrink Factor", &gGen.stemShrinkFactor, 0.0f, 2.0f);
+        needRegen |= ImGui::SliderFloat("Stem Shrink Min", &gGen.stemShrinkMin, 0.0f, 0.02f);
 
         ImGui::Separator();
         ImGui::Text("Leaf Defaults");
-        needRegen |= DistUI("Length", gGen.leafLengthBase, 0.2f, 1.5f, 0.5f);
-        needRegen |= DistUI("Width", gGen.leafWidthBase, 0.02f, 0.2f, 0.05f);
-        needRegen |= DistUI("Width Taper", gGen.widthTaper, 0.0f, 10.0f, 2.0f);
-        needRegen |= DistUI("Angle", gGen.leafAngleBase, 0.f, 90.f, 20.f);
-        needRegen |= DistUI("Droopiness", gGen.droopinessBase, -80.f, 80.f, 10.f);
-        needRegen |= DistUI("Stem Inclination", gGen.stemInclination, -90.f, 90.f, 10.f);
-        needRegen |= DistUI("Leaf Twist", gGen.leafTwist, -180.f, 180.f, 45.f);
+        needRegen |= DistUI("Length", gGen.leafLengthBase, 0.2f, 1.5f);
+        needRegen |= DistUI("Width", gGen.leafWidthBase, 0.02f, 0.2f);
+        needRegen |= DistUI("Width Taper", gGen.widthTaper, 0.0f, 10.0f);
+        needRegen |= DistUI("Angle", gGen.leafAngleBase, 0.f, 90.f);
+        needRegen |= DistUI("Droopiness", gGen.droopinessBase, -80.f, 80.f);
+        needRegen |= DistUI("Stem Inclination", gGen.stemInclination, -90.f, 90.f);
+        needRegen |= DistUI("Leaf Twist", gGen.leafTwist, -180.f, 180.f);
+        needRegen |= DistUI("Leaf Curl", gGen.leafCurl, -1.0f, 1.0f);
+        needRegen |= ImGui::SliderInt("Spline Points (Default)", &gGen.splinePointsDefault, 4, 80);
 
         ImGui::Separator();
         ImGui::Text("Wave Defaults");
-        needRegen |= DistUI("Wave Amp", gGen.waveAmp, 0.f, 0.05f, 0.02f);
-        needRegen |= DistUI("Wave Freq", gGen.waveFreq, 0.f, 40.f, 10.f);
-        needRegen |= DistUI("Wave Phase", gGen.wavePhaseShift, -6.283f, 6.283f, 3.1415f);
+        needRegen |= DistUI("Wave Amp", gGen.waveAmp, 0.f, 0.05f);
+        needRegen |= DistUI("Wave Freq", gGen.waveFreq, 0.f, 40.f);
+        needRegen |= DistUI("Wave Phase", gGen.wavePhaseShift, -6.283f, 6.283f);
+
+        ImGui::Separator();
+        ImGui::Text("Architecture");
+        needRegen |= ImGui::SliderFloat("Whorl Start", &gGen.whorlStart, 0.0f, 0.95f);
+        needRegen |= ImGui::SliderFloat("Whorl Compression", &gGen.whorlCompression, 0.0f, 1.5f);
+        needRegen |= ImGui::SliderFloat("Whorl Min Internode", &gGen.whorlMinInternodeWeight, 0.01f, 1.0f);
+        needRegen |= ImGui::SliderFloat("Lower Leaf Angle Boost", &gGen.lowerLeafAngleBoost, -30.0f, 30.0f);
+        needRegen |= ImGui::SliderFloat("Upper Leaf Angle Drop", &gGen.upperLeafAngleDrop, -30.0f, 30.0f);
+
+        ImGui::Separator();
+        ImGui::Text("Leaf Visual Shaping Defaults");
+        needRegen |= ImGui::SliderFloat("Surface Noise Amp (Default)", &gGen.leafSurfaceNoiseAmp, 0.0f, 0.05f);
+        needRegen |= ImGui::SliderFloat("Surface Noise Freq (Default)", &gGen.leafSurfaceNoiseFreq, 0.1f, 24.0f);
+        needRegen |= ImGui::SliderFloat("Tip Width (Default)", &gGen.leafTipWidthFactor, 0.0f, 0.12f);
+        needRegen |= ImGui::SliderFloat("Midrib Tip Taper (Default)", &gGen.midribTipTaperStart, 0.2f, 0.98f);
+        needRegen |= ImGui::SliderFloat("Midrib Texture Strength (Default)", &gGen.midribTextureStrength, 0.0f, 0.95f);
+        needRegen |= ImGui::SliderFloat("Ligule Wrap Length (Default)", &gGen.liguleWrapLengthScale, 0.5f, 8.0f);
+        needRegen |= ImGui::SliderFloat("Ligule Unfold Sharpness (Default)", &gGen.liguleUnfoldSharpness, 0.2f, 4.0f);
+        needRegen |= ImGui::SliderFloat("Sheath Outer Scale (Default)", &gGen.sheathOuterScale, 1.0f, 1.6f);
+
+        ImGui::Separator();
+        ImGui::Text("Leaf Curves (Bottom / Middle / Top)");
+        needRegen |= Curve3UI("Length Scale Curve", gGen.leafLengthScaleCurve, 0.2f, 2.5f);
+        needRegen |= Curve3UI("Width Scale Curve", gGen.leafWidthScaleCurve, 0.2f, 2.5f);
+        needRegen |= Curve3UI("Taper Scale Curve", gGen.widthTaperScaleCurve, 0.2f, 2.5f);
+        needRegen |= Curve3UI("Wave Amp Scale Curve", gGen.waveAmpScaleCurve, 0.0f, 3.0f);
+        needRegen |= Curve3UI("Wave Freq Scale Curve", gGen.waveFreqScaleCurve, 0.2f, 3.0f);
+        needRegen |= Curve3UI("Angle Offset Curve", gGen.leafAngleOffsetCurve, -45.0f, 45.0f);
+        needRegen |= Curve3UI("Droopiness Offset Curve", gGen.droopinessOffsetCurve, -40.0f, 40.0f);
+        needRegen |= Curve3UI("Twist Offset Curve", gGen.leafTwistOffsetCurve, -90.0f, 90.0f);
+        needRegen |= Curve3UI("Curl Offset Curve", gGen.leafCurlOffsetCurve, -1.0f, 1.0f);
+        needRegen |= Curve3UI("Stem Inclination Offset Curve", gGen.stemInclinationOffsetCurve, -40.0f, 40.0f);
         needRegen |= ImGui::SliderFloat("Leaf Jitter", &gGen.leafJitterScale, 0.0f, 1.0f);
 
     }
@@ -366,6 +438,7 @@ static void display() {
 
             ImGui::Separator(); ImGui::Text("Tiller");
             needUpdate |= ImGui::DragFloat("Radius", &t.radius, 0.001f);
+            needUpdate |= ImGui::DragFloat("Stem Shrink", &t.stemShrink, 0.0002f);
             needUpdate |= ImGui::DragFloat("Azimuth Base", &t.azimuthDeg, 1.0f);
             needUpdate |= ImGui::DragFloat("Azimuth Noise", &t.azimuthNoise, 0.5f);
 
@@ -421,6 +494,7 @@ static void display() {
                 needUpdate |= ImGui::DragFloat("Length", &L.leafLength, 0.01f);
                 needUpdate |= ImGui::DragFloat("Width", &L.leafWidth, 0.005f);
                 needUpdate |= ImGui::SliderFloat("Angle", &L.leafAngle, -90.f, 90.f);
+                needUpdate |= ImGui::SliderFloat("Leaf Curl", &L.leafCurl, -1.0f, 1.0f);
                 needUpdate |= ImGui::SliderFloat("Droopiness", &L.droopiness, -80.f, 80.f);
                 needUpdate |= ImGui::SliderFloat("Stem Inclination", &L.stemInclinationDeg, -30.f, 30.f);
                 bool splineChanged = ImGui::SliderInt("Spline Pts", &L.splinePoints, 4, 40);
@@ -440,6 +514,20 @@ static void display() {
                 needUpdate |= ImGui::SliderFloat("R Amp", &L.waveRAmp, 0.f, 0.05f);
                 needUpdate |= ImGui::SliderFloat("R Freq", &L.waveRFreq, 0.f, 20.f);
                 needUpdate |= ImGui::SliderFloat("R Phase", &L.waveRPhase, -6.283f, 6.283f);
+
+                ImGui::Text("Leaf Surface");
+                needUpdate |= ImGui::SliderFloat("Surface Noise Amp", &L.surfaceNoiseAmp, 0.0f, 0.05f);
+                needUpdate |= ImGui::SliderFloat("Surface Noise Freq", &L.surfaceNoiseFreq, 0.1f, 24.0f);
+                needUpdate |= ImGui::SliderFloat("Tip Width", &L.tipWidthFactor, 0.0f, 0.12f);
+
+                ImGui::Text("Midrib");
+                needUpdate |= ImGui::SliderFloat("Midrib Tip Taper Start", &L.midribTipTaperStart, 0.2f, 0.98f);
+                needUpdate |= ImGui::SliderFloat("Midrib Texture Strength", &L.midribTextureStrength, 0.0f, 0.95f);
+
+                ImGui::Text("Sheath & Unfold");
+                needUpdate |= ImGui::SliderFloat("Ligule Wrap Length", &L.liguleWrapLengthScale, 0.5f, 8.0f);
+                needUpdate |= ImGui::SliderFloat("Ligule Unfold Sharpness", &L.liguleUnfoldSharpness, 0.2f, 4.0f);
+                needUpdate |= ImGui::SliderFloat("Sheath Outer Scale", &L.sheathOuterScale, 1.0f, 1.6f);
 
                 ImGui::Separator();
                 bool useOverrides = L.useCtrlOverrides;
@@ -497,6 +585,7 @@ static void display() {
         ImGui::InputText("XML Path", gXmlPath, sizeof(gXmlPath));
         if (ImGui::Button("Load XML")) {
             if (Descriptor::loadPlantXML(gXmlPath)) {
+                gSkeletonOnlyView = false;
                 Maize::rebuildGeometry();
             }
         }
@@ -505,9 +594,26 @@ static void display() {
             Descriptor::savePlantXML(gXmlPath);
         }
 
+        ImGui::InputText("Skeleton XML Path", gSkeletonXmlPath, sizeof(gSkeletonXmlPath));
+        if (ImGui::Button("Load Skeleton XML")) {
+            if (Descriptor::loadSkeletonXML(gSkeletonXmlPath)) {
+                gSkeletonOnlyView = true;
+                gShowSkeletonSpline = true;
+                Maize::rebuildGeometry();
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::Button("Save Skeleton XML")) {
+            Descriptor::saveSkeletonXML(gSkeletonXmlPath);
+        }
+
         ImGui::InputText("OBJ Path", gObjPath, sizeof(gObjPath));
         if (ImGui::Button("Save OBJ")) {
             Maize::savePlantOBJ(gObjPath, gTexPath, gStemTexPath);
+        }
+        ImGui::InputText("Skeleton OBJ Path", gSkeletonObjPath, sizeof(gSkeletonObjPath));
+        if (ImGui::Button("Save Skeleton OBJ")) {
+            Maize::saveSkeletonOBJ(gSkeletonObjPath);
         }
     }
 
@@ -516,7 +622,12 @@ static void display() {
         ImGui::Checkbox("Lighting", &gLightingOn);
         ImGui::Checkbox("Show Normals", &gShowNormals);
         ImGui::Checkbox("Show Control Points", &gShowCtrlPts);
+        ImGui::Checkbox("Show Skeleton Spline", &gShowSkeletonSpline);
+        ImGui::Checkbox("Skeleton Only View", &gSkeletonOnlyView);
         ImGui::Checkbox("Wireframe", &gWireframe);
+
+        ImGui::Separator();
+        ImGui::Text("Stem Mesh");
         needUpdate |= ImGui::SliderFloat("Stem Density", &Maize::gStemDensityScale(), 0.1f, 1.0f, "%.2f");
         int stemRows = Maize::gStemRowOverride();
         if (ImGui::SliderInt("Stem Rows", &stemRows, 4, 400)) {
@@ -524,6 +635,9 @@ static void display() {
             needUpdate = true;
         }
         needUpdate |= ImGui::SliderFloat("Stem Ribbon Spacing", &Maize::gStemRibbonSpacing(), 0.05f, 1.0f, "%.2f m");
+
+        ImGui::Separator();
+        ImGui::Text("Resolution");
         needUpdate |= ImGui::SliderFloat("Res Vertical", &Maize::gMeshDensityV(), 10.f, 200.f, "%.0f / m");
         needUpdate |= ImGui::SliderFloat("Res Horizontal", &Maize::gMeshDensityU(), 10.f, 200.f, "%.0f / m");
         ImGui::Text("Triangles: %d", Maize::getTriangleCount());

@@ -1,0 +1,5 @@
+C:/Users/jorge/Documents/Research/MaizeModel/ProceduralModelMaize/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml_x86-windows/debug/lib/tinyxml.lib
+C:/Users/jorge/Documents/Research/MaizeModel/ProceduralModelMaize/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml_x86-windows/debug/share/tinyxml/tinyxmlTargets.cmake
+C:/Users/jorge/Documents/Research/MaizeModel/ProceduralModelMaize/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml_x86-windows/debug/share/tinyxml/tinyxmlTargets-debug.cmake
+C:/Users/jorge/Documents/Research/MaizeModel/ProceduralModelMaize/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml_x86-windows/debug/include/tinyxml.h
+C:/Users/jorge/Documents/Research/MaizeModel/ProceduralModelMaize/vcpkg_installed/x86-windows/vcpkg/pkgs/tinyxml_x86-windows/debug/include/tinyxml_export.h

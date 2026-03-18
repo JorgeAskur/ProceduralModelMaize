@@ -3,13 +3,13 @@
   "spdxVersion": "SPDX-2.2",
   "dataLicense": "CC0-1.0",
   "SPDXID": "SPDXRef-DOCUMENT",
-  "documentNamespace": "https://spdx.org/spdxdocs/tinyxml2-x64-windows-9.0.0#2-80094d04-36d4-4d11-8bee-e2846b865283",
-  "name": "tinyxml2:x64-windows@9.0.0#2 a44a3d4596ad759368965f57ca6aed721d594eb75ae0cf2621fe7f92d7abd21b",
+  "documentNamespace": "https://spdx.org/spdxdocs/tinyxml2-x64-windows-9.0.0#2-f3c62f28-9f35-4a64-8475-6e09aaa029ff",
+  "name": "tinyxml2:x64-windows@9.0.0#2 d55f890e0860138c3d1893052a7dcb07bc9262c69f4c07a8a18f66c75a43f292",
   "creationInfo": {
     "creators": [
-      "Tool: vcpkg-2024-12-09-1005b78fa1bf1dde1a20c2734cba4ea61ca94d9a"
+      "Tool: vcpkg-2025-12-16-44bb3ce006467fc13ba37ca099f64077b8bbf84d"
     ],
-    "created": "2025-08-28T18:54:56Z"
+    "created": "2026-03-17T19:59:56Z"
   },
   "relationships": [
     {
@@ -20,47 +20,107 @@
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-0"
+      "relatedSpdxElement": "SPDXRef-port-file-0"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-1"
+      "relatedSpdxElement": "SPDXRef-port-file-1"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-2"
+      "relatedSpdxElement": "SPDXRef-port-file-2"
     },
     {
       "spdxElementId": "SPDXRef-port",
       "relationshipType": "CONTAINS",
-      "relatedSpdxElement": "SPDXRef-file-3"
+      "relatedSpdxElement": "SPDXRef-port-file-3"
+    },
+    {
+      "spdxElementId": "SPDXRef-port-file-3",
+      "relationshipType": "DEPENDENCY_MANIFEST_OF",
+      "relatedSpdxElement": "SPDXRef-port"
     },
     {
       "spdxElementId": "SPDXRef-binary",
-      "relationshipType": "GENERATED_FROM",
-      "relatedSpdxElement": "SPDXRef-port"
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-0"
     },
     {
-      "spdxElementId": "SPDXRef-file-0",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-1"
     },
     {
-      "spdxElementId": "SPDXRef-file-1",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-2"
     },
     {
-      "spdxElementId": "SPDXRef-file-2",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-3"
     },
     {
-      "spdxElementId": "SPDXRef-file-3",
-      "relationshipType": "CONTAINED_BY",
-      "relatedSpdxElement": "SPDXRef-port"
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-4"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-5"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-6"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-7"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-8"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-9"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-10"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-11"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-12"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-13"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-14"
+    },
+    {
+      "spdxElementId": "SPDXRef-binary",
+      "relationshipType": "CONTAINS",
+      "relatedSpdxElement": "SPDXRef-binary-file-15"
     }
   ],
   "packages": [
@@ -79,7 +139,7 @@
     {
       "name": "tinyxml2:x64-windows",
       "SPDXID": "SPDXRef-binary",
-      "versionInfo": "a44a3d4596ad759368965f57ca6aed721d594eb75ae0cf2621fe7f92d7abd21b",
+      "versionInfo": "d55f890e0860138c3d1893052a7dcb07bc9262c69f4c07a8a18f66c75a43f292",
       "downloadLocation": "NONE",
       "licenseConcluded": "Zlib",
       "licenseDeclared": "NOASSERTION",
@@ -103,8 +163,8 @@
   ],
   "files": [
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/c88f30e7ca28b2de522a19a7c7b6d318664e3860/0001-fix-do-not-force-export-the-symbols-when-building-st.patch",
-      "SPDXID": "SPDXRef-file-0",
+      "fileName": "./0001-fix-do-not-force-export-the-symbols-when-building-st.patch",
+      "SPDXID": "SPDXRef-port-file-0",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -115,8 +175,8 @@
       "copyrightText": "NOASSERTION"
     },
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/c88f30e7ca28b2de522a19a7c7b6d318664e3860/0002-fix-check-for-TINYXML2_EXPORT-on-non-windows.patch",
-      "SPDXID": "SPDXRef-file-1",
+      "fileName": "./0002-fix-check-for-TINYXML2_EXPORT-on-non-windows.patch",
+      "SPDXID": "SPDXRef-port-file-1",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -127,8 +187,8 @@
       "copyrightText": "NOASSERTION"
     },
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/c88f30e7ca28b2de522a19a7c7b6d318664e3860/portfile.cmake",
-      "SPDXID": "SPDXRef-file-2",
+      "fileName": "./portfile.cmake",
+      "SPDXID": "SPDXRef-port-file-2",
       "checksums": [
         {
           "algorithm": "SHA256",
@@ -139,12 +199,204 @@
       "copyrightText": "NOASSERTION"
     },
     {
-      "fileName": "./C:/Users/csuser/AppData/Local/vcpkg/registries/git-trees/c88f30e7ca28b2de522a19a7c7b6d318664e3860/vcpkg.json",
-      "SPDXID": "SPDXRef-file-3",
+      "fileName": "./vcpkg.json",
+      "SPDXID": "SPDXRef-port-file-3",
       "checksums": [
         {
           "algorithm": "SHA256",
           "checksumValue": "4ae491743db18679401e1b260dbc97e809c84d5a07b3908745fc0ecd070e7daa"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./bin/tinyxml2.dll",
+      "SPDXID": "SPDXRef-binary-file-0",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "51ba32d651f1c89198d7b56fff3300f43d48f540588ada79dd28f2e79c9ec653"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./bin/tinyxml2.pdb",
+      "SPDXID": "SPDXRef-binary-file-1",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3914cf2240401dd3026f3fcee32b470ea12bd747c5844b72df25ff2be1d318f6"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./BUILD_INFO",
+      "SPDXID": "SPDXRef-binary-file-2",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "5e7f821ab4eb804deb535baa7b41edca682d0303cf21a91908c98d5c9a7dcf4d"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/bin/tinyxml2.dll",
+      "SPDXID": "SPDXRef-binary-file-3",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "877ed11ac67a0f654a797d935077feefd534cfdb7c1a12f9047d680b0de8a006"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/bin/tinyxml2.pdb",
+      "SPDXID": "SPDXRef-binary-file-4",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9bf2669bbdd1c311c1c70cc1e5134e8153f7f3f8bbb54646e029579eb9c5978c"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/lib/pkgconfig/tinyxml2.pc",
+      "SPDXID": "SPDXRef-binary-file-5",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "76e3406275fad7cbc02cb2eed75a0dfa991145fc1d8d676966cbf825e4cbca3e"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./debug/lib/tinyxml2.lib",
+      "SPDXID": "SPDXRef-binary-file-6",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "7eadb09c7289568b92dd1850fb07c7dfae726de8a7c745c732e196239372ab38"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./include/tinyxml2.h",
+      "SPDXID": "SPDXRef-binary-file-7",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "ba4a9dc8c937d8ea49c236a7bec018be62f9f5993d89a11d31a82b58eaadb89a"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./lib/pkgconfig/tinyxml2.pc",
+      "SPDXID": "SPDXRef-binary-file-8",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3df4835ed68e9db45457786594c5eff1da1aea9fe5ac4285785614054157d7d0"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./lib/tinyxml2.lib",
+      "SPDXID": "SPDXRef-binary-file-9",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "7eadb09c7289568b92dd1850fb07c7dfae726de8a7c745c732e196239372ab38"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/tinyxml2/copyright",
+      "SPDXID": "SPDXRef-binary-file-10",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "9332252e9b9e46db8285d4a3f0bf25f139bf1dca6781b956d57f2302efca6432"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/tinyxml2/tinyxml2-config-version.cmake",
+      "SPDXID": "SPDXRef-binary-file-11",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "63e0c28e573783e395a1b408a49cc13811210f5e640034e47a03f64ac586a28a"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/tinyxml2/tinyxml2-config.cmake",
+      "SPDXID": "SPDXRef-binary-file-12",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "3ba359f9262dd38980dd92f398c189eeb4a5ab1479bf15aa83e6468f5e6daa43"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/tinyxml2/tinyxml2-shared-targets-debug.cmake",
+      "SPDXID": "SPDXRef-binary-file-13",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "e85d5f0208d7bc0bc5021fbfa98b302baf7d72fdfd81622eb1566844d15962cd"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/tinyxml2/tinyxml2-shared-targets-release.cmake",
+      "SPDXID": "SPDXRef-binary-file-14",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "19b08907d6e47a2f2a28a562a880605cfca99d9f99b26000804d3e2659b28cdb"
+        }
+      ],
+      "licenseConcluded": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    },
+    {
+      "fileName": "./share/tinyxml2/tinyxml2-shared-targets.cmake",
+      "SPDXID": "SPDXRef-binary-file-15",
+      "checksums": [
+        {
+          "algorithm": "SHA256",
+          "checksumValue": "f019ec57d5e3ebf37a0ace106b44a727fcd8d12dc09d5d836aedbdbfa11b2be0"
         }
       ],
       "licenseConcluded": "NOASSERTION",

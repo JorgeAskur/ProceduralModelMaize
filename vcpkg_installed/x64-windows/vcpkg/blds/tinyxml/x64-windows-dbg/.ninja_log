@@ -1,0 +1,6 @@
+# ninja log v7
+6	367	7954807912890373	CMakeFiles/unofficial-tinyxml.dir/tinyxmlerror.cpp.obj	bba6e2ec9eb2f844
+9	377	7954807912912055	CMakeFiles/unofficial-tinyxml.dir/tinyxmlparser.cpp.obj	f2780ede37fed535
+3	394	7954807912854616	CMakeFiles/unofficial-tinyxml.dir/tinyxml.cpp.obj	2edaa13ab0d5fe5a
+395	461	7954807916766914	tinyxml.lib	ec6a4f3b1a6aaf8f
+461	550	7954807917433162	CMakeFiles/install.util	62e9ce77b3d9f497

@@ -47,6 +47,8 @@ namespace Descriptor {
         }
     }
 
+    static void buildLeafSidesFromCenter(LeafDesc& L);
+
     // Save the plant description and edits to an XML file
     bool savePlantXML(const char* path) {
         XMLDocument doc;
@@ -68,10 +70,6 @@ namespace Descriptor {
             tiller_elem->SetAttribute("beta", td.azimuthDeg);
             tiller_elem->SetAttribute("randomSeed", td.randomSeed);
             tiller_elem->SetAttribute("stemShrink", td.stemShrink);
-            if (td.useStemCtrlOverrides && !td.stemCtrlOverride.empty()) {
-                tiller_elem->SetAttribute("useStemCtrlOverrides", 1);
-                saveSplineAsAttributes(tiller_elem, "stemCtrl", td.stemCtrlOverride);
-            }
 
             XMLElement* leaves_elem = doc.NewElement("leaves");
             leaves_elem->SetAttribute("number", (int)td.leaves.size());
@@ -98,13 +96,14 @@ namespace Descriptor {
                 leaf_elem->SetAttribute("waveRAmp", L.waveRAmp);
                 leaf_elem->SetAttribute("waveRFreq", L.waveRFreq);
                 leaf_elem->SetAttribute("waveRPhase", L.waveRPhase);
-
-                if (L.useCtrlOverrides && !L.ctrlCenterOverride.empty()) {
-                    leaf_elem->SetAttribute("useCtrlOverrides", 1);
-                    saveSplineAsAttributes(leaf_elem, "ctrlCenter", L.ctrlCenterOverride);
-                    saveSplineAsAttributes(leaf_elem, "ctrlLeft", L.ctrlLeftOverride);
-                    saveSplineAsAttributes(leaf_elem, "ctrlRight", L.ctrlRightOverride);
-                }
+                leaf_elem->SetAttribute("surfaceNoiseAmp", L.surfaceNoiseAmp);
+                leaf_elem->SetAttribute("surfaceNoiseFreq", L.surfaceNoiseFreq);
+                leaf_elem->SetAttribute("tipWidthFactor", L.tipWidthFactor);
+                leaf_elem->SetAttribute("midribTipTaperStart", L.midribTipTaperStart);
+                leaf_elem->SetAttribute("midribTextureStrength", L.midribTextureStrength);
+                leaf_elem->SetAttribute("liguleWrapLengthScale", L.liguleWrapLengthScale);
+                leaf_elem->SetAttribute("liguleUnfoldSharpness", L.liguleUnfoldSharpness);
+                leaf_elem->SetAttribute("sheathOuterScale", L.sheathOuterScale);
 
                 leaves_elem->InsertEndChild(leaf_elem);
             }
@@ -133,12 +132,6 @@ namespace Descriptor {
             t->QueryFloatAttribute("beta", &td.azimuthDeg);
             t->QueryUnsignedAttribute("randomSeed", &td.randomSeed);
             t->QueryFloatAttribute("stemShrink", &td.stemShrink);
-            int useStemOverrides = 0;
-            t->QueryIntAttribute("useStemCtrlOverrides", &useStemOverrides);
-            if (useStemOverrides) {
-                loadSplineFromAttributes(t, "stemCtrl", td.stemCtrlOverride);
-                td.useStemCtrlOverrides = !td.stemCtrlOverride.empty();
-            }
 
             if (const XMLElement* leaves = t->FirstChildElement("leaves")) {
                 for (const XMLElement* lf = leaves->FirstChildElement("leaf"); lf; lf = lf->NextSiblingElement("leaf")) {
@@ -162,6 +155,14 @@ namespace Descriptor {
                     L.waveRAmp = 0.0f;
                     L.waveRFreq = 0.0f;
                     L.waveRPhase = 0.0f;
+                    L.surfaceNoiseAmp = 0.01f;
+                    L.surfaceNoiseFreq = 8.0f;
+                    L.tipWidthFactor = 0.04f;
+                    L.midribTipTaperStart = 0.75f;
+                    L.midribTextureStrength = 0.35f;
+                    L.liguleWrapLengthScale = 6.8f;
+                    L.liguleUnfoldSharpness = 2.2f;
+                    L.sheathOuterScale = 1.12f;
 
                     // Now try to load them from XML
                     lf->QueryFloatAttribute("leafLength", &L.leafLength);
@@ -179,15 +180,19 @@ namespace Descriptor {
                     lf->QueryFloatAttribute("waveRAmp", &L.waveRAmp);
                     lf->QueryFloatAttribute("waveRFreq", &L.waveRFreq);
                     lf->QueryFloatAttribute("waveRPhase", &L.waveRPhase);
+                    lf->QueryFloatAttribute("surfaceNoiseAmp", &L.surfaceNoiseAmp);
+                    lf->QueryFloatAttribute("surfaceNoiseFreq", &L.surfaceNoiseFreq);
+                    lf->QueryFloatAttribute("tipWidthFactor", &L.tipWidthFactor);
+                    lf->QueryFloatAttribute("midribTipTaperStart", &L.midribTipTaperStart);
+                    lf->QueryFloatAttribute("midribTextureStrength", &L.midribTextureStrength);
+                    lf->QueryFloatAttribute("liguleWrapLengthScale", &L.liguleWrapLengthScale);
+                    lf->QueryFloatAttribute("liguleUnfoldSharpness", &L.liguleUnfoldSharpness);
+                    lf->QueryFloatAttribute("sheathOuterScale", &L.sheathOuterScale);
 
-                    int useOverrides = 0;
-                    lf->QueryIntAttribute("useCtrlOverrides", &useOverrides);
-                    if (useOverrides) {
-                        loadSplineFromAttributes(lf, "ctrlCenter", L.ctrlCenterOverride);
-                        loadSplineFromAttributes(lf, "ctrlLeft", L.ctrlLeftOverride);
-                        loadSplineFromAttributes(lf, "ctrlRight", L.ctrlRightOverride);
-                        L.useCtrlOverrides = !L.ctrlCenterOverride.empty();
-                    }
+                    L.useCtrlOverrides = false;
+                    L.ctrlCenterOverride.clear();
+                    L.ctrlLeftOverride.clear();
+                    L.ctrlRightOverride.clear();
 
                     // Clamp it just in case
                     L.splinePoints = std::max(4, std::min(L.splinePoints, 40));
@@ -197,6 +202,175 @@ namespace Descriptor {
             }
             Maize::plant().tillers.push_back(td);
         }
+        return true;
+    }
+
+    static void buildLeafSidesFromCenter(LeafDesc& L) {
+        const size_t n = L.ctrlCenterOverride.size();
+        L.ctrlLeftOverride.resize(n);
+        L.ctrlRightOverride.resize(n);
+        if (n == 0) return;
+
+        float halfBase = std::max(0.0f, L.leafWidth * 0.5f);
+        float taperPower = std::max(0.05f, L.widthTaper);
+
+        for (size_t i = 0; i < n; ++i) {
+            float t = (n > 1) ? (float)i / (float)(n - 1) : 1.0f;
+            float widthScale = std::max(0.0f, 1.0f - std::pow(t, taperPower));
+            float halfW = halfBase * widthScale;
+
+            Vect3d c = L.ctrlCenterOverride[i];
+            Vect3d l = c;
+            Vect3d r = c;
+            l.SetX(c.x() - halfW);
+            r.SetX(c.x() + halfW);
+            L.ctrlLeftOverride[i] = l;
+            L.ctrlRightOverride[i] = r;
+        }
+
+        L.ctrlLeftOverride.back() = L.ctrlCenterOverride.back();
+        L.ctrlRightOverride.back() = L.ctrlCenterOverride.back();
+    }
+
+    bool saveSkeletonXML(const char* path) {
+        XMLDocument doc;
+        doc.InsertFirstChild(doc.NewDeclaration());
+
+        XMLElement* root = doc.NewElement("plantSkeleton");
+        doc.InsertEndChild(root);
+
+        XMLElement* species = doc.NewElement("species");
+        species->SetAttribute("name", Maize::plant().species.c_str());
+        root->InsertEndChild(species);
+
+        for (size_t ti = 0; ti < Maize::plant().tillers.size(); ++ti) {
+            const auto& td = Maize::plant().tillers[ti];
+            XMLElement* tiller_elem = doc.NewElement("Tiller");
+            tiller_elem->SetAttribute("type", td.type.c_str());
+            tiller_elem->SetAttribute("radius", td.radius);
+            tiller_elem->SetAttribute("alpha", td.alphaDeg);
+            tiller_elem->SetAttribute("beta", td.azimuthDeg);
+            tiller_elem->SetAttribute("randomSeed", td.randomSeed);
+            tiller_elem->SetAttribute("stemShrink", td.stemShrink);
+
+            // Skeleton descriptor always stores stem center spline.
+            std::vector<Vect3d> stemCtrl = td.stemCtrlOverride;
+            if (stemCtrl.size() < 2) {
+                stemCtrl.clear();
+                Vect3d stemPos(0.0f, 0.0f, 0.0f);
+                stemCtrl.push_back(stemPos);
+                float cumulativeInclinationDeg = 0.0f;
+                for (const auto& leaf : td.leaves) {
+                    float dist = std::max(0.f, leaf.distance);
+                    cumulativeInclinationDeg += leaf.stemInclinationDeg;
+                    float incRad = 3.14159265358979323846f * cumulativeInclinationDeg / 180.0f;
+                    Vect3d dir(std::sin(incRad), std::cos(incRad), 0.0f);
+                    stemPos = stemPos + dir * dist;
+                    stemCtrl.push_back(stemPos);
+                }
+            }
+            if (stemCtrl.size() >= 2) {
+                tiller_elem->SetAttribute("useStemCtrlOverrides", 1);
+                saveSplineAsAttributes(tiller_elem, "stemCtrl", stemCtrl);
+            }
+
+            XMLElement* leaves_elem = doc.NewElement("leaves");
+            leaves_elem->SetAttribute("number", (int)td.leaves.size());
+
+            for (size_t li = 0; li < td.leaves.size(); ++li) {
+                const auto& L = td.leaves[li];
+                XMLElement* leaf_elem = doc.NewElement("leaf");
+                leaf_elem->SetAttribute("id", L.id);
+
+                std::vector<Vect3d> center;
+                if (L.useCtrlOverrides && !L.ctrlCenterOverride.empty()) {
+                    center = L.ctrlCenterOverride;
+                }
+                else {
+                    std::vector<Vect3d> left, right;
+                    Maize::generateLeafSplines(L, td.radius, center, left, right);
+                }
+
+                if (!center.empty()) {
+                    saveSplineAsAttributes(leaf_elem, "ctrlCenter", center);
+                }
+
+                leaves_elem->InsertEndChild(leaf_elem);
+            }
+
+            tiller_elem->InsertEndChild(leaves_elem);
+            species->InsertEndChild(tiller_elem);
+        }
+
+        return (doc.SaveFile(path) == XML_SUCCESS);
+    }
+
+    bool loadSkeletonXML(const std::string& path) {
+        XMLDocument doc;
+        if (doc.LoadFile(path.c_str()) != XML_SUCCESS) return false;
+
+        Maize::plant() = PlantDesc{};
+
+        const XMLElement* root = doc.FirstChildElement("plantSkeleton");
+        if (!root) root = doc.FirstChildElement("plant");
+        if (!root) return false;
+
+        const XMLElement* species = root->FirstChildElement("species");
+        if (!species) return false;
+        Maize::plant().species = species->Attribute("name") ? species->Attribute("name") : "Maize_Procedural";
+
+        for (const XMLElement* t = species->FirstChildElement("Tiller"); t; t = t->NextSiblingElement("Tiller")) {
+            TillerDesc td;
+            td.type = t->Attribute("type") ? t->Attribute("type") : "main";
+            t->QueryFloatAttribute("radius", &td.radius);
+            t->QueryFloatAttribute("alpha", &td.alphaDeg);
+            t->QueryFloatAttribute("beta", &td.azimuthDeg);
+            t->QueryUnsignedAttribute("randomSeed", &td.randomSeed);
+            t->QueryFloatAttribute("stemShrink", &td.stemShrink);
+
+            int useStemOverrides = 0;
+            t->QueryIntAttribute("useStemCtrlOverrides", &useStemOverrides);
+            if (useStemOverrides) {
+                loadSplineFromAttributes(t, "stemCtrl", td.stemCtrlOverride);
+                td.useStemCtrlOverrides = !td.stemCtrlOverride.empty();
+            }
+
+            bool hasPrevLeafBase = false;
+            Vect3d prevLeafBase(0.0f, 0.0f, 0.0f);
+            Vect3d stemBase(0.0f, 0.0f, 0.0f);
+            if (td.useStemCtrlOverrides && !td.stemCtrlOverride.empty()) {
+                stemBase = td.stemCtrlOverride.front();
+            }
+
+            if (const XMLElement* leaves = t->FirstChildElement("leaves")) {
+                for (const XMLElement* lf = leaves->FirstChildElement("leaf"); lf; lf = lf->NextSiblingElement("leaf")) {
+                    LeafDesc L;
+                    lf->QueryIntAttribute("id", &L.id);
+
+                    loadSplineFromAttributes(lf, "ctrlCenter", L.ctrlCenterOverride);
+                    if (!L.ctrlCenterOverride.empty()) {
+                        const Vect3d& thisLeafBase = L.ctrlCenterOverride.front();
+                        if (hasPrevLeafBase) {
+                            L.distance = (thisLeafBase - prevLeafBase).Length();
+                        }
+                        else {
+                            L.distance = (thisLeafBase - stemBase).Length();
+                        }
+                        prevLeafBase = thisLeafBase;
+                        hasPrevLeafBase = true;
+
+                        buildLeafSidesFromCenter(L);
+                        L.useCtrlOverrides = true;
+                    }
+
+                    L.splinePoints = std::max(4, std::min(L.splinePoints, 80));
+                    td.leaves.push_back(L);
+                }
+            }
+
+            Maize::plant().tillers.push_back(td);
+        }
+
         return true;
     }
 }

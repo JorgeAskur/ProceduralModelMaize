@@ -17,12 +17,21 @@ struct LeafDesc {
     int   splinePoints = 20;
     float widthTaper = 1.0f;
     float leafTwist = 0.0f;
+    float leafCurl = 0.0f;
     float waveLAmp = 0.0f;
     float waveLFreq = 0.0f;
     float waveLPhase = 0.0f;
     float waveRAmp = 0.0f;
     float waveRFreq = 0.0f;
     float waveRPhase = 0.0f;
+    float surfaceNoiseAmp = 0.01f;
+    float surfaceNoiseFreq = 8.0f;
+    float tipWidthFactor = 0.04f;
+    float midribTipTaperStart = 0.75f;
+    float midribTextureStrength = 0.35f;
+    float liguleWrapLengthScale = 6.8f;
+    float liguleUnfoldSharpness = 2.2f;
+    float sheathOuterScale = 1.12f;
     bool useCtrlOverrides = false;
     std::vector<Vect3d> ctrlCenterOverride;
     std::vector<Vect3d> ctrlLeftOverride;
@@ -82,6 +91,7 @@ public:
     void rebuildGeometry();
     int getTriangleCount() const;
     bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath = nullptr);
+    bool saveSkeletonOBJ(const char* path) const;
     bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly);
 };
 
@@ -99,6 +109,7 @@ namespace Maize {
     Vect3d deBoor(float u, const std::vector<Vect3d>& P);
     void generateLeafSplines(const LeafDesc& L, float startRadius, std::vector<Vect3d>& outCenter, std::vector<Vect3d>& outLeft, std::vector<Vect3d>& outRight);
     bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath = nullptr);
+    bool saveSkeletonOBJ(const char* path);
     bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly);
     std::string dirFromPath(const std::string& p);
     void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath = "", const std::string& stemTexturePath = "");

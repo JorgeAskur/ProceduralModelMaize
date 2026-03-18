@@ -1,4 +1,4 @@
-#line 1 "C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x86-windows\\vcpkg\\blds\\freeglut\\x86-windows-rel\\freeglut.rc"
+#line 1 "C:\\Users\\jorge\\Documents\\Research\\MaizeModel\\ProceduralModelMaize\\vcpkg_installed\\x86-windows\\vcpkg\\blds\\freeglut\\x86-windows-rel\\freeglut.rc"
 
 
 
@@ -10,7 +10,7 @@
 
 
  FILEFLAGS 0x0L
-#line 13 "C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x86-windows\\vcpkg\\blds\\freeglut\\x86-windows-rel\\freeglut.rc"
+#line 13 "C:\\Users\\jorge\\Documents\\Research\\MaizeModel\\ProceduralModelMaize\\vcpkg_installed\\x86-windows\\vcpkg\\blds\\freeglut\\x86-windows-rel\\freeglut.rc"
  FILEOS 0x40004L
  FILETYPE 0x1L
  FILESUBTYPE 0x0L
