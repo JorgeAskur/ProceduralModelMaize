@@ -68,8 +68,13 @@ namespace Descriptor {
             tiller_elem->SetAttribute("radius", td.radius);
             tiller_elem->SetAttribute("alpha", td.alphaDeg);
             tiller_elem->SetAttribute("beta", td.azimuthDeg);
+            tiller_elem->SetAttribute("azimuthNoise", td.azimuthNoise);
             tiller_elem->SetAttribute("randomSeed", td.randomSeed);
             tiller_elem->SetAttribute("stemShrink", td.stemShrink);
+            if (td.useStemCtrlOverrides && !td.stemCtrlOverride.empty()) {
+                tiller_elem->SetAttribute("useStemCtrlOverrides", 1);
+                saveSplineAsAttributes(tiller_elem, "stemCtrl", td.stemCtrlOverride);
+            }
 
             XMLElement* leaves_elem = doc.NewElement("leaves");
             leaves_elem->SetAttribute("number", (int)td.leaves.size());
@@ -89,6 +94,7 @@ namespace Descriptor {
                 leaf_elem->SetAttribute("splinePoints", L.splinePoints);
                 leaf_elem->SetAttribute("widthTaper", L.widthTaper);
                 leaf_elem->SetAttribute("leafTwist", L.leafTwist);
+                leaf_elem->SetAttribute("leafCurl", L.leafCurl);
 
                 leaf_elem->SetAttribute("waveLAmp", L.waveLAmp);
                 leaf_elem->SetAttribute("waveLFreq", L.waveLFreq);
@@ -104,6 +110,17 @@ namespace Descriptor {
                 leaf_elem->SetAttribute("liguleWrapLengthScale", L.liguleWrapLengthScale);
                 leaf_elem->SetAttribute("liguleUnfoldSharpness", L.liguleUnfoldSharpness);
                 leaf_elem->SetAttribute("sheathOuterScale", L.sheathOuterScale);
+
+                if (L.useCtrlOverrides && !L.ctrlCenterOverride.empty()) {
+                    leaf_elem->SetAttribute("useCtrlOverrides", 1);
+                    saveSplineAsAttributes(leaf_elem, "ctrlCenter", L.ctrlCenterOverride);
+                    if (!L.ctrlLeftOverride.empty() && L.ctrlLeftOverride.size() == L.ctrlCenterOverride.size()) {
+                        saveSplineAsAttributes(leaf_elem, "ctrlLeft", L.ctrlLeftOverride);
+                    }
+                    if (!L.ctrlRightOverride.empty() && L.ctrlRightOverride.size() == L.ctrlCenterOverride.size()) {
+                        saveSplineAsAttributes(leaf_elem, "ctrlRight", L.ctrlRightOverride);
+                    }
+                }
 
                 leaves_elem->InsertEndChild(leaf_elem);
             }
@@ -130,8 +147,15 @@ namespace Descriptor {
             t->QueryFloatAttribute("radius", &td.radius);
             t->QueryFloatAttribute("alpha", &td.alphaDeg);
             t->QueryFloatAttribute("beta", &td.azimuthDeg);
+            t->QueryFloatAttribute("azimuthNoise", &td.azimuthNoise);
             t->QueryUnsignedAttribute("randomSeed", &td.randomSeed);
             t->QueryFloatAttribute("stemShrink", &td.stemShrink);
+            int useStemOverrides = 0;
+            t->QueryIntAttribute("useStemCtrlOverrides", &useStemOverrides);
+            if (useStemOverrides) {
+                loadSplineFromAttributes(t, "stemCtrl", td.stemCtrlOverride);
+                td.useStemCtrlOverrides = !td.stemCtrlOverride.empty();
+            }
 
             if (const XMLElement* leaves = t->FirstChildElement("leaves")) {
                 for (const XMLElement* lf = leaves->FirstChildElement("leaf"); lf; lf = lf->NextSiblingElement("leaf")) {
@@ -148,6 +172,7 @@ namespace Descriptor {
                     L.splinePoints = 4; 
                     L.widthTaper = 1.0f;
                     L.leafTwist = 0.0f;
+                    L.leafCurl = 0.0f;
 
                     L.waveLAmp = 0.0f;
                     L.waveLFreq = 0.0f;
@@ -173,6 +198,7 @@ namespace Descriptor {
                     lf->QueryIntAttribute("splinePoints", &L.splinePoints);
                     lf->QueryFloatAttribute("widthTaper", &L.widthTaper);
                     lf->QueryFloatAttribute("leafTwist", &L.leafTwist);
+                    lf->QueryFloatAttribute("leafCurl", &L.leafCurl);
 
                     lf->QueryFloatAttribute("waveLAmp", &L.waveLAmp);
                     lf->QueryFloatAttribute("waveLFreq", &L.waveLFreq);
@@ -189,10 +215,19 @@ namespace Descriptor {
                     lf->QueryFloatAttribute("liguleUnfoldSharpness", &L.liguleUnfoldSharpness);
                     lf->QueryFloatAttribute("sheathOuterScale", &L.sheathOuterScale);
 
-                    L.useCtrlOverrides = false;
-                    L.ctrlCenterOverride.clear();
-                    L.ctrlLeftOverride.clear();
-                    L.ctrlRightOverride.clear();
+                    int useOverrides = 0;
+                    lf->QueryIntAttribute("useCtrlOverrides", &useOverrides);
+                    if (useOverrides) {
+                        loadSplineFromAttributes(lf, "ctrlCenter", L.ctrlCenterOverride);
+                        loadSplineFromAttributes(lf, "ctrlLeft", L.ctrlLeftOverride);
+                        loadSplineFromAttributes(lf, "ctrlRight", L.ctrlRightOverride);
+                        if (!L.ctrlCenterOverride.empty()) {
+                            if (L.ctrlLeftOverride.size() != L.ctrlCenterOverride.size() || L.ctrlRightOverride.size() != L.ctrlCenterOverride.size()) {
+                                buildLeafSidesFromCenter(L);
+                            }
+                            L.useCtrlOverrides = true;
+                        }
+                    }
 
                     // Clamp it just in case
                     L.splinePoints = std::max(4, std::min(L.splinePoints, 40));

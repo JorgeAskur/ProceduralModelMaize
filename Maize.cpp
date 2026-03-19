@@ -145,6 +145,17 @@ namespace Maize {
             return Vect3d(newX, newY, 0.f);
         };
 
+        auto pushSection = [&](const Vect3d& leftCurl, const Vect3d& rightCurl, float zVal, const Vect3d& centerP) {
+            Vect3d leftP(leftCurl.x(), leftCurl.y(), zVal);
+            Vect3d rightP(rightCurl.x(), rightCurl.y(), zVal);
+            Vect3d mid = (leftP + rightP) * 0.5f;
+            Vect3d recenter = centerP - mid;
+            leftP = leftP + recenter;
+            rightP = rightP + recenter;
+            outLeft.push_back(leftP);
+            outRight.push_back(rightP);
+        };
+
         Vect3d currentDir = startDir;
 
         const int extraCtrlPoints = 2;
@@ -177,8 +188,7 @@ namespace Maize {
                 Vect3d leftCurl = applyCurl(blended_x_left, y_seg);
                 Vect3d rightCurl = applyCurl(blended_x_right, y_seg);
                 outCenter.push_back(interpPos);
-                outLeft.push_back({ leftCurl.x(), leftCurl.y(), interpPos.z() });
-                outRight.push_back({ rightCurl.x(), rightCurl.y(), interpPos.z() });
+                pushSection(leftCurl, rightCurl, interpPos.z(), interpPos);
             }
         }
 
@@ -194,8 +204,7 @@ namespace Maize {
             float y_seg = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, currentPos.y(), 0), t_seg).y();
             Vect3d leftCurl = applyCurl(blended_x_left, y_seg);
             Vect3d rightCurl = applyCurl(blended_x_right, y_seg);
-            outLeft.push_back({ leftCurl.x(), leftCurl.y(), currentPos.z() });
-            outRight.push_back({ rightCurl.x(), rightCurl.y(), currentPos.z() });
+            pushSection(leftCurl, rightCurl, currentPos.z(), currentPos);
         }
 
         for (int i = 2; i < L.splinePoints; ++i) {
@@ -234,8 +243,7 @@ namespace Maize {
 
                 Vect3d leftCurl = applyCurl(blended_x_left, y_s);
                 Vect3d rightCurl = applyCurl(blended_x_right, y_s);
-                outLeft.push_back({ leftCurl.x(), leftCurl.y(), z_s });
-                outRight.push_back({ rightCurl.x(), rightCurl.y(), z_s });
+                pushSection(leftCurl, rightCurl, z_s, currentPos);
             }
             else {
                 float t_remap = (t - t_p1) / (1.0f - t_p1);
@@ -268,8 +276,7 @@ namespace Maize {
 
                 Vect3d leftCurl = applyCurl(-current_halfWidth_x, y_s + noiseL);
                 Vect3d rightCurl = applyCurl(current_halfWidth_x, y_s + noiseR);
-                outLeft.push_back({ leftCurl.x(), leftCurl.y(), z_s });
-                outRight.push_back({ rightCurl.x(), rightCurl.y(), z_s });
+                pushSection(leftCurl, rightCurl, z_s, currentPos);
             }
         }
 
@@ -520,7 +527,7 @@ void MaizeModel::rebuildGeometry() {
             float liguleWrapLength = std::max(0.001f, final_radius_at_collar * std::max(0.5f, L.liguleWrapLengthScale));
             float liguleUnfoldPower = std::max(0.2f, L.liguleUnfoldSharpness);
             float sheathFrac = 0.0f;
-            float sheathGrowEndFrac = std::min(sheathFrac, std::max(0.04f, sheathFrac * 0.55f));
+            float sheathGrowEndFrac = clampf(0.08f, 0.04f, 0.18f);
             float unfoldStartFrac = sheathFrac;
             float unfoldEndFrac = clampf(unfoldStartFrac + 0.22f, unfoldStartFrac + 0.02f, 0.99f);
             float arcLen = 0.0f;
@@ -619,8 +626,13 @@ void MaizeModel::rebuildGeometry() {
                         Vect3d rel = p_final - sheath_center_pos;
                         Vect3d relPerp = rel - stem_axis * rel.Dot(stem_axis);
                         float relPerpLen = relPerp.Length();
-                        float minWrapRadius = global_radius + (final_radius_at_collar - global_radius) * (0.55f + 0.45f * protect);
-                        minWrapRadius = (std::max)(minWrapRadius, global_radius * 1.08f);
+                        float attachRelax = 1.0f;
+                        if (sheathGrowEndFrac > 1e-6f && s_blade < sheathGrowEndFrac) {
+                            attachRelax = clampf(s_blade / sheathGrowEndFrac, 0.0f, 1.0f);
+                            attachRelax = attachRelax * attachRelax * (3.0f - 2.0f * attachRelax);
+                        }
+                        float minWrapRadius = global_radius + (final_radius_at_collar - global_radius) * ((0.55f + 0.45f * protect) * attachRelax);
+                        minWrapRadius = (std::max)(minWrapRadius, global_radius * (1.0f + 0.08f * attachRelax));
                         if (relPerpLen < minWrapRadius) {
                             Vect3d outDir = (relPerpLen > 1e-6f) ? (relPerp / relPerpLen) : stem_normal;
                             p_final = sheath_center_pos + stem_axis * rel.Dot(stem_axis) + outDir * minWrapRadius;

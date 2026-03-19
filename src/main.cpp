@@ -509,10 +509,10 @@ static void display() {
                 needUpdate |= ImGui::SliderFloat("Twist", &L.leafTwist, -180.f, 180.f);
                 ImGui::Text("Waves");
                 needUpdate |= ImGui::SliderFloat("L Amp", &L.waveLAmp, 0.f, 0.05f);
-                needUpdate |= ImGui::SliderFloat("L Freq", &L.waveLFreq, 0.f, 20.f);
+                needUpdate |= ImGui::SliderFloat("L Freq", &L.waveLFreq, 0.f, 100.f);
                 needUpdate |= ImGui::SliderFloat("L Phase", &L.waveLPhase, -6.283f, 6.283f);
                 needUpdate |= ImGui::SliderFloat("R Amp", &L.waveRAmp, 0.f, 0.05f);
-                needUpdate |= ImGui::SliderFloat("R Freq", &L.waveRFreq, 0.f, 20.f);
+                needUpdate |= ImGui::SliderFloat("R Freq", &L.waveRFreq, 0.f, 100.f);
                 needUpdate |= ImGui::SliderFloat("R Phase", &L.waveRPhase, -6.283f, 6.283f);
 
                 ImGui::Text("Leaf Surface");
