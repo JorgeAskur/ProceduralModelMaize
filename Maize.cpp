@@ -109,7 +109,7 @@ namespace Maize {
         outCenter.clear(); outLeft.clear(); outRight.clear();
         if (L.splinePoints < 2) return;
 
-        // Start parallel to the stem for a smooth attachment.
+        // Keep legacy leaf-angle convention: 0 = up-facing (stem-aligned).
         Vect3d startDir(0.0f, 1.0f, 0.0f);
 
         // Target direction based on leaf angle (0 = aligned with stem).
@@ -137,12 +137,12 @@ namespace Maize {
         float gravityFactor = L.droopiness * 5.0f;
         float t_p1 = (L.splinePoints > 1) ? 1.0f / (float)(L.splinePoints - 1) : 1.0f;
         float curlAmount = clampf(L.leafCurl, -1.f, 1.f);
-        auto applyCurl = [&](float x, float z) {
-            if (std::abs(curlAmount) <= 1e-5f) return Vect3d(x, 0.f, z);
+        auto applyCurl = [&](float x, float y) {
+            if (std::abs(curlAmount) <= 1e-5f) return Vect3d(x, y, 0.f);
             float absX = std::abs(x);
             float newX = std::copysign(absX * (1.f - std::abs(curlAmount)), x);
-            float newZ = z - absX * curlAmount;
-            return Vect3d(newX, 0.f, newZ);
+            float newY = y - absX * curlAmount;
+            return Vect3d(newX, newY, 0.f);
         };
 
         Vect3d currentDir = startDir;
@@ -174,11 +174,11 @@ namespace Maize {
                 float blended_x_left = lerp_v3(Vect3d(p0_lx, 0, 0), Vect3d(target_x_left, 0, 0), t_seg).x();
                 float blended_x_right = lerp_v3(Vect3d(p0_rx, 0, 0), Vect3d(target_x_right, 0, 0), t_seg).x();
                 float y_seg = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, interpPos.y(), 0), t_seg).y();
-                Vect3d leftCurl = applyCurl(blended_x_left, interpPos.z());
-                Vect3d rightCurl = applyCurl(blended_x_right, interpPos.z());
+                Vect3d leftCurl = applyCurl(blended_x_left, y_seg);
+                Vect3d rightCurl = applyCurl(blended_x_right, y_seg);
                 outCenter.push_back(interpPos);
-                outLeft.push_back({ leftCurl.x(), y_seg, leftCurl.z() });
-                outRight.push_back({ rightCurl.x(), y_seg, rightCurl.z() });
+                outLeft.push_back({ leftCurl.x(), leftCurl.y(), interpPos.z() });
+                outRight.push_back({ rightCurl.x(), rightCurl.y(), interpPos.z() });
             }
         }
 
@@ -192,10 +192,10 @@ namespace Maize {
             float blended_x_left = lerp_v3(Vect3d(p0_lx, 0, 0), Vect3d(target_x_left, 0, 0), t_seg).x();
             float blended_x_right = lerp_v3(Vect3d(p0_rx, 0, 0), Vect3d(target_x_right, 0, 0), t_seg).x();
             float y_seg = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, currentPos.y(), 0), t_seg).y();
-            Vect3d leftCurl = applyCurl(blended_x_left, currentPos.z());
-            Vect3d rightCurl = applyCurl(blended_x_right, currentPos.z());
-            outLeft.push_back({ leftCurl.x(), y_seg, leftCurl.z() });
-            outRight.push_back({ rightCurl.x(), y_seg, rightCurl.z() });
+            Vect3d leftCurl = applyCurl(blended_x_left, y_seg);
+            Vect3d rightCurl = applyCurl(blended_x_right, y_seg);
+            outLeft.push_back({ leftCurl.x(), leftCurl.y(), currentPos.z() });
+            outRight.push_back({ rightCurl.x(), rightCurl.y(), currentPos.z() });
         }
 
         for (int i = 2; i < L.splinePoints; ++i) {
@@ -232,10 +232,10 @@ namespace Maize {
                 float blended_x_right = lerp_v3(Vect3d(p0_rx, 0, 0), Vect3d(target_x_right, 0, 0), t_seg).x();
                 y_s = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, currentPos.y(), 0), t_seg).y();
 
-                Vect3d leftCurl = applyCurl(blended_x_left, z_s);
-                Vect3d rightCurl = applyCurl(blended_x_right, z_s);
-                outLeft.push_back({ leftCurl.x(), y_s, leftCurl.z() });
-                outRight.push_back({ rightCurl.x(), y_s, rightCurl.z() });
+                Vect3d leftCurl = applyCurl(blended_x_left, y_s);
+                Vect3d rightCurl = applyCurl(blended_x_right, y_s);
+                outLeft.push_back({ leftCurl.x(), leftCurl.y(), z_s });
+                outRight.push_back({ rightCurl.x(), rightCurl.y(), z_s });
             }
             else {
                 float t_remap = (t - t_p1) / (1.0f - t_p1);
@@ -266,10 +266,10 @@ namespace Maize {
                     noiseR = (0.55f * lowFreq + 0.45f * highFreq) * (L.waveRAmp * 0.9f) * edgeMask;
                 }
 
-                Vect3d leftCurl = applyCurl(-current_halfWidth_x, z_s + noiseL);
-                Vect3d rightCurl = applyCurl(current_halfWidth_x, z_s + noiseR);
-                outLeft.push_back({ leftCurl.x(), y_s, leftCurl.z() });
-                outRight.push_back({ rightCurl.x(), y_s, rightCurl.z() });
+                Vect3d leftCurl = applyCurl(-current_halfWidth_x, y_s + noiseL);
+                Vect3d rightCurl = applyCurl(current_halfWidth_x, y_s + noiseR);
+                outLeft.push_back({ leftCurl.x(), leftCurl.y(), z_s });
+                outRight.push_back({ rightCurl.x(), rightCurl.y(), z_s });
             }
         }
 
