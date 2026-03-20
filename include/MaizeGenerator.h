@@ -37,7 +37,7 @@ struct Curve3 {
 class MaizeGenerator {
 public:
     // Tiller Parameters
-    Dist height = { 2.0f, 0.2f };
+    Dist height = { 1.2f, 0.2f };
     Dist stemRadius = { 0.02f, 0.002f };
     Dist numLeaves = { 8.0f, 1.0f };
     float tillerAzimuthDeg = 180.0f;
