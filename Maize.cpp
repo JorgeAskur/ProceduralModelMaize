@@ -16,18 +16,18 @@ static inline float radiansf(float d) { return d * float(M_PI) / 180.f; }
 static inline Vect3d lerp_v3(const Vect3d& a, const Vect3d& b, float t) { return a * (1.f - t) + b * t; }
 static inline float fractf(float x) { return x - std::floor(x); }
 
-
-static float pseudoNoise(float x, float y) {
-    return std::sin(x + y);
-}
-
 static float hashNoise(float x, float y) {
     float s = std::sin(x * 12.9898f + y * 78.233f) * 43758.5453f;
     return fractf(s) * 2.0f - 1.0f;
 }
 
 static Vect3d getColor(LeafGeom::GeomType type, float t_param) {
-    return Vect3d(0.6f, 0.85f, 0.4f);
+    if (type == LeafGeom::GEOM_SHEATH) {
+        float t = clampf(t_param, 0.0f, 1.0f);
+        return lerp_v3(Vect3d(0.36f, 0.56f, 0.24f), Vect3d(0.46f, 0.66f, 0.32f), t);
+    }
+    float t = clampf(t_param, 0.0f, 1.0f);
+    return lerp_v3(Vect3d(0.18f, 0.46f, 0.14f), Vect3d(0.30f, 0.62f, 0.22f), t * 0.6f);
 };
 
 static float hash_to_float_minus1_1(unsigned int seed) {
@@ -54,9 +54,507 @@ static int findSpan(int n, int p, float u, const std::vector<float>& U) {
     return low;
 }
 
-static std::string baseNameFromPath(const std::string& p) {
-    size_t s = p.find_last_of("/\\");
-    return (s == std::string::npos) ? p : p.substr(s + 1);
+struct StemBuildData {
+    // stemCtrl is the spline base for the stem centerline
+    std::vector<Vect3d> stemCtrl;
+    std::vector<Vect3d> leafStemPos;
+    std::vector<float> leafStemLen;
+    std::vector<float> leafInclinations;
+    float stemLength = 0.0f;
+};
+
+struct StemSampler {
+    // Small wrapper that turns the discrete stem control points into a continuous radius
+    const TillerDesc& tiller;
+    const StemBuildData& data;
+    Vect3d globalUp;
+
+    float radiusAt(float s) const {
+        float taper = std::pow(clampf(s, 0.0f, 1.0f), 1.35f);
+        return std::max(0.001f, tiller.radius - tiller.stemShrink * taper);
+    }
+
+    Vect3d posAt(float t) const {
+        return Maize::deBoor(t, data.stemCtrl);
+    }
+
+    Vect3d tangentAt(float t) const {
+        float dt = 1.0f / std::max(2, (int)data.stemCtrl.size());
+        Vect3d p0 = posAt(clampf(t - dt, 0.0f, 1.0f));
+        Vect3d p1 = posAt(clampf(t + dt, 0.0f, 1.0f));
+        Vect3d tan = p1 - p0;
+        if (tan.Length() < 1e-6f) tan = globalUp;
+        return tan.GetNormalized();
+    }
+};
+
+struct BladeFrame {
+    // World-space frame at the collar where a leaf exits the stem
+    Vect3d sheathExitPos;
+    Vect3d xAxis;
+    Vect3d yAxis;
+    Vect3d zAxis;
+};
+
+static Vect3d tiltPoint(const Vect3d& p, float ct, float st) {
+    return { p.x() * ct - p.y() * st, p.x() * st + p.y() * ct, p.z() };
+}
+
+static StemBuildData buildStemData(const TillerDesc& td) {
+    // Build the stem centerline once up front
+    StemBuildData data;
+    Vect3d stemPos(0.0f, 0.0f, 0.0f);
+    data.stemCtrl.push_back(stemPos);
+
+    float cumulativeInclinationDeg = 0.0f;
+    float cumulativeLen = 0.0f;
+    if (td.useStemCtrlOverrides && td.stemCtrlOverride.size() >= 2) {
+        data.stemCtrl = td.stemCtrlOverride;
+        for (size_t i = 1; i < data.stemCtrl.size(); ++i) {
+            cumulativeLen += (data.stemCtrl[i] - data.stemCtrl[i - 1]).Length();
+        }
+        for (size_t i = 0; i < td.leaves.size(); ++i) {
+            size_t ctrlIndex = std::min(i + 1, data.stemCtrl.size() - 1);
+            data.leafStemPos.push_back(data.stemCtrl[ctrlIndex]);
+            float len = 0.0f;
+            for (size_t s = 1; s <= ctrlIndex; ++s) {
+                len += (data.stemCtrl[s] - data.stemCtrl[s - 1]).Length();
+            }
+            data.leafStemLen.push_back(len);
+            cumulativeInclinationDeg += td.leaves[i].stemInclinationDeg;
+            data.leafInclinations.push_back(cumulativeInclinationDeg);
+        }
+    } else {
+        for (const auto& leaf : td.leaves) {
+            float dist = std::max(0.f, leaf.distance);
+            cumulativeLen += dist;
+            cumulativeInclinationDeg += leaf.stemInclinationDeg;
+            float incRad = radiansf(cumulativeInclinationDeg);
+            Vect3d dir(std::sin(incRad), std::cos(incRad), 0.0f);
+            stemPos = stemPos + dir * dist;
+            data.stemCtrl.push_back(stemPos);
+            data.leafStemPos.push_back(stemPos);
+            data.leafStemLen.push_back(cumulativeLen);
+            data.leafInclinations.push_back(cumulativeInclinationDeg);
+        }
+    }
+
+    data.stemLength = std::max(0.001f, cumulativeLen);
+    return data;
+}
+
+static void applyLeafTwist(std::vector<Vect3d>& ctrl, const std::vector<Vect3d>& centerCtrl, float leafTwistDeg) {
+    if (leafTwistDeg == 0.0f || ctrl.empty()) return;
+
+    // Twist is applied progressively from base to tip by rotating the left/right splines around the center spline
+    for (size_t i = 0; i < ctrl.size(); ++i) {
+        float t = (ctrl.size() == 1) ? 1.0f : (float)i / (ctrl.size() - 1);
+        float twistRad = radiansf(leafTwistDeg) * t;
+        float cT = std::cos(twistRad);
+        float sT = std::sin(twistRad);
+        Vect3d p = ctrl[i];
+        Vect3d center = centerCtrl[i];
+        float localX = p.x() - center.x();
+        float localZ = p.z() - center.z();
+        ctrl[i].SetX(center.x() + localX * cT - localZ * sT);
+        ctrl[i].SetZ(center.z() + localX * sT + localZ * cT);
+    }
+}
+
+static BladeFrame buildBladeFrame(const Vect3d& sheathExitPos, const Vect3d& stemTangent, const Vect3d& rhat) {
+    // The blade frame anchors every local leaf spline to the stem
+    BladeFrame frame;
+    frame.sheathExitPos = sheathExitPos;
+    frame.yAxis = stemTangent;
+    frame.zAxis = rhat;
+    frame.xAxis = frame.yAxis.Cross(frame.zAxis);
+    if (frame.xAxis.Length() < 1e-6f) {
+        frame.zAxis = Vect3d(0.0f, 0.0f, 1.0f);
+        frame.xAxis = frame.yAxis.Cross(frame.zAxis);
+    }
+    frame.xAxis = frame.xAxis.GetNormalized();
+    frame.zAxis = frame.xAxis.Cross(frame.yAxis).GetNormalized();
+    return frame;
+}
+
+static Vect3d bladeLocalToWorld(const BladeFrame& frame, const Vect3d& pLocal) {
+    return frame.sheathExitPos + frame.xAxis * pLocal.x() + frame.yAxis * pLocal.z() + frame.zAxis * pLocal.y();
+}
+
+static std::vector<Vect3d> transformSplineForViz(const std::vector<Vect3d>& localCtrl, const BladeFrame& frame, float ct, float st) {
+    std::vector<Vect3d> worldCtrl;
+    worldCtrl.reserve(localCtrl.size());
+    for (const auto& p : localCtrl) {
+        worldCtrl.push_back(tiltPoint(bladeLocalToWorld(frame, p), ct, st));
+    }
+    return worldCtrl;
+}
+
+static LeafGeom buildStemGeometry(const StemSampler& stemSampler, const StemBuildData& stemData, const Vect3d& globalUp, float densityV, float densityU, float stemDensityScale, float ct, float st) {
+    // The stem is meshed as a tapered tube sampled along the same centerline
+
+    LeafGeom stemGeom;
+    stemGeom.type = LeafGeom::GEOM_SHEATH;
+
+    float sheathDensityV = densityV * stemDensityScale;
+    float sheathDensityU = densityU * stemDensityScale;
+    stemGeom.rows = std::max(4, (int)(stemData.stemLength * sheathDensityV));
+    stemGeom.cols = std::max(12, (int)std::round(sheathDensityU));
+
+    stemGeom.pos.resize(stemGeom.rows * stemGeom.cols);
+    stemGeom.col.resize(stemGeom.rows * stemGeom.cols);
+    stemGeom.uv.resize(stemGeom.rows * stemGeom.cols);
+    stemGeom.nrm.resize(stemGeom.rows * stemGeom.cols);
+
+    Vect3d prevNormal(1.0f, 0.0f, 0.0f);
+    for (int i = 0; i < stemGeom.rows; ++i) {
+        float sStem = (stemGeom.rows == 1) ? 0.0f : (float)i / (float)(stemGeom.rows - 1);
+        Vect3d pC = stemSampler.posAt(sStem);
+        Vect3d tangent = stemSampler.tangentAt(sStem);
+        Vect3d normal = Vect3d::Cross(globalUp, tangent);
+        if (normal.Length() < 1e-6f) normal = prevNormal;
+        normal = normal.GetNormalized();
+        if (normal.Dot(prevNormal) < 0.0f) normal = -normal;
+        prevNormal = normal;
+        Vect3d binormal = tangent.Cross(normal).GetNormalized();
+
+        float radius = stemSampler.radiusAt(sStem);
+        float openAngle = 2.0f * (float)M_PI;
+        for (int j = 0; j < stemGeom.cols; ++j) {
+            float u01 = (stemGeom.cols == 1) ? 0.0f : (float)j / (float)(stemGeom.cols - 1);
+            float angle = u01 * openAngle;
+            Vect3d offset = normal * std::cos(angle) + binormal * std::sin(angle);
+
+            int idx = i * stemGeom.cols + j;
+            stemGeom.pos[idx] = tiltPoint(pC + offset * radius, ct, st);
+            stemGeom.col[idx] = getColor(LeafGeom::GEOM_SHEATH, sStem);
+            stemGeom.uv[idx] = { u01, 0 };
+            stemGeom.nrm[idx] = tiltPoint(offset.GetNormalized(), ct, st);
+        }
+    }
+
+    stemGeom.ctrlCenter.reserve(stemData.stemCtrl.size());
+    for (const auto& p : stemData.stemCtrl) {
+        stemGeom.ctrlCenter.push_back(tiltPoint(p, ct, st));
+    }
+    return stemGeom;
+}
+
+struct LeafSplineBaseState {
+    // The first control section is a wrapped collar around the stem and then transitions into a normal leaf
+    Vect3d currentPos;
+    float baseLeftX = 0.0f;
+    float baseLeftY = 0.0f;
+    float baseRightX = 0.0f;
+    float baseRightY = 0.0f;
+};
+
+struct LeafSectionEmitter {
+    std::vector<Vect3d>& outLeft;
+    std::vector<Vect3d>& outRight;
+    float curlAmount = 0.0f;
+
+    void append(float leftX, float rightX, float baseY, float baseZ, float waveOffsetL, float waveOffsetR, const Vect3d& centerP, const Vect3d& tangentHint) const {
+        // Build one local cross-section around the center spline
+        Vect3d leftP(leftX, baseY, baseZ);
+        Vect3d rightP(rightX, baseY, baseZ);
+
+        Vect3d mid = (leftP + rightP) * 0.5f;
+        Vect3d recenter = centerP - mid;
+        leftP = leftP + recenter;
+        rightP = rightP + recenter;
+
+        Vect3d tangent = tangentHint.GetNormalized();
+        Vect3d widthAxis(1.0f, 0.0f, 0.0f);
+        Vect3d normalAxis = widthAxis.Cross(tangent);
+        if (normalAxis.Length() < 1e-6f) normalAxis = Vect3d(0.0f, 0.0f, 1.0f);
+        normalAxis = normalAxis.GetNormalized();
+
+        float widthShrink = 1.0f - 0.35f * std::abs(curlAmount);
+        leftP.SetX(centerP.x() + (leftP.x() - centerP.x()) * widthShrink);
+        rightP.SetX(centerP.x() + (rightP.x() - centerP.x()) * widthShrink);
+
+        float curlLiftL = std::abs(leftP.x() - centerP.x()) * curlAmount;
+        float curlLiftR = std::abs(rightP.x() - centerP.x()) * curlAmount;
+        leftP = leftP + normalAxis * (curlLiftL + waveOffsetL);
+        rightP = rightP + normalAxis * (curlLiftR + waveOffsetR);
+
+        outLeft.push_back(leftP);
+        outRight.push_back(rightP);
+    }
+};
+
+static LeafSplineBaseState initializeLeafSplineBase(float stemRadiusAtExit, std::vector<Vect3d>& outCenter, std::vector<Vect3d>& outLeft, std::vector<Vect3d>& outRight) {
+    // Seed the spline with one section wrapped partway around the stem
+    const float sheathEndAngle = 1.5f;
+    float halfAngle = (sheathEndAngle * static_cast<float>(M_PI)) * 0.5f;
+
+    LeafSplineBaseState base;
+    base.currentPos = Vect3d(0.0f, stemRadiusAtExit, 0.0f);
+    base.baseLeftX = stemRadiusAtExit * std::sin(-halfAngle);
+    base.baseLeftY = stemRadiusAtExit * std::cos(-halfAngle);
+    base.baseRightX = stemRadiusAtExit * std::sin(halfAngle);
+    base.baseRightY = stemRadiusAtExit * std::cos(halfAngle);
+
+    outCenter.push_back(base.currentPos);
+    outLeft.push_back({ base.baseLeftX, base.baseLeftY, 0.0f });
+    outRight.push_back({ base.baseRightX, base.baseRightY, 0.0f });
+    return base;
+}
+
+static Vect3d computeDroppedLeafDirection(const Vect3d& targetDir, float gravityFactor, float t) {
+    // droopiness is applied as a rotation in the local y/z plane
+    Vect3d baseDir = targetDir.GetNormalized();
+    float droopinessFactor = t * t;
+    float rotAmt = radiansf(gravityFactor * droopinessFactor);
+    float cy = baseDir.y();
+    float cz = baseDir.z();
+    Vect3d dropped = baseDir;
+    dropped.SetY(cy * std::cos(rotAmt) - cz * std::sin(rotAmt));
+    dropped.SetZ(cy * std::sin(rotAmt) + cz * std::cos(rotAmt));
+    return dropped.GetNormalized();
+}
+
+static void appendInterpolatedBaseSection(const LeafSplineBaseState& base, const Vect3d& centerPos, float tSeg, float halfWidth, const LeafSectionEmitter& emitter, const Vect3d& tangent, std::vector<Vect3d>& outCenter, bool appendCenter) {
+    // Interpolate between the circular collar section and the flat blade
+    float leftX = lerp_v3(Vect3d(base.baseLeftX, 0, 0), Vect3d(-halfWidth, 0, 0), tSeg).x();
+    float rightX = lerp_v3(Vect3d(base.baseRightX, 0, 0), Vect3d(halfWidth, 0, 0), tSeg).x();
+    float y = lerp_v3(Vect3d(0, base.baseLeftY, 0), Vect3d(0, centerPos.y(), 0), tSeg).y();
+    if (appendCenter) outCenter.push_back(centerPos);
+    emitter.append(leftX, rightX, y, centerPos.z(), 0.0f, 0.0f, centerPos, tangent);
+}
+
+static std::pair<float, float> sampleLeafWaveOffsets(const LeafDesc& leaf, float t, float currentHalfWidth, float halfWidth) {
+    float tipMask = 1.0f;
+    if (t > 0.8f) tipMask = (1.0f - t) / 0.2f;
+    else if (t < 0.1f) tipMask = t / 0.1f;
+    tipMask = tipMask * tipMask * tipMask;
+
+    float baseMask = clampf((t - 0.1f) / 0.2f, 0.0f, 1.0f);
+    baseMask = baseMask * baseMask * (3.0f - 2.0f * baseMask);
+    float edgeMask = baseMask * tipMask;
+    float widthMask = clampf(currentHalfWidth / std::max(halfWidth, 1e-6f), 0.0f, 1.0f);
+    edgeMask *= (widthMask * widthMask);
+
+    float noiseL = 0.0f;
+    float noiseR = 0.0f;
+    if (leaf.waveLAmp > 0.0f) {
+        float lowFreq = std::sin(t * leaf.waveLFreq * static_cast<float>(M_PI) * 0.5f + leaf.waveLPhase);
+        float highFreq = hashNoise(t * leaf.waveLFreq, (float)leaf.id + leaf.waveLPhase);
+        noiseL = (0.6f * lowFreq + 0.4f * highFreq) * leaf.waveLAmp * edgeMask;
+    }
+    if (leaf.waveRAmp > 0.0f) {
+        float lowFreq = std::sin(t * leaf.waveRFreq * static_cast<float>(M_PI) * 0.5f + leaf.waveRPhase + 0.37f);
+        float highFreq = hashNoise(t * leaf.waveRFreq, (float)leaf.id + 100.0f + leaf.waveRPhase);
+        noiseR = (0.55f * lowFreq + 0.45f * highFreq) * (leaf.waveRAmp * 0.9f) * edgeMask;
+    }
+    return { noiseL, noiseR };
+}
+
+static void finalizeLeafSplineTip(std::vector<Vect3d>& outCenter, std::vector<Vect3d>& outLeft, std::vector<Vect3d>& outRight) {
+    // Force the tip to a single point
+    if (outCenter.size() >= 2) {
+        int preTip = (int)outCenter.size() - 2;
+        Vect3d tipP = outCenter.back();
+        outLeft[preTip].SetY(0.5f * (outLeft[preTip].y() + tipP.y()));
+        outRight[preTip].SetY(0.5f * (outRight[preTip].y() + tipP.y()));
+        outLeft[preTip].SetZ(0.5f * (outLeft[preTip].z() + tipP.z()));
+        outRight[preTip].SetZ(0.5f * (outRight[preTip].z() + tipP.z()));
+    }
+    outLeft.back() = outCenter.back();
+    outRight.back() = outCenter.back();
+}
+
+static void computeGridNormals(LeafGeom& geom) {
+    for (int i = 0; i < geom.rows; ++i) {
+        for (int j = 0; j < geom.cols; ++j) {
+            int ip = std::min(geom.rows - 1, i + 1);
+            int im = std::max(0, i - 1);
+            int jp = std::min(geom.cols - 1, j + 1);
+            int jm = std::max(0, j - 1);
+            Vect3d dx = geom.pos[i * geom.cols + jp] - geom.pos[i * geom.cols + jm];
+            Vect3d dy = geom.pos[ip * geom.cols + j] - geom.pos[im * geom.cols + j];
+            geom.nrm[i * geom.cols + j] = dy.Cross(dx).GetNormalized();
+        }
+    }
+}
+
+static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& bladeFrame, const Vect3d& rhat, float globalRadius, float densityV, float densityU, float ct, float st, const std::vector<Vect3d>& localCtrlC, const std::vector<Vect3d>& localCtrlL, const std::vector<Vect3d>& localCtrlR) {
+    // This converts the local left/center/right splines into the final render surface
+    LeafGeom bladeGeom;
+    bladeGeom.type = LeafGeom::GEOM_BLADE;
+    bladeGeom.rows = std::max(6, (int)(leaf.leafLength * densityV));
+    bladeGeom.cols = std::max(5, (int)(leaf.leafWidth * densityU));
+
+    bladeGeom.pos.resize(bladeGeom.rows * bladeGeom.cols);
+    bladeGeom.col.resize(bladeGeom.rows * bladeGeom.cols);
+    bladeGeom.uv.resize(bladeGeom.rows * bladeGeom.cols);
+    bladeGeom.nrm.resize(bladeGeom.rows * bladeGeom.cols);
+
+    const float sheathEndAngle = 2.0f;
+    float openAngle = sheathEndAngle * static_cast<float>(M_PI);
+    Vect3d stemAxis = bladeFrame.yAxis.GetNormalized();
+    Vect3d stemNormal = rhat - stemAxis * stemAxis.Dot(rhat);
+    if (stemNormal.Length() < 1e-6f) stemNormal = bladeFrame.xAxis;
+    stemNormal = stemNormal.GetNormalized();
+    Vect3d stemBinormal = stemAxis.Cross(stemNormal).GetNormalized();
+
+    float sheathOuterScale = clampf(leaf.sheathOuterScale, 1.0f, 1.6f);
+    float finalRadiusAtCollar = std::max(0.001f, globalRadius * sheathOuterScale);
+    float sheathBelowOffset = std::max(finalRadiusAtCollar * 1.5f, leaf.leafLength * 0.04f);
+    Vect3d sheathCenterPos = bladeFrame.sheathExitPos - stemAxis * sheathBelowOffset;
+
+    float blendLength = std::max(0.001f, finalRadiusAtCollar * 2.0f);
+    float approxRowLen = leaf.leafLength / (float)std::max(1, bladeGeom.rows - 1);
+    blendLength = std::max(blendLength, approxRowLen * 6.0f);
+    float liguleWrapLength = std::max(0.001f, finalRadiusAtCollar * std::max(0.5f, leaf.liguleWrapLengthScale));
+    float liguleUnfoldPower = std::max(0.2f, leaf.liguleUnfoldSharpness);
+    float sheathGrowEndFrac = clampf(0.08f, 0.04f, 0.18f);
+    float unfoldStartFrac = 0.0f;
+    float unfoldEndFrac = clampf(unfoldStartFrac + 0.22f, unfoldStartFrac + 0.02f, 0.99f);
+    float arcLen = 0.0f;
+    Vect3d prevCenter = bladeFrame.sheathExitPos;
+
+    for (int i = 0; i < bladeGeom.rows; ++i) {
+        float sBlade = (float)i / (float)(bladeGeom.rows - 1);
+
+        Vect3d pLLocal = Maize::deBoor(sBlade, localCtrlL);
+        Vect3d pCLocal = Maize::deBoor(sBlade, localCtrlC);
+        Vect3d pRLocal = Maize::deBoor(sBlade, localCtrlR);
+        Vect3d pL = bladeLocalToWorld(bladeFrame, pLLocal);
+        Vect3d pC = bladeLocalToWorld(bladeFrame, pCLocal);
+        Vect3d pR = bladeLocalToWorld(bladeFrame, pRLocal);
+
+        if (i > 0) arcLen += (pC - prevCenter).Length();
+        prevCenter = pC;
+        // shapeBlend is driven by traveled arc length instead of raw row index
+        // so the collar unwrap behaves similarly even when leaves have different
+        // lengths or local curvature
+        float shapeBlend = clampf(arcLen / blendLength, 0.f, 1.f);
+        shapeBlend = 1.0f - (1.0f - shapeBlend) * (1.0f - shapeBlend);
+
+        for (int j = 0; j < bladeGeom.cols; ++j) {
+            float u01 = (float)j / (float)(bladeGeom.cols - 1);
+            Vect3d splineP = (u01 < 0.5f) ? lerp_v3(pL, pC, u01 * 2.f) : lerp_v3(pC, pR, (u01 - 0.5f) * 2.f);
+
+            float fromCenter = (u01 - 0.5f) * 2.0f;
+            float curveAmt = fromCenter * fromCenter;
+            float sagitta = globalRadius * (1.0f - std::cos(openAngle * 0.5f));
+            float bladeDepth = 0.02f * leaf.leafWidth * curveAmt;
+            float sheathDepth = sagitta * (1.0f - curveAmt);
+
+            Vect3d sheathN = bladeFrame.zAxis;
+            Vect3d bladeN = bladeFrame.yAxis;
+            Vect3d finalN = lerp_v3(sheathN, bladeN, shapeBlend).GetNormalized();
+            // The same blend that unwraps the collar also rotates the local
+            // surface normal from the stem-facing sheath orientation into the
+            // blade-facing orientation
+            float displacement = lerp_v3(Vect3d(sheathDepth, 0, 0), Vect3d(bladeDepth, 0, 0), shapeBlend).x();
+            splineP = splineP + finalN * displacement;
+
+            // Midrib is a narrow Gaussian ridge centered at u=0.5. It tapers
+            // out near the tip so the blade can still resolve to a point
+            float midribMask = std::exp(-std::pow((u01 - 0.5f) / 0.075f, 2.0f));
+            float midribTipStart = clampf(leaf.midribTipTaperStart, 0.2f, 0.98f);
+            float midribTipFade = 1.0f;
+            if (sBlade > midribTipStart) {
+                midribTipFade = clampf((1.0f - sBlade) / std::max(0.01f, 1.0f - midribTipStart), 0.0f, 1.0f);
+                midribTipFade = midribTipFade * midribTipFade * (3.0f - 2.0f * midribTipFade);
+            }
+            float midribHeight = (0.045f * leaf.leafWidth) * (0.35f + 0.65f * shapeBlend) * midribMask * midribTipFade;
+            splineP = splineP + finalN * midribHeight;
+
+            float surfaceNoiseFreq = std::max(0.1f, leaf.surfaceNoiseFreq);
+            float surfaceNoiseAmp = std::max(0.0f, leaf.surfaceNoiseAmp);
+            float surfaceNoise = hashNoise(u01 * surfaceNoiseFreq, sBlade * surfaceNoiseFreq + (float)leaf.id * 0.13f);
+            float surfaceAmp = surfaceNoiseAmp * leaf.leafWidth;
+            // Surface ripples avoid the midrib and fade out at the tip, which
+            // keeps the silhouette cleaner than adding undulation everywhere
+            float tipSurfaceMask = 1.0f;
+            if (sBlade > 0.75f) {
+                tipSurfaceMask = clampf((1.0f - sBlade) / 0.25f, 0.0f, 1.0f);
+                tipSurfaceMask = tipSurfaceMask * tipSurfaceMask * tipSurfaceMask;
+            }
+            splineP = splineP + finalN * (surfaceNoise * surfaceAmp * (1.0f - 0.85f * midribMask) * tipSurfaceMask);
+
+            float angle = (u01 - 0.5f) * openAngle;
+            Vect3d offset = stemNormal * std::cos(angle) + stemBinormal * std::sin(angle);
+
+            float growOut = 1.0f;
+            if (sheathGrowEndFrac > 0.001f && sBlade < sheathGrowEndFrac) {
+                growOut = clampf(sBlade / sheathGrowEndFrac, 0.0f, 1.0f);
+                growOut = growOut * growOut * (3.0f - 2.0f * growOut);
+            }
+            float sheathRadius = globalRadius + (finalRadiusAtCollar - globalRadius) * growOut;
+            Vect3d cylinderP = sheathCenterPos + offset * sheathRadius;
+
+            // Two-stage unwrap:
+            // 1. unfoldPhase uses normalized blade position
+            // 2. liguleUnfold uses actual arc length from the collar
+            // The product keeps the first rows attached longer on short leaves
+            float unfoldPhase = 1.0f;
+            if (sBlade <= unfoldStartFrac) {
+                unfoldPhase = 0.0f;
+            } else if (sBlade < unfoldEndFrac) {
+                unfoldPhase = clampf((sBlade - unfoldStartFrac) / std::max(0.001f, unfoldEndFrac - unfoldStartFrac), 0.0f, 1.0f);
+                unfoldPhase = unfoldPhase * unfoldPhase * (3.0f - 2.0f * unfoldPhase);
+            }
+
+            float liguleUnfold = clampf(arcLen / liguleWrapLength, 0.0f, 1.0f);
+            liguleUnfold = std::pow(liguleUnfold, liguleUnfoldPower);
+            float sheathBlend = unfoldPhase * liguleUnfold;
+
+            Vect3d finalP = lerp_v3(cylinderP, splineP, sheathBlend);
+
+            // While the blade is still partially wrapped, enforce a minimum
+            // radius from the stem so surface noise/camber do not self-intersect
+            // with the collar cylinder
+            float unwrapProtect = 1.0f - sheathBlend;
+            float collarProtect = clampf((unfoldEndFrac + 0.12f - sBlade) / 0.12f, 0.0f, 1.0f);
+            float baseRegionProtect = clampf((0.45f - sBlade) / 0.45f, 0.0f, 1.0f);
+            float protect = (std::max)(unwrapProtect, (std::max)(collarProtect, baseRegionProtect));
+            if (protect > 0.001f) {
+                Vect3d rel = finalP - sheathCenterPos;
+                Vect3d relPerp = rel - stemAxis * rel.Dot(stemAxis);
+                float relPerpLen = relPerp.Length();
+                float attachRelax = 1.0f;
+                if (sheathGrowEndFrac > 1e-6f && sBlade < sheathGrowEndFrac) {
+                    attachRelax = clampf(sBlade / sheathGrowEndFrac, 0.0f, 1.0f);
+                    attachRelax = attachRelax * attachRelax * (3.0f - 2.0f * attachRelax);
+                }
+                float minWrapRadius = globalRadius + (finalRadiusAtCollar - globalRadius) * ((0.55f + 0.45f * protect) * attachRelax);
+                minWrapRadius = (std::max)(minWrapRadius, globalRadius * (1.0f + 0.08f * attachRelax));
+                if (relPerpLen < minWrapRadius) {
+                    Vect3d outDir = (relPerpLen > 1e-6f) ? (relPerp / relPerpLen) : stemNormal;
+                    finalP = sheathCenterPos + stemAxis * rel.Dot(stemAxis) + outDir * minWrapRadius;
+                }
+            }
+
+            int idx = i * bladeGeom.cols + j;
+            bladeGeom.pos[idx] = tiltPoint(finalP, ct, st);
+            Vect3d bladeColor = getColor(LeafGeom::GEOM_BLADE, sBlade);
+            float midribTipFadeColor = clampf((1.0f - sBlade) / std::max(0.01f, 1.0f - midribTipStart), 0.0f, 1.0f);
+            midribTipFadeColor = midribTipFadeColor * midribTipFadeColor * (3.0f - 2.0f * midribTipFadeColor);
+            float midribColorBoost = 0.16f * midribMask * (0.25f + 0.75f * shapeBlend) * midribTipFadeColor;
+            bladeColor = bladeColor + Vect3d(midribColorBoost, midribColorBoost, midribColorBoost * 0.9f);
+            bladeColor.SetX(clampf(bladeColor.x(), 0.0f, 1.0f));
+            bladeColor.SetY(clampf(bladeColor.y(), 0.0f, 1.0f));
+            bladeColor.SetZ(clampf(bladeColor.z(), 0.0f, 1.0f));
+            bladeGeom.col[idx] = bladeColor;
+
+            // Compress U coordinates slightly around the midrib so textures
+            // visually "tighten" over the raised center ridge
+            float midribTexStrength = clampf(leaf.midribTextureStrength, 0.0f, 0.95f);
+            float uvU = 0.5f + (u01 - 0.5f) * (1.0f - midribTexStrength * midribMask);
+            bladeGeom.uv[idx] = { clampf(uvU, 0.0f, 1.0f), sBlade };
+        }
+    }
+
+    computeGridNormals(bladeGeom);
+    bladeGeom.ctrlCenter = transformSplineForViz(localCtrlC, bladeFrame, ct, st);
+    bladeGeom.ctrlLeft = transformSplineForViz(localCtrlL, bladeFrame, ct, st);
+    bladeGeom.ctrlRight = transformSplineForViz(localCtrlR, bladeFrame, ct, st);
+    return bladeGeom;
 }
 
 static MaizeModel g_MaizeModelInstance;
@@ -67,16 +565,16 @@ namespace Maize {
     float& gMeshDensityV() { return getModel().m_densityV; }
     float& gMeshDensityU() { return getModel().m_densityU; }
     float& gStemDensityScale() { return getModel().m_stemDensityScale; }
-    int& gStemRowOverride() { return getModel().m_stemRowOverride; }
-    float& gStemRibbonSpacing() { return getModel().m_stemRibbonSpacing; }
 
     PlantDesc& plant() { return getModel().plant(); }
     const std::vector<LeafGeom>& leafGeoms() { return getModel().leafGeoms(); }
     void rebuildGeometry() { getModel().rebuildGeometry(); }
     int getTriangleCount() { return getModel().getTriangleCount(); }
     bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath) { return getModel().savePlantOBJ(path, leafTextureFullPath, stemTextureFullPath); }
+    bool saveSkeletonOBJ(const char* path) { return getModel().saveSkeletonOBJ(path); }
     bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly) { return getModel().saveMTL(mtlPath, leafTextureFileNameOnly, stemTextureFileNameOnly); }
 
+    // Evaluate a cubic open-uniform B-spline via de Boor's algorithm
     Vect3d deBoor(float u, const std::vector<Vect3d>& P) {
         if (P.size() < 2) return P.empty() ? Vect3d() : P.front();
         if (P.size() < 4) {
@@ -103,182 +601,87 @@ namespace Maize {
         outCenter.clear(); outLeft.clear(); outRight.clear();
         if (L.splinePoints < 2) return;
 
-        // Start parallel to the stem for a smooth attachment.
-        Vect3d startDir(0.0f, 1.0f, 0.0f);
-
-        // Target direction based on leaf angle (0 = aligned with stem).
-        float angleRad = radiansf(L.leafAngle);
-
-        Vect3d targetDir(0.0f, std::cos(angleRad), std::sin(angleRad));
-
-        // First control point follows the sheath arc.
-        const float sheathEndAngle = 1.5f;
-        float halfAngle = (sheathEndAngle * M_PI) * 0.5f;
-        outCenter.push_back({ 0.0f, stemRadiusAtExit, 0.0f });
-
-        float nudgeRadius = stemRadiusAtExit;
-
-        float p0_lx = nudgeRadius * std::sin(-halfAngle);
-        float p0_ly = nudgeRadius * std::cos(-halfAngle);
-        outLeft.push_back({ p0_lx, p0_ly, 0.0f });
-
-        float p0_rx = nudgeRadius * std::sin(halfAngle);
-        float p0_ry = nudgeRadius * std::cos(halfAngle);
-        outRight.push_back({ p0_rx, p0_ry, 0.0f });
-
-        Vect3d currentPos(0.0f, stemRadiusAtExit, 0.0f);
+        // Local leaf coordinate system:
+        // x = width, y = collar wrap direction, z = forward along the centerline
+        // The first sections are handled specially so the blade emerges from a
+        // wrapped sheath instead of appearing as a flat ribbon from row 0
         float segmentLen = L.leafLength / (float)(L.splinePoints - 1);
         float gravityFactor = L.droopiness * 5.0f;
         float t_p1 = (L.splinePoints > 1) ? 1.0f / (float)(L.splinePoints - 1) : 1.0f;
-        float curlAmount = clampf(L.leafCurl, -1.f, 1.f);
-        auto applyCurl = [&](float x, float z, float /*t*/) {
-            if (std::abs(curlAmount) <= 1e-5f) return Vect3d(x, 0.f, z);
-            float curl = curlAmount;
-            float absX = std::abs(x);
-            float curlMagnitude = std::min(1.0f, std::abs(curl));
-            float newX = std::copysign(absX * (1.f - curlMagnitude), x);
-            float newZ = z - absX * curl;
-            return Vect3d(newX, 0.f, newZ);
-        };
+        float halfWidth = L.leafWidth * 0.5f;
+        LeafSectionEmitter emitter{ outLeft, outRight, clampf(L.leafCurl, -1.f, 1.f) };
+        LeafSplineBaseState base = initializeLeafSplineBase(stemRadiusAtExit, outCenter, outLeft, outRight);
 
+        Vect3d startDir(0.0f, 1.0f, 0.0f);
+        Vect3d targetDir(0.0f, std::cos(radiansf(L.leafAngle)), std::sin(radiansf(L.leafAngle)));
         Vect3d currentDir = startDir;
 
-        const int extraCtrlPoints = 2;
         const bool insertExtra = L.splinePoints > 2;
-        float halfWidth = L.leafWidth * 0.5f;
-
+        const int extraCtrlPoints = 2;
         float t_first = (L.splinePoints > 1) ? 1.0f / (L.splinePoints - 1) : 1.0f;
-        float blendEnd = (stemRadiusAtExit * 2.0f) / std::max(L.leafLength, 1e-6f);
-        blendEnd = clampf(blendEnd, 0.001f, 1.0f);
-        Vect3d baseDirFirst = targetDir.GetNormalized();
-        float droopinessFactorFirst = t_first * t_first;
-        float rotAmtFirst = radiansf(gravityFactor * droopinessFactorFirst);
-        float cyFirst = baseDirFirst.y(), czFirst = baseDirFirst.z();
-        float newYFirst = cyFirst * std::cos(rotAmtFirst) - czFirst * std::sin(rotAmtFirst);
-        float newZFirst = cyFirst * std::sin(rotAmtFirst) + czFirst * std::cos(rotAmtFirst);
-        Vect3d firstDir = baseDirFirst;
-        firstDir.SetY(newYFirst); firstDir.SetZ(newZFirst);
-        firstDir = firstDir.GetNormalized();
-        Vect3d firstPos = currentPos + firstDir * segmentLen;
+        Vect3d firstDir = computeDroppedLeafDirection(targetDir, gravityFactor, t_first);
+        Vect3d firstPos = base.currentPos + firstDir * segmentLen;
 
         if (insertExtra) {
             for (int k = 1; k <= extraCtrlPoints; ++k) {
                 float t_seg = (float)k / (float)(extraCtrlPoints + 1);
-                Vect3d interpPos = lerp_v3(currentPos, firstPos, t_seg);
-                float target_x_left = -halfWidth;
-                float target_x_right = halfWidth;
-                float blended_x_left = lerp_v3(Vect3d(p0_lx, 0, 0), Vect3d(target_x_left, 0, 0), t_seg).x();
-                float blended_x_right = lerp_v3(Vect3d(p0_rx, 0, 0), Vect3d(target_x_right, 0, 0), t_seg).x();
-                float y_seg = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, interpPos.y(), 0), t_seg).y();
-                float t_overall = t_seg * t_first;
-                Vect3d leftCurl = applyCurl(blended_x_left, interpPos.z(), t_overall);
-                Vect3d rightCurl = applyCurl(blended_x_right, interpPos.z(), t_overall);
-                outCenter.push_back(interpPos);
-                outLeft.push_back({ leftCurl.x(), y_seg, leftCurl.z() });
-                outRight.push_back({ rightCurl.x(), y_seg, rightCurl.z() });
+                Vect3d interpPos = lerp_v3(base.currentPos, firstPos, t_seg);
+                appendInterpolatedBaseSection(base, interpPos, t_seg, halfWidth, emitter, firstDir, outCenter, true);
             }
         }
 
         currentDir = firstDir;
-        currentPos = firstPos;
-        outCenter.push_back(currentPos);
-        {
-            float t_seg = 1.0f;
-            float target_x_left = -halfWidth;
-            float target_x_right = halfWidth;
-            float blended_x_left = lerp_v3(Vect3d(p0_lx, 0, 0), Vect3d(target_x_left, 0, 0), t_seg).x();
-            float blended_x_right = lerp_v3(Vect3d(p0_rx, 0, 0), Vect3d(target_x_right, 0, 0), t_seg).x();
-            float y_seg = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, currentPos.y(), 0), t_seg).y();
-            Vect3d leftCurl = applyCurl(blended_x_left, currentPos.z(), t_first);
-            Vect3d rightCurl = applyCurl(blended_x_right, currentPos.z(), t_first);
-            outLeft.push_back({ leftCurl.x(), y_seg, leftCurl.z() });
-            outRight.push_back({ rightCurl.x(), y_seg, rightCurl.z() });
-        }
+        base.currentPos = firstPos;
+        appendInterpolatedBaseSection(base, base.currentPos, 1.0f, halfWidth, emitter, firstDir, outCenter, true);
 
         for (int i = 2; i < L.splinePoints; ++i) {
             float t = (float)i / (L.splinePoints - 1);
 
-            // Blend direction from sheath to blade angle.
-            float t_blend = clampf(t / blendEnd, 0.f, 1.f);
-
-            t_blend = t_blend * t_blend * (3.0f - 2.0f * t_blend);
-
-            Vect3d baseDir = targetDir.GetNormalized();
-            float droopinessFactor = t * t;
-            float rotAmt = radiansf(gravityFactor * droopinessFactor);
-            float cy = baseDir.y(), cz = baseDir.z();
-            float newY = cy * std::cos(rotAmt) - cz * std::sin(rotAmt);
-            float newZ = cy * std::sin(rotAmt) + cz * std::cos(rotAmt);
-            Vect3d targetStepDir = baseDir;
-            targetStepDir.SetY(newY); targetStepDir.SetZ(newZ);
-            targetStepDir = targetStepDir.GetNormalized();
+            Vect3d targetStepDir = computeDroppedLeafDirection(targetDir, gravityFactor, t);
             currentDir = lerp_v3(currentDir, targetStepDir, 0.5f).GetNormalized();
 
-            currentPos = currentPos + currentDir * segmentLen;
-            outCenter.push_back(currentPos);
+            base.currentPos = base.currentPos + currentDir * segmentLen;
+            outCenter.push_back(base.currentPos);
 
             float current_halfWidth_x = halfWidth;
-            float y_s = currentPos.y();
-            float z_s = currentPos.z();
+            float y_s = base.currentPos.y();
+            float z_s = base.currentPos.z();
 
             if (t <= t_p1 + 0.0001f) {
                 float t_seg = t / t_p1;
-                float target_x_left = -halfWidth;
-                float target_x_right = halfWidth;
-                float blended_x_left = lerp_v3(Vect3d(p0_lx, 0, 0), Vect3d(target_x_left, 0, 0), t_seg).x();
-                float blended_x_right = lerp_v3(Vect3d(p0_rx, 0, 0), Vect3d(target_x_right, 0, 0), t_seg).x();
-                y_s = lerp_v3(Vect3d(0, p0_ly, 0), Vect3d(0, currentPos.y(), 0), t_seg).y();
-
-                Vect3d leftCurl = applyCurl(blended_x_left, z_s, t);
-                Vect3d rightCurl = applyCurl(blended_x_right, z_s, t);
-                outLeft.push_back({ leftCurl.x(), y_s, leftCurl.z() });
-                outRight.push_back({ rightCurl.x(), y_s, rightCurl.z() });
+                float leftX = lerp_v3(Vect3d(base.baseLeftX, 0, 0), Vect3d(-halfWidth, 0, 0), t_seg).x();
+                float rightX = lerp_v3(Vect3d(base.baseRightX, 0, 0), Vect3d(halfWidth, 0, 0), t_seg).x();
+                y_s = lerp_v3(Vect3d(0, base.baseLeftY, 0), Vect3d(0, base.currentPos.y(), 0), t_seg).y();
+                emitter.append(leftX, rightX, y_s, z_s, 0.0f, 0.0f, base.currentPos, currentDir);
             }
             else {
                 float t_remap = (t - t_p1) / (1.0f - t_p1);
-                float taperVal = 1.0f - pow(t_remap, L.widthTaper);
+                float taperVal = 1.0f - std::pow(t_remap, L.widthTaper);
                 current_halfWidth_x = halfWidth * taperVal;
-                y_s = currentPos.y();
+                y_s = base.currentPos.y();
 
-                float noiseL = 0.0f, noiseR = 0.0f;
-                float tipMask = 1.0f;
-                if (t > 0.8f) tipMask = (1.0f - t) / 0.2f;
-                else if (t < 0.1f) tipMask = t / 0.1f;
-                float baseMask = clampf((t - 0.1f) / 0.2f, 0.0f, 1.0f);
-                baseMask = baseMask * baseMask * (3.0f - 2.0f * baseMask);
-                float edgeMask = baseMask * tipMask;
-
-                if (L.waveLAmp > 0.0f) {
-                    float lowFreq = std::sin((t * L.waveLFreq * 0.25f + L.waveLPhase) * (float)M_PI * 2.0f);
-                    float highFreq = hashNoise(t * L.waveLFreq, (float)L.id + L.waveLPhase);
-                    noiseL = (0.6f * lowFreq + 0.4f * highFreq) * L.waveLAmp * edgeMask;
-                }
-                if (L.waveRAmp > 0.0f) {
-                    float lowFreq = std::sin((t * L.waveRFreq * 0.25f + L.waveRPhase + 0.37f) * (float)M_PI * 2.0f);
-                    float highFreq = hashNoise(t * L.waveRFreq, (float)L.id + 100.0f + L.waveRPhase);
-                    noiseR = (0.55f * lowFreq + 0.45f * highFreq) * (L.waveRAmp * 0.9f) * edgeMask;
-                }
-
-                Vect3d leftCurl = applyCurl(-current_halfWidth_x, z_s + noiseL, t);
-                Vect3d rightCurl = applyCurl(current_halfWidth_x, z_s + noiseR, t);
-                outLeft.push_back({ leftCurl.x(), y_s, leftCurl.z() });
-                outRight.push_back({ rightCurl.x(), y_s, rightCurl.z() });
+                // Waves are strongest in the mid blade and suppressed near the
+                // base/tip where the mesh naturally pinches together
+                auto waveOffsets = sampleLeafWaveOffsets(L, t, current_halfWidth_x, halfWidth);
+                emitter.append(-current_halfWidth_x, current_halfWidth_x, y_s, z_s, waveOffsets.first, waveOffsets.second, base.currentPos, currentDir);
             }
         }
 
         if (L.useCtrlOverrides && !L.ctrlCenterOverride.empty() && L.ctrlCenterOverride.size() == L.ctrlLeftOverride.size() && L.ctrlCenterOverride.size() == L.ctrlRightOverride.size()) {
+            // The editor can replace the procedural spline set entirely
             outCenter = L.ctrlCenterOverride;
             outLeft = L.ctrlLeftOverride;
             outRight = L.ctrlRightOverride;
             return;
         }
 
-        outLeft.back().SetX(0.0f); outLeft.back().SetZ(outCenter.back().z());
-        outRight.back().SetX(0.0f); outRight.back().SetZ(outCenter.back().z());
+        finalizeLeafSplineTip(outCenter, outLeft, outRight);
     }
 
-    void makeDefaultLeafSplines(float L, float W, std::vector<Vect3d>& outCenter, std::vector<Vect3d>& outLeft, std::vector<Vect3d>& outRight) {
-        outCenter.clear(); outLeft.clear(); outRight.clear();
+    float computeLeafAzimuthDeg(const TillerDesc& tiller, int leafIndex) {
+        unsigned int leafSeed = tiller.randomSeed + (unsigned int)(std::max)(0, leafIndex);
+        float noiseVal = hash_to_float_minus1_1(leafSeed);
+        return tiller.azimuthDeg * (float)leafIndex + (noiseVal * tiller.azimuthNoise);
     }
 
     std::string dirFromPath(const std::string& p) {
@@ -297,6 +700,7 @@ namespace Maize {
 }
 
 void MaizeModel::rebuildGeometry() {
+    // RebuildGeometry is the single conversion from PlantDesc to render/export meshes
     m_leafGeoms.clear();
     const Vect3d globalUp = { 0,1,0 };
 
@@ -304,282 +708,42 @@ void MaizeModel::rebuildGeometry() {
         const auto& td = m_plant.tillers[ti];
         const float tilt = radiansf(td.alphaDeg);
         const float ct = std::cos(tilt), st = std::sin(tilt);
-        auto tiltP = [&](const Vect3d& p)->Vect3d { return { p.x() * ct - p.y() * st, p.x() * st + p.y() * ct, p.z() }; };
+        StemBuildData stemData = buildStemData(td);
+        StemSampler stemSampler{ td, stemData, globalUp };
 
-        std::vector<Vect3d> stemCtrl;
-        std::vector<Vect3d> leafStemPos;
-        std::vector<float> leafStemLen;
-        std::vector<float> leafInclinations;
-        Vect3d stemPos(0.0f, 0.0f, 0.0f);
-        stemCtrl.push_back(stemPos);
-
-        float cumulativeInclinationDeg = 0.0f;
-        float cumulativeLen = 0.0f;
-        if (td.useStemCtrlOverrides && td.stemCtrlOverride.size() >= 2) {
-            stemCtrl = td.stemCtrlOverride;
-            for (size_t i = 1; i < stemCtrl.size(); ++i) {
-                cumulativeLen += (stemCtrl[i] - stemCtrl[i - 1]).Length();
-            }
-            for (size_t i = 0; i < td.leaves.size(); ++i) {
-                size_t ctrlIndex = std::min(i + 1, stemCtrl.size() - 1);
-                leafStemPos.push_back(stemCtrl[ctrlIndex]);
-                float len = 0.0f;
-                for (size_t s = 1; s <= ctrlIndex; ++s) {
-                    len += (stemCtrl[s] - stemCtrl[s - 1]).Length();
-                }
-                leafStemLen.push_back(len);
-                cumulativeInclinationDeg += td.leaves[i].stemInclinationDeg;
-                leafInclinations.push_back(cumulativeInclinationDeg);
-            }
-        } else {
-            for (const auto& leaf : td.leaves) {
-                float dist = std::max(0.f, leaf.distance);
-                cumulativeLen += dist;
-                cumulativeInclinationDeg += leaf.stemInclinationDeg;
-                float incRad = radiansf(cumulativeInclinationDeg);
-                Vect3d dir(std::sin(incRad), std::cos(incRad), 0.0f);
-                stemPos = stemPos + dir * dist;
-                stemCtrl.push_back(stemPos);
-                leafStemPos.push_back(stemPos);
-                leafStemLen.push_back(cumulativeLen);
-                leafInclinations.push_back(cumulativeInclinationDeg);
-            }
+        if (!stemData.leafStemPos.empty()) {
+            m_leafGeoms.push_back(buildStemGeometry(stemSampler, stemData, globalUp, m_densityV, m_densityU, m_stemDensityScale, ct, st));
         }
-
-        float stemLength = std::max(0.001f, cumulativeLen);
-        auto stemPosAt = [&](float t) { return Maize::deBoor(t, stemCtrl); };
-        auto stemTangentAt = [&](float t) {
-            float dt = 1.0f / std::max(2, (int)stemCtrl.size());
-            Vect3d p0 = stemPosAt(clampf(t - dt, 0.0f, 1.0f));
-            Vect3d p1 = stemPosAt(clampf(t + dt, 0.0f, 1.0f));
-            Vect3d tan = p1 - p0;
-            if (tan.Length() < 1e-6f) tan = globalUp;
-            return tan.GetNormalized();
-        };
-
-        if (!leafStemPos.empty()) {
-            LeafGeom StemG;
-            StemG.type = LeafGeom::GEOM_SHEATH;
-
-            float sheathDensityV = m_densityV * m_stemDensityScale;
-            float sheathDensityU = m_densityU * m_stemDensityScale;
-            StemG.rows = std::max(4, (int)(stemLength * sheathDensityV));
-            if (m_stemRowOverride > 0)
-                StemG.rows = m_stemRowOverride;
-            StemG.cols = std::max(12, (int)std::round(sheathDensityU));
-
-            StemG.pos.resize(StemG.rows * StemG.cols);
-            StemG.col.resize(StemG.rows * StemG.cols);
-            StemG.uv.resize(StemG.rows * StemG.cols);
-            StemG.nrm.resize(StemG.rows * StemG.cols);
-
-            Vect3d prevNormal(1.0f, 0.0f, 0.0f);
-            for (int i = 0; i < StemG.rows; ++i) {
-                float s_stem = (StemG.rows == 1) ? 0.0f : (float)i / (float)(StemG.rows - 1);
-                float ribbonSpacing = std::max(0.01f, m_stemRibbonSpacing);
-                float stemRepeats = std::max(1.0f, stemLength / ribbonSpacing);
-                float v_repeat = s_stem * stemRepeats;
-                float v_wrapped = v_repeat - std::floor(v_repeat);
-                Vect3d pC = stemPosAt(s_stem);
-                Vect3d tangent = stemTangentAt(s_stem);
-                Vect3d normal = Vect3d::Cross(globalUp, tangent);
-                if (normal.Length() < 1e-6f) normal = prevNormal;
-                normal = normal.GetNormalized();
-                if (normal.Dot(prevNormal) < 0.0f) normal = -normal;
-                prevNormal = normal;
-                Vect3d binormal = tangent.Cross(normal).GetNormalized();
-
-                float radius = std::max(0.001f, td.radius - td.stemShrink * s_stem);
-                float openAngle = 2.0f * (float)M_PI;
-
-                for (int j = 0; j < StemG.cols; ++j) {
-                    float u01 = (StemG.cols == 1) ? 0.0f : (float)j / (float)(StemG.cols - 1);
-                    float angle = u01 * openAngle;
-                    Vect3d offset = normal * std::cos(angle) + binormal * std::sin(angle);
-
-                    int idx = i * StemG.cols + j;
-                    StemG.pos[idx] = tiltP(pC + offset * radius);
-                    StemG.col[idx] = getColor(LeafGeom::GEOM_SHEATH, s_stem);
-                    StemG.uv[idx] = { u01, v_wrapped };
-                    StemG.nrm[idx] = tiltP(offset.GetNormalized());
-                }
-            }
-            StemG.ctrlCenter.clear();
-            for (const auto& p : stemCtrl) StemG.ctrlCenter.push_back(tiltP(p));
-            m_leafGeoms.push_back(std::move(StemG));
-        }
-
-        cumulativeInclinationDeg = 0.0f;
 
         for (size_t li = 0; li < td.leaves.size(); ++li) {
             const auto& L = td.leaves[li];
             LeafDesc LInclined = L;
-            if (li < leafInclinations.size()) {
-                LInclined.stemInclinationDeg = leafInclinations[li];
+            if (li < stemData.leafInclinations.size()) {
+                LInclined.stemInclinationDeg = stemData.leafInclinations[li];
             }
-            unsigned int leaf_seed = td.randomSeed + (unsigned int)li;
-            float noise_val = hash_to_float_minus1_1(leaf_seed);
-            float leafAzimuth = td.azimuthDeg * (li)+(noise_val * td.azimuthNoise);
-            float phi = radiansf(leafAzimuth);
+            float phi = radiansf(L.azimuthDeg);
             Vect3d rhat = { std::cos(phi), 0.f, std::sin(phi) };
 
             std::vector<Vect3d> localCtrlC, localCtrlL, localCtrlR;
-            float tLeaf = (stemLength > 1e-6f && li < leafStemLen.size()) ? (leafStemLen[li] / stemLength) : 0.0f;
+            float tLeaf = (stemData.stemLength > 1e-6f && li < stemData.leafStemLen.size()) ? (stemData.leafStemLen[li] / stemData.stemLength) : 0.0f;
             tLeaf = clampf(tLeaf, 0.0f, 1.0f);
-            float global_radius = std::max(0.001f, td.radius - td.stemShrink * tLeaf);
+            float global_radius = stemSampler.radiusAt(tLeaf);
 
             Maize::generateLeafSplines(LInclined, global_radius, localCtrlC, localCtrlL, localCtrlR);
 
             if (L.leafTwist != 0.0f && L.splinePoints > 1) {
-                auto twistSpline = [&](std::vector<Vect3d>& ctrl) {
-                    if (ctrl.empty()) return;
-                    for (size_t i = 0; i < ctrl.size(); ++i) {
-                        float t = (ctrl.size() == 1) ? 1.0f : (float)i / (ctrl.size() - 1);
-                        float twistRad = radiansf(L.leafTwist) * t;
-                        float cT = cos(twistRad), sT = sin(twistRad);
-                        Vect3d p = ctrl[i];
-                        Vect3d p_center = localCtrlC[i];
-                        float local_x = p.x() - p_center.x();
-                        float local_z = p.z() - p_center.z();
-                        float new_local_x = local_x * cT - local_z * sT;
-                        float new_local_z = local_x * sT + local_z * cT;
-                        ctrl[i].SetX(p_center.x() + new_local_x);
-                        ctrl[i].SetZ(p_center.z() + new_local_z);
-                    }
-                    };
-                twistSpline(localCtrlL); twistSpline(localCtrlR);
+                // Twist is applied after the local splines are built so it can
+                // rotate the left/right edges around the centerline
+                applyLeafTwist(localCtrlL, localCtrlC, L.leafTwist);
+                applyLeafTwist(localCtrlR, localCtrlC, L.leafTwist);
             }
 
-            // World Transform Helpers
-            Vect3d sheath_exit_pos = (li < leafStemPos.size()) ? leafStemPos[li] : Vect3d(0.0f, 0.0f, 0.0f);
+            // Build a local orthonormal frame at the stem exit point so the leaf
+            // spline can be transformed from leaf-local coordinates into world
+            Vect3d sheath_exit_pos = (li < stemData.leafStemPos.size()) ? stemData.leafStemPos[li] : Vect3d(0.0f, 0.0f, 0.0f);
+            BladeFrame bladeFrame = buildBladeFrame(sheath_exit_pos, stemSampler.tangentAt(tLeaf), rhat);
 
-            Vect3d blade_y_axis = stemTangentAt(tLeaf);
-            Vect3d blade_z_axis = rhat;
-            Vect3d blade_x_axis = blade_y_axis.Cross(blade_z_axis);
-            if (blade_x_axis.Length() < 1e-6f) {
-                blade_z_axis = Vect3d(0.0f, 0.0f, 1.0f);
-                blade_x_axis = blade_y_axis.Cross(blade_z_axis);
-            }
-            blade_x_axis = blade_x_axis.GetNormalized();
-            blade_z_axis = blade_x_axis.Cross(blade_y_axis).GetNormalized();
-
-            auto bladeLocalToWorld = [&](const Vect3d& p_local) {
-                return sheath_exit_pos + blade_x_axis * p_local.x() + blade_y_axis * p_local.z() + blade_z_axis * p_local.y();
-                };
-
-            // Blade.
-            LeafGeom BladeG;
-            BladeG.type = LeafGeom::GEOM_BLADE;
-
-            BladeG.rows = std::max(6, (int)(L.leafLength * m_densityV));
-            BladeG.cols = std::max(5, (int)(L.leafWidth * m_densityU));
-
-            BladeG.pos.resize(BladeG.rows * BladeG.cols);
-            BladeG.col.resize(BladeG.rows * BladeG.cols);
-            BladeG.uv.resize(BladeG.rows * BladeG.cols);
-            BladeG.nrm.resize(BladeG.rows * BladeG.cols);
-
-            const float sheathEndAngle = 1.5f;
-            float openAngle = sheathEndAngle * M_PI;
-            Vect3d stem_normal = rhat;
-            Vect3d stem_binormal = Vect3d::Cross(globalUp, stem_normal).GetNormalized();
-            Vect3d sheath_center_pos = sheath_exit_pos;
-
-            float final_radius_at_collar = global_radius;
-
-            float blendLength = std::max(0.001f, final_radius_at_collar * 2.0f);
-            float approxRowLen = L.leafLength / (float)std::max(1, BladeG.rows - 1);
-            blendLength = std::max(blendLength, approxRowLen * 6.0f);
-            float arcLen = 0.0f;
-            Vect3d prevCenter = sheath_exit_pos;
-
-            for (int i = 0; i < BladeG.rows; ++i) {
-                float s_blade = (float)i / (float)(BladeG.rows - 1);
-
-                Vect3d pL_local = Maize::deBoor(s_blade, localCtrlL);
-                Vect3d pC_local = Maize::deBoor(s_blade, localCtrlC);
-                Vect3d pR_local = Maize::deBoor(s_blade, localCtrlR);
-                Vect3d pL = bladeLocalToWorld(pL_local);
-                Vect3d pC = bladeLocalToWorld(pC_local);
-                Vect3d pR = bladeLocalToWorld(pR_local);
-
-                if (i > 0) {
-                    arcLen += (pC - prevCenter).Length();
-                }
-                prevCenter = pC;
-                float t_shape = clampf(arcLen / blendLength, 0.f, 1.f);
-
-                t_shape = 1.0f - (1.0f - t_shape) * (1.0f - t_shape);
-
-                for (int j = 0; j < BladeG.cols; ++j) {
-                    float u01 = (float)j / (float)(BladeG.cols - 1);
-
-                    Vect3d p_spline = (u01 < 0.5f) ? lerp_v3(pL, pC, u01 * 2.f) : lerp_v3(pC, pR, (u01 - 0.5f) * 2.f);
-
-                    float blend = t_shape;
-                    float sagitta = global_radius * (1.0f - cos(openAngle * 0.5f));
-                    float fromCenter = (u01 - 0.5f) * 2.0f;
-                    float curveAmt = fromCenter * fromCenter;
-                    float baseCurvatureMask = clampf(s_blade / 0.15f, 0.0f, 1.0f);
-                    baseCurvatureMask = baseCurvatureMask * baseCurvatureMask * (3.0f - 2.0f * baseCurvatureMask);
-                    float bladeDepth = 0.02f * L.leafWidth * curveAmt * baseCurvatureMask;
-                    float sheathDepth = sagitta * (1.0f - curveAmt) * baseCurvatureMask;
-
-                    Vect3d sheathN = blade_z_axis;
-                    Vect3d bladeN = blade_y_axis;
-                    Vect3d finalN = lerp_v3(sheathN, bladeN, blend).GetNormalized();
-                    float displacement = lerp_v3(Vect3d(sheathDepth, 0, 0), Vect3d(bladeDepth, 0, 0), blend).x();
-
-                    p_spline = p_spline + finalN * displacement;
-
-                    float tipMask = 1.0f;
-                    if (s_blade > 0.8f) tipMask = (1.0f - s_blade) / 0.2f;
-                    else if (s_blade < 0.1f) tipMask = s_blade / 0.1f;
-                    float surfMask = clampf((s_blade - 0.1f) / 0.6f, 0.0f, 1.0f);
-                    surfMask = surfMask * surfMask * (3.0f - 2.0f * surfMask);
-                    float lowFreq = std::sin((s_blade * 2.0f + u01 * 0.5f + (float)L.id * 0.07f) * (float)M_PI * 2.0f);
-                    float highFreq = hashNoise(u01 * 6.0f, s_blade * 7.0f + (float)L.id * 0.13f);
-                    float surfaceNoise = 0.6f * lowFreq + 0.4f * highFreq;
-                    float surfaceAmp = 0.008f * L.leafWidth * (0.6f + 0.4f * tipMask) * surfMask;
-                    p_spline = p_spline + finalN * (surfaceNoise * surfaceAmp);
-
-                    // Sheath extension around the collar.
-                    float angle = (u01 - 0.5f) * openAngle;
-                    Vect3d offset = stem_normal * cos(angle) + stem_binormal * sin(angle);
-
-                    Vect3d p_cylinder = sheath_center_pos + offset * final_radius_at_collar;
-
-                    Vect3d p_final = lerp_v3(p_cylinder, p_spline, t_shape);
-
-                    int idx = i * BladeG.cols + j;
-                    BladeG.pos[idx] = tiltP(p_final);
-                    BladeG.col[idx] = getColor(LeafGeom::GEOM_BLADE, s_blade);
-
-                    BladeG.uv[idx] = { u01, s_blade };
-                }
-
-            }
-
-            for (int i = 0; i < BladeG.rows; ++i) {
-                for (int j = 0; j < BladeG.cols; ++j) {
-                    int ip = std::min(BladeG.rows - 1, i + 1), im = std::max(0, i - 1);
-                    int jp = std::min(BladeG.cols - 1, j + 1), jm = std::max(0, j - 1);
-                    Vect3d dx = BladeG.pos[i * BladeG.cols + jp] - BladeG.pos[i * BladeG.cols + jm];
-                    Vect3d dy = BladeG.pos[ip * BladeG.cols + j] - BladeG.pos[im * BladeG.cols + j];
-                    BladeG.nrm[i * BladeG.cols + j] = dy.Cross(dx).GetNormalized();
-                }
-            }
-
-            auto transformBladeSplineForViz = [&](const std::vector<Vect3d>& local_ctrl) {
-                std::vector<Vect3d> world_ctrl;
-                for (const auto& p : local_ctrl) world_ctrl.push_back(tiltP(bladeLocalToWorld(p)));
-                return world_ctrl;
-                };
-            BladeG.ctrlCenter = transformBladeSplineForViz(localCtrlC);
-            BladeG.ctrlLeft = transformBladeSplineForViz(localCtrlL);
-            BladeG.ctrlRight = transformBladeSplineForViz(localCtrlR);
-
-            m_leafGeoms.push_back(std::move(BladeG));
+            m_leafGeoms.push_back(buildBladeGeometry(L, bladeFrame, rhat, global_radius, m_densityV, m_densityU, ct, st, localCtrlC, localCtrlL, localCtrlR));
         }
     }
 }
@@ -590,80 +754,4 @@ int MaizeModel::getTriangleCount() const {
         if (geom.rows > 1 && geom.cols > 1) count += (geom.rows - 1) * (geom.cols - 1) * 2;
     }
     return count;
-}
-
-bool MaizeModel::savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath) {
-    if (!path) return false;
-    const std::string objPath(path), objDir = Maize::dirFromPath(objPath);
-    const std::string mtlFileName = "maize.mtl", mtlPath = objDir.empty() ? mtlFileName : (objDir + "/" + mtlFileName);
-    FILE* f = nullptr;
-#ifdef _MSC_VER
-    fopen_s(&f, path, "w");
-#else
-    f = std::fopen(path, "w");
-#endif
-    if (!f) return false;
-    std::fprintf(f, "# Maize export\nmtllib %s\n", mtlFileName.c_str());
-
-    for (const auto& G : m_leafGeoms) {
-        for (size_t i = 0; i < G.pos.size(); ++i) {
-            const auto& p = G.pos[i];
-            const auto& c = G.col[i];
-            std::fprintf(f, "v %.9g %.9g %.9g %.9g %.9g %.9g\n", p.x(), p.y(), p.z(), c.x(), c.y(), c.z());
-        }
-        for (const auto& t : G.uv)  std::fprintf(f, "vt %.9g %.9g\n", t.u, t.v);
-        for (const auto& n : G.nrm) std::fprintf(f, "vn %.9g %.9g %.9g\n", n.x(), n.y(), n.z());
-    }
-
-    size_t vOffset = 1, vtOffset = 1, vnOffset = 1;
-    for (const auto& G : m_leafGeoms) {
-        const char* material = (G.type == LeafGeom::GEOM_SHEATH) ? "maize_stem" : "maize_leaf";
-        std::fprintf(f, "usemtl %s\n", material);
-        for (int i = 0; i < G.rows - 1; ++i) {
-            for (int j = 0; j < G.cols - 1; ++j) {
-                const int a = int(vOffset + i * G.cols + j), b = int(vOffset + (i + 1) * G.cols + j);
-                const int c = int(vOffset + (i + 1) * G.cols + (j + 1)), d = int(vOffset + i * G.cols + (j + 1));
-                const int ta = int(vtOffset + i * G.cols + j), tb = int(vtOffset + (i + 1) * G.cols + j);
-                const int tc = int(vtOffset + (i + 1) * G.cols + (j + 1)), td = int(vtOffset + i * G.cols + (j + 1));
-                const int na = int(vnOffset + i * G.cols + j), nb = int(vnOffset + (i + 1) * G.cols + j);
-                const int nc = int(vnOffset + (i + 1) * G.cols + (j + 1)), nd = int(vnOffset + i * G.cols + (j + 1));
-                std::fprintf(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n", a, ta, na, b, tb, nb, c, tc, nc);
-                std::fprintf(f, "f %d/%d/%d %d/%d/%d %d/%d/%d\n", a, ta, na, c, tc, nc, d, td, nd);
-            }
-        }
-        vOffset += G.pos.size(); vtOffset += G.uv.size(); vnOffset += G.nrm.size();
-    }
-    std::fclose(f);
-    const char* leafTexName = nullptr;
-    const char* stemTexName = nullptr;
-    std::string leafTexTmp;
-    std::string stemTexTmp;
-    if (leafTextureFullPath && leafTextureFullPath[0]) {
-        leafTexTmp = baseNameFromPath(leafTextureFullPath);
-        leafTexName = leafTexTmp.c_str();
-    }
-    if (stemTextureFullPath && stemTextureFullPath[0]) {
-        stemTexTmp = baseNameFromPath(stemTextureFullPath);
-        stemTexName = stemTexTmp.c_str();
-    } else {
-        stemTexName = leafTexName;
-    }
-    saveMTL(mtlPath.c_str(), leafTexName, stemTexName);
-    return true;
-}
-
-bool MaizeModel::saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly) {
-    FILE* m = nullptr;
-#ifdef _MSC_VER
-    fopen_s(&m, mtlPath, "w");
-#else
-    m = std::fopen(mtlPath, "w");
-#endif
-    if (!m) return false;
-    std::fprintf(m, "newmtl maize_leaf\nKa 0 0 0\nKd 1 1 1\nKs 0.04 0.04 0.04\nNs 18\nillum 2\n");
-    if (leafTextureFileNameOnly && leafTextureFileNameOnly[0]) std::fprintf(m, "map_Kd %s\n", leafTextureFileNameOnly);
-    std::fprintf(m, "\nnewmtl maize_stem\nKa 0 0 0\nKd 1 1 1\nKs 0.04 0.04 0.04\nNs 18\nillum 2\n");
-    if (stemTextureFileNameOnly && stemTextureFileNameOnly[0]) std::fprintf(m, "map_Kd %s\n", stemTextureFileNameOnly);
-    std::fclose(m);
-    return true;
 }

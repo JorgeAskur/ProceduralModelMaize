@@ -1,120 +1,452 @@
 #include "MaizeGenerator.h"
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <filesystem>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <limits>
+#include <sstream>
 #include "tinyxml2.h"
 
-PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
-    std::mt19937 gen(seed);
-    PlantDesc plant;
-    plant.species = "Maize_Procedural";
+namespace {
+    using TraitLoadings = MaizeGenerator::TraitLoadings;
+    using LatentTraits = MaizeGenerator::LatentTraits;
+    using PlantLevelTraits = MaizeGenerator::PlantLevelTraits;
+    using ComputedLeafTraits = MaizeGenerator::ComputedLeafTraits;
+    using TraitComputation = MaizeGenerator::TraitComputation;
 
-    float plantZ = 0.0f;
-    if (!useMeansOnly) {
-        std::normal_distribution<float> zDist(0.0f, 1.0f);
-        plantZ = zDist(gen);
+    float hash_to_float_minus1_1(unsigned int seed) {
+        seed = (seed ^ 61) ^ (seed >> 16);
+        seed = seed + (seed << 3);
+        seed = seed ^ (seed >> 4);
+        seed = seed * 0x27d4eb2d;
+        seed = seed ^ (seed >> 15);
+        return ((float)(int)(seed & 0xFFFFFF) / (float)(0xFFFFFF / 2)) - 1.0f;
     }
 
-    auto sampleFromZ = [&](const Dist& dist) {
+    TraitLoadings makeLoadings(float vigor = 0.0f, float slenderness = 0.0f, float posture = 0.0f, float texture = 0.0f) {
+        TraitLoadings loadings;
+        loadings.vigor = vigor;
+        loadings.slenderness = slenderness;
+        loadings.posture = posture;
+        loadings.texture = texture;
+        return loadings;
+    }
+
+    struct CorrelatedParameterInfo {
+        const char* key;
+        const char* displayName;
+        TraitLoadings defaultLoadings;
+    };
+
+    struct DistField {
+        const char* name;
+        Dist MaizeGenerator::* member;
+    };
+
+    struct FloatField {
+        const char* name;
+        float MaizeGenerator::* member;
+    };
+
+    struct IntField {
+        const char* name;
+        int MaizeGenerator::* member;
+    };
+
+    struct Curve3Field {
+        const char* name;
+        Curve3 MaizeGenerator::* member;
+    };
+
+    const CorrelatedParameterInfo kCorrelatedParameterInfos[] = {
+        { "stemRadius", "Stem Radius", makeLoadings(0.65f, -0.40f, 0.0f, 0.0f) },
+        { "numLeaves", "Leaf Count", makeLoadings(0.55f, 0.10f, 0.0f, 0.0f) },
+        { "height", "Height", makeLoadings(0.60f, 0.40f, 0.0f, 0.0f) },
+        { "leafLengthBase", "Leaf Length", makeLoadings(0.60f, 0.25f, 0.0f, 0.0f) },
+        { "leafWidthBase", "Leaf Width", makeLoadings(0.50f, -0.15f, 0.0f, 0.0f) },
+        { "widthTaper", "Width Taper", makeLoadings(-0.10f, 0.10f, 0.15f, 0.0f) },
+        { "leafAngleBase", "Leaf Angle", makeLoadings(0.10f, 0.0f, 0.65f, 0.0f) },
+        { "leafTwist", "Leaf Twist", makeLoadings(0.0f, 0.0f, 0.10f, 0.45f) },
+        { "leafCurl", "Leaf Curl", makeLoadings(0.0f, 0.0f, 0.10f, 0.55f) },
+        { "droopinessBase", "Droopiness", makeLoadings(-0.55f, 0.0f, 0.30f, 0.0f) },
+        { "stemInclination", "Stem Inclination", makeLoadings(0.0f, 0.15f, 0.45f, 0.0f) },
+        { "waveAmp", "Wave Amp", makeLoadings(0.0f, 0.0f, 0.0f, 0.60f) },
+        { "waveFreq", "Wave Freq", makeLoadings(0.0f, 0.0f, 0.10f, 0.35f) },
+        { "wavePhaseShift", "Wave Phase", makeLoadings(0.0f, 0.0f, 0.0f, 0.30f) },
+    };
+
+    const DistField kDistFields[] = {
+        { "height", &MaizeGenerator::height },
+        { "stemRadius", &MaizeGenerator::stemRadius },
+        { "numLeaves", &MaizeGenerator::numLeaves },
+        { "leafLengthBase", &MaizeGenerator::leafLengthBase },
+        { "leafWidthBase", &MaizeGenerator::leafWidthBase },
+        { "widthTaper", &MaizeGenerator::widthTaper },
+        { "leafAngleBase", &MaizeGenerator::leafAngleBase },
+        { "leafTwist", &MaizeGenerator::leafTwist },
+        { "leafCurl", &MaizeGenerator::leafCurl },
+        { "droopinessBase", &MaizeGenerator::droopinessBase },
+        { "stemInclination", &MaizeGenerator::stemInclination },
+        { "waveAmp", &MaizeGenerator::waveAmp },
+        { "waveFreq", &MaizeGenerator::waveFreq },
+        { "wavePhaseShift", &MaizeGenerator::wavePhaseShift },
+    };
+
+    const FloatField kFloatFields[] = {
+        { "tillerAzimuthDeg", &MaizeGenerator::tillerAzimuthDeg },
+        { "tillerAzimuthNoise", &MaizeGenerator::tillerAzimuthNoise },
+        { "stemShrinkFactor", &MaizeGenerator::stemShrinkFactor },
+        { "stemShrinkMin", &MaizeGenerator::stemShrinkMin },
+        { "whorlStart", &MaizeGenerator::whorlStart },
+        { "whorlCompression", &MaizeGenerator::whorlCompression },
+        { "whorlMinInternodeWeight", &MaizeGenerator::whorlMinInternodeWeight },
+        { "leafSurfaceNoiseAmp", &MaizeGenerator::leafSurfaceNoiseAmp },
+        { "leafSurfaceNoiseFreq", &MaizeGenerator::leafSurfaceNoiseFreq },
+        { "midribTipTaperStart", &MaizeGenerator::midribTipTaperStart },
+        { "midribTextureStrength", &MaizeGenerator::midribTextureStrength },
+        { "liguleWrapLengthScale", &MaizeGenerator::liguleWrapLengthScale },
+        { "liguleUnfoldSharpness", &MaizeGenerator::liguleUnfoldSharpness },
+        { "sheathOuterScale", &MaizeGenerator::sheathOuterScale },
+        { "leafJitterScale", &MaizeGenerator::leafJitterScale },
+        { "traitCorrelationStrength", &MaizeGenerator::traitCorrelationStrength },
+    };
+
+    const IntField kIntFields[] = {
+        { "splinePointsDefault", &MaizeGenerator::splinePointsDefault },
+    };
+
+    const Curve3Field kCurve3Fields[] = {
+        { "leafLengthScaleCurve", &MaizeGenerator::leafLengthScaleCurve },
+        { "leafWidthScaleCurve", &MaizeGenerator::leafWidthScaleCurve },
+        { "widthTaperScaleCurve", &MaizeGenerator::widthTaperScaleCurve },
+        { "waveAmpScaleCurve", &MaizeGenerator::waveAmpScaleCurve },
+        { "waveFreqScaleCurve", &MaizeGenerator::waveFreqScaleCurve },
+        { "leafAngleOffsetCurve", &MaizeGenerator::leafAngleOffsetCurve },
+        { "droopinessOffsetCurve", &MaizeGenerator::droopinessOffsetCurve },
+        { "leafTwistOffsetCurve", &MaizeGenerator::leafTwistOffsetCurve },
+        { "leafCurlOffsetCurve", &MaizeGenerator::leafCurlOffsetCurve },
+        { "stemInclinationOffsetCurve", &MaizeGenerator::stemInclinationOffsetCurve },
+    };
+
+    struct InternodeWeights {
+        std::vector<float> values;
+        float sum = 0.0f;
+    };
+
+    int sanitizeCorrelatedParameter(int param) {
+        if (param < 0 || param >= MaizeGenerator::CorrelatedParameter_Count) {
+            return MaizeGenerator::CorrelatedParameter_StemRadius;
+        }
+        return param;
+    }
+
+    TraitLoadings defaultLoadingsFor(int param) {
+        return kCorrelatedParameterInfos[sanitizeCorrelatedParameter(param)].defaultLoadings;
+    }
+
+    const char* getCorrelatedParameterKey(int param) {
+        return kCorrelatedParameterInfos[sanitizeCorrelatedParameter(param)].key;
+    }
+
+    int findCorrelatedParameterByKey(const char* key) {
+        if (!key || !key[0]) return -1;
+        for (int param = 0; param < MaizeGenerator::CorrelatedParameter_Count; ++param) {
+            if (std::string(key) == getCorrelatedParameterKey(param)) {
+                return param;
+            }
+        }
+        return -1;
+    }
+
+    LatentTraits sampleLatentTraits(std::mt19937& gen, bool useMeansOnly) {
+
+        LatentTraits latent;
+        if (useMeansOnly) return latent;
+
+        std::normal_distribution<float> standardNormal(0.0f, 1.0f);
+        latent.vigor = standardNormal(gen);
+        latent.slenderness = standardNormal(gen);
+        latent.posture = standardNormal(gen);
+        latent.texture = standardNormal(gen);
+        return latent;
+    }
+
+    float sampleCorrelatedValue(const Dist& dist, const TraitLoadings& loadings, const LatentTraits& latent, float corrStrength, std::mt19937& gen, bool useMeansOnly) {
         if (useMeansOnly || dist.stdDev <= 0.0001f) return dist.mean;
-        return dist.mean + dist.stdDev * plantZ;
-        };
 
-    TillerDesc mainTiller;
-    mainTiller.type = "main";
-    mainTiller.radius = std::max(0.005f, sampleFromZ(stemRadius));
-    mainTiller.stemShrink = 0.0f;
-    mainTiller.azimuthDeg = 180.0f;
-    mainTiller.azimuthNoise = 15.0f;
-    mainTiller.randomSeed = seed;
+        float lv = loadings.vigor * corrStrength;
+        float ls = loadings.slenderness * corrStrength;
+        float lp = loadings.posture * corrStrength;
+        float lt = loadings.texture * corrStrength;
+        float used = lv * lv + ls * ls + lp * lp + lt * lt;
+        if (used > 1.0f) {
+            float invNorm = 1.0f / std::sqrt(used);
+            lv *= invNorm;
+            ls *= invNorm;
+            lp *= invNorm;
+            lt *= invNorm;
+            used = 1.0f;
+        }
 
-    float nLeavesFloat = sampleFromZ(numLeaves);
+        std::normal_distribution<float> standardNormal(0.0f, 1.0f);
+        float residual = std::sqrt((std::max)(0.0f, 1.0f - used));
+        float z = lv * latent.vigor + ls * latent.slenderness + lp * latent.posture + lt * latent.texture + residual * standardNormal(gen);
+        return dist.mean + dist.stdDev * z;
+    }
+
+    float jitterLeafTrait(std::mt19937& gen, float base, const Dist& dist, bool useMeansOnly, float jitterScale) {
+        if (useMeansOnly || dist.stdDev <= 0.0001f || jitterScale <= 0.0f) return base;
+        std::normal_distribution<float> jitter(0.0f, dist.stdDev * jitterScale);
+        return base + jitter(gen);
+    }
+    InternodeWeights buildInternodeWeights(int nLeaves, float whorlStart, float whorlCompression, float whorlMinInternodeWeight) {
+        InternodeWeights result;
+        result.values.assign(nLeaves, 1.0f);
+        if (nLeaves <= 0) return result;
+
+        float whorlStartClamped = (std::max)(0.0f, (std::min)(0.95f, whorlStart));
+        float whorlSpan = (std::max)(0.01f, 1.0f - whorlStartClamped);
+        for (int i = 0; i < nLeaves; ++i) {
+            float t = (nLeaves > 1) ? (float)i / (float)(nLeaves - 1) : 0.0f;
+            float weight = 1.0f;
+            if (t > whorlStartClamped) {
+                float topT = (t - whorlStartClamped) / whorlSpan;
+                weight = 1.0f - whorlCompression * topT;
+            }
+            weight = (std::max)(whorlMinInternodeWeight, weight);
+            result.values[i] = weight;
+            result.sum += weight;
+        }
+        return result;
+    }
+
+    PlantLevelTraits samplePlantLevelTraits(const MaizeGenerator& generator, const LatentTraits& latent, float corrStrength, std::mt19937& gen, bool useMeansOnly) {
+        PlantLevelTraits plantTraits;
+        plantTraits.leafLengthBase = sampleCorrelatedValue(generator.leafLengthBase, generator.getTraitLoadings(MaizeGenerator::CorrelatedParameter_LeafLengthBase), latent, corrStrength, gen, useMeansOnly);
+        plantTraits.leafWidthBase = sampleCorrelatedValue(generator.leafWidthBase, generator.getTraitLoadings(MaizeGenerator::CorrelatedParameter_LeafWidthBase), latent, corrStrength, gen, useMeansOnly);
+        plantTraits.widthTaper = sampleCorrelatedValue(generator.widthTaper, generator.getTraitLoadings(MaizeGenerator::CorrelatedParameter_WidthTaper), latent, corrStrength, gen, useMeansOnly);
+        plantTraits.leafAngleBase = sampleCorrelatedValue(generator.leafAngleBase, generator.getTraitLoadings(MaizeGenerator::CorrelatedParameter_LeafAngleBase), latent, corrStrength, gen, useMeansOnly);
+        plantTraits.leafTwist = sampleCorrelatedValue(generator.leafTwist, generator.getTraitLoadings(MaizeGenerator::CorrelatedParameter_LeafTwist), latent, corrStrength, gen, useMeansOnly);
+        plantTraits.leafCurl = sampleCorrelatedValue(generator.leafCurl, generator.getTraitLoadings(MaizeGenerator::CorrelatedParameter_LeafCurl), latent, corrStrength, gen, useMeansOnly);
+        plantTraits.droopinessBase = sampleCorrelatedValue(generator.droopinessBase, generator.getTraitLoadings(MaizeGenerator::CorrelatedParameter_DroopinessBase), latent, corrStrength, gen, useMeansOnly);
+        plantTraits.stemInclination = sampleCorrelatedValue(generator.stemInclination, generator.getTraitLoadings(MaizeGenerator::CorrelatedParameter_StemInclination), latent, corrStrength, gen, useMeansOnly);
+        plantTraits.waveAmp = sampleCorrelatedValue(generator.waveAmp, generator.getTraitLoadings(MaizeGenerator::CorrelatedParameter_WaveAmp), latent, corrStrength, gen, useMeansOnly);
+        plantTraits.waveFreq = sampleCorrelatedValue(generator.waveFreq, generator.getTraitLoadings(MaizeGenerator::CorrelatedParameter_WaveFreq), latent, corrStrength, gen, useMeansOnly);
+        plantTraits.wavePhaseShift = sampleCorrelatedValue(generator.wavePhaseShift, generator.getTraitLoadings(MaizeGenerator::CorrelatedParameter_WavePhaseShift), latent, corrStrength, gen, useMeansOnly);
+        return plantTraits;
+    }
+
+    template <typename LeafLike>
+    void applyLeafVisualDefaults(const MaizeGenerator& generator, LeafLike& leaf) {
+        leaf.surfaceNoiseAmp = generator.leafSurfaceNoiseAmp;
+        leaf.surfaceNoiseFreq = generator.leafSurfaceNoiseFreq;
+        leaf.midribTipTaperStart = generator.midribTipTaperStart;
+        leaf.midribTextureStrength = generator.midribTextureStrength;
+        leaf.liguleWrapLengthScale = generator.liguleWrapLengthScale;
+        leaf.liguleUnfoldSharpness = generator.liguleUnfoldSharpness;
+        leaf.sheathOuterScale = generator.sheathOuterScale;
+    }
+}
+
+MaizeGenerator::MaizeGenerator() {
+    resetTraitLoadings();
+}
+
+const char* MaizeGenerator::getCorrelatedParameterName(int param) {
+    return kCorrelatedParameterInfos[sanitizeCorrelatedParameter(param)].displayName;
+}
+
+MaizeGenerator::TraitLoadings MaizeGenerator::getDefaultTraitLoadings(int param) {
+    return defaultLoadingsFor(param);
+}
+
+const MaizeGenerator::TraitLoadings& MaizeGenerator::getTraitLoadings(int param) const {
+    return traitLoadings[sanitizeCorrelatedParameter(param)];
+}
+
+MaizeGenerator::TraitLoadings& MaizeGenerator::getTraitLoadings(int param) {
+    return traitLoadings[sanitizeCorrelatedParameter(param)];
+}
+
+void MaizeGenerator::resetTraitLoadings() {
+    for (int param = 0; param < CorrelatedParameter_Count; ++param) {
+        traitLoadings[param] = defaultLoadingsFor(param);
+    }
+}
+
+MaizeGenerator::TraitComputation MaizeGenerator::computeTraits(unsigned int seed, bool useMeansOnly) const {
+    std::mt19937 gen(seed);
+    TraitComputation traits;
+    traits.seed = seed;
+    traits.useMeansOnly = useMeansOnly;
+
+    traits.latent = sampleLatentTraits(gen, useMeansOnly);
+    traits.correlationStrength = std::clamp(traitCorrelationStrength, 0.0f, 1.0f);
+    traits.stemRadius = std::max(0.005f, sampleCorrelatedValue(stemRadius, getTraitLoadings(CorrelatedParameter_StemRadius), traits.latent, traits.correlationStrength, gen, useMeansOnly));
+    traits.stemShrink = std::max(stemShrinkMin, traits.stemRadius * stemShrinkFactor);
+    traits.tillerAzimuthDeg = tillerAzimuthDeg;
+    traits.tillerAzimuthNoise = tillerAzimuthNoise;
+
+    float nLeavesFloat = sampleCorrelatedValue(numLeaves, getTraitLoadings(CorrelatedParameter_NumLeaves), traits.latent, traits.correlationStrength, gen, useMeansOnly);
     int nLeaves = (std::max)(3, (int)std::round(nLeavesFloat));
 
-    float totalH = std::max(0.1f, sampleFromZ(height));
-    float stemShrinkPerLeafPlant = sampleFromZ(stemShrinkPerLeaf);
+    traits.totalHeight = std::max(0.1f, sampleCorrelatedValue(height, getTraitLoadings(CorrelatedParameter_Height), traits.latent, traits.correlationStrength, gen, useMeansOnly));
 
-    float lenBasePlant = sampleFromZ(leafLengthBase);
-    float widthBasePlant = sampleFromZ(leafWidthBase);
-    float widthTaperPlant = sampleFromZ(widthTaper);
-    float angleBasePlant = sampleFromZ(leafAngleBase);
-    float leafTwistPlant = sampleFromZ(leafTwist);
-    float droopinessPlant = sampleFromZ(droopinessBase);
-    float leafCurlPlant = sampleFromZ(leafCurlBase);
-    float stemInclinationPlant = sampleFromZ(stemInclination);
-    float waveAmpPlant = sampleFromZ(waveAmp);
-    float waveFreqPlant = sampleFromZ(waveFreq);
-	float wavePhaseShiftPlant = sampleFromZ(wavePhaseShift);
+    traits.plantLevel = samplePlantLevelTraits(*this, traits.latent, traits.correlationStrength, gen, useMeansOnly);
 
-    auto applyLeafJitter = [&](float base, const Dist& dist) {
-        if (useMeansOnly || dist.stdDev <= 0.0001f || leafJitterScale <= 0.0f) return base;
-        std::normal_distribution<float> jitter(0.0f, dist.stdDev * leafJitterScale);
-        return base + jitter(gen);
-        };
+    const InternodeWeights internodeWeights = buildInternodeWeights(nLeaves, whorlStart, whorlCompression, whorlMinInternodeWeight);
+    traits.leaves.reserve(nLeaves);
 
     for (int i = 0; i < nLeaves; ++i) {
         float t = (float)i / (float)(nLeaves - 1);
 
+        ComputedLeafTraits leaf;
+        leaf.canopyT = t;
+        leaf.distance = traits.totalHeight * (internodeWeights.values[i] / internodeWeights.sum);
+        leaf.azimuthDeg = traits.tillerAzimuthDeg * (float)i + hash_to_float_minus1_1(seed + (unsigned int)i) * traits.tillerAzimuthNoise;
+
+        float lenBase = jitterLeafTrait(gen, traits.plantLevel.leafLengthBase, leafLengthBase, useMeansOnly, leafJitterScale);
+        leaf.leafLength = (std::max)(0.1f, lenBase * leafLengthScaleCurve.get(t));
+
+        float widthBase = jitterLeafTrait(gen, traits.plantLevel.leafWidthBase, leafWidthBase, useMeansOnly, leafJitterScale);
+        leaf.leafWidth = (std::max)(0.01f, widthBase * leafWidthScaleCurve.get(t));
+
+        float widthTaperValue = jitterLeafTrait(gen, traits.plantLevel.widthTaper, widthTaper, useMeansOnly, leafJitterScale);
+        leaf.widthTaper = (std::max)(0.1f, widthTaperValue * widthTaperScaleCurve.get(t));
+
+        float angleBase = jitterLeafTrait(gen, traits.plantLevel.leafAngleBase, leafAngleBase, useMeansOnly, leafJitterScale);
+        leaf.leafAngle = angleBase + leafAngleOffsetCurve.get(t);
+
+        leaf.leafTwist = jitterLeafTrait(gen, traits.plantLevel.leafTwist, leafTwist, useMeansOnly, leafJitterScale) + leafTwistOffsetCurve.get(t);
+        leaf.leafCurl = jitterLeafTrait(gen, traits.plantLevel.leafCurl, leafCurl, useMeansOnly, leafJitterScale) + leafCurlOffsetCurve.get(t);
+
+        leaf.droopiness = jitterLeafTrait(gen, traits.plantLevel.droopinessBase, droopinessBase, useMeansOnly, leafJitterScale) + droopinessOffsetCurve.get(t);
+
+        leaf.stemInclinationDeg = jitterLeafTrait(gen, traits.plantLevel.stemInclination, stemInclination, useMeansOnly, leafJitterScale) + stemInclinationOffsetCurve.get(t);
+
+        leaf.splinePoints = (std::max)(4, splinePointsDefault);
+
+        float waveAmpValue = jitterLeafTrait(gen, traits.plantLevel.waveAmp, waveAmp, useMeansOnly, leafJitterScale);
+        float waveFreqValue = jitterLeafTrait(gen, traits.plantLevel.waveFreq, waveFreq, useMeansOnly, leafJitterScale);
+        float wavePhaseValue = jitterLeafTrait(gen, traits.plantLevel.wavePhaseShift, wavePhaseShift, useMeansOnly, leafJitterScale);
+        leaf.waveLAmp = waveAmpValue * waveAmpScaleCurve.get(t);
+        leaf.waveLFreq = waveFreqValue * waveFreqScaleCurve.get(t);
+        leaf.waveLPhase = wavePhaseValue;
+        leaf.waveRAmp = leaf.waveLAmp;
+        leaf.waveRFreq = leaf.waveLFreq;
+        leaf.waveRPhase = wavePhaseValue + 1.57f; // phase shift between left and right edges
+
+        applyLeafVisualDefaults(*this, leaf);
+        traits.leaves.push_back(leaf);
+    }
+
+    return traits;
+}
+
+PlantDesc MaizeGenerator::buildPlantFromTraits(const TraitComputation& traits) const {
+    PlantDesc plant;
+    plant.species = "Maize_Procedural";
+
+    TillerDesc mainTiller;
+    mainTiller.type = "main";
+    mainTiller.radius = traits.stemRadius;
+    mainTiller.alphaDeg = 0.0f;
+    mainTiller.stemShrink = traits.stemShrink;
+    mainTiller.azimuthDeg = traits.tillerAzimuthDeg;
+    mainTiller.azimuthNoise = traits.tillerAzimuthNoise;
+    mainTiller.randomSeed = traits.seed;
+
+    for (size_t i = 0; i < traits.leaves.size(); ++i) {
+        const ComputedLeafTraits& computed = traits.leaves[i];
         LeafDesc L;
-        L.id = i;
-        L.distance = totalH / (float)nLeaves;
-
-        float lenBase = applyLeafJitter(lenBasePlant, leafLengthBase);
-        L.leafLength = (std::max)(0.01f, lenBase * leafLengthCurve.get(t));
-
-        float widthBase = applyLeafJitter(widthBasePlant, leafWidthBase);
-        L.leafWidth = (std::max)(0.01f, widthBase * leafWidthCurve.get(t));
-
-        float widthTaperValue = applyLeafJitter(widthTaperPlant, widthTaper);
-        L.widthTaper = (std::max)(0.1f, widthTaperValue * widthTaperCurve.get(t));
-
-        float angleBase = applyLeafJitter(angleBasePlant, leafAngleBase);
-        L.leafAngle = angleBase * leafAngleCurve.get(t);
-
-        L.leafTwist = applyLeafJitter(leafTwistPlant, leafTwist) * leafTwistCurve.get(t);
-
-        L.droopiness = applyLeafJitter(droopinessPlant, droopinessBase) * droopinessCurve.get(t);
-
-        L.leafCurl = applyLeafJitter(leafCurlPlant, leafCurlBase) * leafCurlCurve.get(t);
-
-        L.stemInclinationDeg = applyLeafJitter(stemInclinationPlant, stemInclination);
-
-        L.splinePoints = 40;
-
-        float waveAmpValue = applyLeafJitter(waveAmpPlant, waveAmp);
-        float waveFreqValue = applyLeafJitter(waveFreqPlant, waveFreq);
-        float wavePhaseValue = applyLeafJitter(wavePhaseShiftPlant, wavePhaseShift);
-        L.waveLAmp = (std::max)(0.f, waveAmpValue);
-        L.waveLFreq = (std::max)(1.f, waveFreqValue);
-        L.waveLPhase = wavePhaseValue;
-        L.waveRAmp = L.waveLAmp;
-        L.waveRFreq = L.waveLFreq;
-		L.waveRPhase = wavePhaseValue + 3.1415f; // Offset by pi for right side
-
+        L.id = (int)i;
+        L.distance = computed.distance;
+        L.leafLength = computed.leafLength;
+        L.leafWidth = computed.leafWidth;
+        L.azimuthDeg = computed.azimuthDeg;
+        L.widthTaper = computed.widthTaper;
+        L.leafAngle = computed.leafAngle;
+        L.leafTwist = computed.leafTwist;
+        L.leafCurl = computed.leafCurl;
+        L.droopiness = computed.droopiness;
+        L.stemInclinationDeg = computed.stemInclinationDeg;
+        L.splinePoints = computed.splinePoints;
+        L.waveLAmp = computed.waveLAmp;
+        L.waveLFreq = computed.waveLFreq;
+        L.waveLPhase = computed.waveLPhase;
+        L.waveRAmp = computed.waveRAmp;
+        L.waveRFreq = computed.waveRFreq;
+        L.waveRPhase = computed.waveRPhase;
+        L.surfaceNoiseAmp = computed.surfaceNoiseAmp;
+        L.surfaceNoiseFreq = computed.surfaceNoiseFreq;
+        L.midribTipTaperStart = computed.midribTipTaperStart;
+        L.midribTextureStrength = computed.midribTextureStrength;
+        L.liguleWrapLengthScale = computed.liguleWrapLengthScale;
+        L.liguleUnfoldSharpness = computed.liguleUnfoldSharpness;
+        L.sheathOuterScale = computed.sheathOuterScale;
         mainTiller.leaves.push_back(L);
     }
-    mainTiller.stemShrink = std::max(0.0f, stemShrinkPerLeafPlant) * (float)nLeaves;
+
     plant.tillers.push_back(mainTiller);
     return plant;
 }
 
-void MaizeGenerator::generateBatch(int count, const std::string& outputDir, const std::string& leafTexPath, const std::string& stemTexPath) {
-    std::random_device rd;
-    for (int i = 0; i < count; ++i) {
-        unsigned int seed = rd();
-        PlantDesc p = generate(seed, false);
-        std::string baseName = outputDir + "/plant_" + std::to_string(i);
-        Maize::GeneratePlant(p, baseName, leafTexPath, stemTexPath);
-        std::cout << "Generated " << baseName << ".obj" << std::endl;
+PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
+    return buildPlantFromTraits(computeTraits(seed, useMeansOnly));
+}
+
+void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath, bool useMeansOnly) {
+    if (count <= 0) return;
+
+    namespace fs = std::filesystem;
+
+    fs::path prefixPath = basePathPrefix.empty() ? (fs::path("plant_export") / "plant") : fs::path(basePathPrefix);
+    fs::path outputDir = prefixPath.parent_path();
+    fs::path fileStem = prefixPath.filename();
+    if (fileStem.empty()) {
+        fileStem = "plant";
+    }
+
+    std::error_code ec;
+    if (!outputDir.empty()) {
+        fs::create_directories(outputDir, ec);
+        if (ec) {
+            std::cerr << "Failed to create output directory: " << outputDir.string() << std::endl;
+            return;
+        }
+    }
+
+    auto copyTextureToOutput = [&](const std::string& texPath) {
+        // Copy textures once beside the exports
+        if (texPath.empty() || outputDir.empty()) return;
+        fs::path src(texPath);
+        if (!fs::exists(src, ec)) return;
+        fs::path dst = outputDir / src.filename();
+        ec.clear();
+        if (fs::exists(dst, ec)) {
+            ec.clear();
+            if (fs::equivalent(src, dst, ec)) return;
+        }
+        ec.clear();
+        fs::copy_file(src, dst, fs::copy_options::overwrite_existing, ec);
+    };
+
+    copyTextureToOutput(leafTexPath);
+    if (!stemTexPath.empty() && stemTexPath != leafTexPath) {
+        copyTextureToOutput(stemTexPath);
     }
 }
 
 bool MaizeGenerator::saveConfig(const std::string& path) const {
     using namespace tinyxml2;
+
     XMLDocument doc;
     doc.InsertFirstChild(doc.NewDeclaration());
+
     XMLElement* root = doc.NewElement("MaizeGeneratorConfig");
+    root->SetAttribute("version", 4);
     doc.InsertEndChild(root);
 
     auto saveDist = [&](const char* name, const Dist& d) {
@@ -124,7 +456,7 @@ bool MaizeGenerator::saveConfig(const std::string& path) const {
         root->InsertEndChild(elem);
     };
 
-    auto saveCurve = [&](const char* name, const Curve& c) {
+    auto saveCurve3 = [&](const char* name, const Curve3& c) {
         XMLElement* elem = doc.NewElement(name);
         elem->SetAttribute("bottom", c.bottom);
         elem->SetAttribute("middle", c.middle);
@@ -132,39 +464,56 @@ bool MaizeGenerator::saveConfig(const std::string& path) const {
         root->InsertEndChild(elem);
     };
 
-    saveDist("height", height);
-    saveDist("stemRadius", stemRadius);
-    saveDist("numLeaves", numLeaves);
-    saveDist("stemShrinkPerLeaf", stemShrinkPerLeaf);
-    saveDist("leafLengthBase", leafLengthBase);
-    saveDist("leafWidthBase", leafWidthBase);
-    saveDist("widthTaper", widthTaper);
-    saveDist("leafAngleBase", leafAngleBase);
-    saveDist("leafTwist", leafTwist);
-    saveDist("droopinessBase", droopinessBase);
-    saveDist("leafCurlBase", leafCurlBase);
-    saveDist("stemInclination", stemInclination);
-    saveDist("waveAmp", waveAmp);
-    saveDist("waveFreq", waveFreq);
-    saveDist("wavePhaseShift", wavePhaseShift);
+    auto saveFloat = [&](const char* name, float value) {
+        XMLElement* elem = doc.NewElement(name);
+        elem->SetAttribute("value", value);
+        root->InsertEndChild(elem);
+    };
 
-    saveCurve("leafLengthCurve", leafLengthCurve);
-    saveCurve("leafWidthCurve", leafWidthCurve);
-    saveCurve("widthTaperCurve", widthTaperCurve);
-    saveCurve("leafAngleCurve", leafAngleCurve);
-    saveCurve("leafTwistCurve", leafTwistCurve);
-    saveCurve("droopinessCurve", droopinessCurve);
-    saveCurve("leafCurlCurve", leafCurlCurve);
+    auto saveInt = [&](const char* name, int value) {
+        XMLElement* elem = doc.NewElement(name);
+        elem->SetAttribute("value", value);
+        root->InsertEndChild(elem);
+    };
 
-    root->SetAttribute("leafJitterScale", leafJitterScale);
+    auto saveTraitLoadings = [&]() {
+        XMLElement* matrixElem = doc.NewElement("traitLoadingsMatrix");
+        for (int param = 0; param < CorrelatedParameter_Count; ++param) {
+            const TraitLoadings& loadings = getTraitLoadings(param);
+            XMLElement* rowElem = doc.NewElement("parameter");
+            rowElem->SetAttribute("key", getCorrelatedParameterKey(param));
+            rowElem->SetAttribute("vigor", loadings.vigor);
+            rowElem->SetAttribute("slenderness", loadings.slenderness);
+            rowElem->SetAttribute("posture", loadings.posture);
+            rowElem->SetAttribute("texture", loadings.texture);
+            matrixElem->InsertEndChild(rowElem);
+        }
+        root->InsertEndChild(matrixElem);
+    };
+
+    for (const auto& field : kDistFields) {
+        saveDist(field.name, this->*(field.member));
+    }
+    for (const auto& field : kFloatFields) {
+        saveFloat(field.name, this->*(field.member));
+    }
+    for (const auto& field : kCurve3Fields) {
+        saveCurve3(field.name, this->*(field.member));
+    }
+    saveTraitLoadings();
+    for (const auto& field : kIntFields) {
+        saveInt(field.name, this->*(field.member));
+    }
 
     return doc.SaveFile(path.c_str()) == XML_SUCCESS;
 }
 
 bool MaizeGenerator::loadConfig(const std::string& path) {
     using namespace tinyxml2;
+
     XMLDocument doc;
     if (doc.LoadFile(path.c_str()) != XML_SUCCESS) return false;
+
     const XMLElement* root = doc.FirstChildElement("MaizeGeneratorConfig");
     if (!root) return false;
 
@@ -175,7 +524,7 @@ bool MaizeGenerator::loadConfig(const std::string& path) {
         }
     };
 
-    auto loadCurve = [&](const char* name, Curve& c) {
+    auto loadCurve3 = [&](const char* name, Curve3& c) {
         if (const XMLElement* elem = root->FirstChildElement(name)) {
             elem->QueryFloatAttribute("bottom", &c.bottom);
             elem->QueryFloatAttribute("middle", &c.middle);
@@ -183,30 +532,49 @@ bool MaizeGenerator::loadConfig(const std::string& path) {
         }
     };
 
-    loadDist("height", height);
-    loadDist("stemRadius", stemRadius);
-    loadDist("numLeaves", numLeaves);
-    loadDist("stemShrinkPerLeaf", stemShrinkPerLeaf);
-    loadDist("leafLengthBase", leafLengthBase);
-    loadDist("leafWidthBase", leafWidthBase);
-    loadDist("widthTaper", widthTaper);
-    loadDist("leafAngleBase", leafAngleBase);
-    loadDist("leafTwist", leafTwist);
-    loadDist("droopinessBase", droopinessBase);
-    loadDist("leafCurlBase", leafCurlBase);
-    loadDist("stemInclination", stemInclination);
-    loadDist("waveAmp", waveAmp);
-    loadDist("waveFreq", waveFreq);
-    loadDist("wavePhaseShift", wavePhaseShift);
+    auto loadFloat = [&](const char* name, float& value) {
+        if (const XMLElement* elem = root->FirstChildElement(name)) {
+            elem->QueryFloatAttribute("value", &value);
+        }
+    };
 
-    loadCurve("leafLengthCurve", leafLengthCurve);
-    loadCurve("leafWidthCurve", leafWidthCurve);
-    loadCurve("widthTaperCurve", widthTaperCurve);
-    loadCurve("leafAngleCurve", leafAngleCurve);
-    loadCurve("leafTwistCurve", leafTwistCurve);
-    loadCurve("droopinessCurve", droopinessCurve);
-    loadCurve("leafCurlCurve", leafCurlCurve);
+    auto loadInt = [&](const char* name, int& value) {
+        if (const XMLElement* elem = root->FirstChildElement(name)) {
+            elem->QueryIntAttribute("value", &value);
+        }
+    };
 
-    root->QueryFloatAttribute("leafJitterScale", &leafJitterScale);
+    auto loadTraitLoadings = [&]() {
+		// Start from defaults so partial config files can override just a few rows without needing to specify them all
+        resetTraitLoadings();
+        if (const XMLElement* matrixElem = root->FirstChildElement("traitLoadingsMatrix")) {
+            for (const XMLElement* rowElem = matrixElem->FirstChildElement("parameter"); rowElem; rowElem = rowElem->NextSiblingElement("parameter")) {
+                int param = findCorrelatedParameterByKey(rowElem->Attribute("key"));
+                if (param < 0) continue;
+                TraitLoadings& loadings = getTraitLoadings(param);
+                rowElem->QueryFloatAttribute("vigor", &loadings.vigor);
+                rowElem->QueryFloatAttribute("slenderness", &loadings.slenderness);
+                rowElem->QueryFloatAttribute("posture", &loadings.posture);
+                rowElem->QueryFloatAttribute("texture", &loadings.texture);
+            }
+        }
+    };
+
+    for (const auto& field : kDistFields) {
+        loadDist(field.name, this->*(field.member));
+    }
+    for (const auto& field : kFloatFields) {
+        loadFloat(field.name, this->*(field.member));
+    }
+    for (const auto& field : kCurve3Fields) {
+        loadCurve3(field.name, this->*(field.member));
+    }
+    loadTraitLoadings();
+    for (const auto& field : kIntFields) {
+        loadInt(field.name, this->*(field.member));
+    }
+    traitCorrelationStrength = std::clamp(traitCorrelationStrength, 0.0f, 1.0f);
+    splinePointsDefault = (std::max)(4, splinePointsDefault);
+
     return true;
 }

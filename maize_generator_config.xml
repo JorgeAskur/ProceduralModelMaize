@@ -1,25 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<MaizeGeneratorConfig leafJitterScale="0.50999999">
-    <height mean="0.88800001" stdDev="0.2"/>
-    <stemRadius mean="0.015" stdDev="0.0020000001"/>
-    <numLeaves mean="8" stdDev="2.2420001"/>
-    <stemShrinkPerLeaf mean="0.001" stdDev="0.00019999999"/>
-    <leafLengthBase mean="0.40000001" stdDev="0.046999998"/>
-    <leafWidthBase mean="0.050000001" stdDev="0.0080000004"/>
-    <widthTaper mean="7.1810002" stdDev="0.1"/>
-    <leafAngleBase mean="45.905998" stdDev="10.134"/>
-    <leafTwist mean="73.691002" stdDev="45"/>
-    <droopinessBase mean="-25.771" stdDev="5.8390002"/>
-    <leafCurlBase mean="0" stdDev="0.1"/>
-    <stemInclination mean="0" stdDev="1.073"/>
-    <waveAmp mean="0.0060000001" stdDev="0.0020000001"/>
-    <waveFreq mean="12.027" stdDev="2"/>
-    <wavePhaseShift mean="-2.994" stdDev="1"/>
-    <leafLengthCurve bottom="0.78299999" middle="1" top="0.74000001"/>
-    <leafWidthCurve bottom="1" middle="1" top="1"/>
-    <widthTaperCurve bottom="1.374" middle="1.348" top="1.3660001"/>
-    <leafAngleCurve bottom="0.41100001" middle="1.501" top="0.89700001"/>
-    <leafTwistCurve bottom="1.346" middle="0.921" top="0.2"/>
-    <droopinessCurve bottom="1.415" middle="0.76700002" top="0.2"/>
-    <leafCurlCurve bottom="1" middle="1" top="1"/>
+<MaizeGeneratorConfig version="4">
+    <height mean="0.83200002" stdDev="0.104"/>
+    <stemRadius mean="0.012" stdDev="0.0020000001"/>
+    <numLeaves mean="12.352" stdDev="2.5669999"/>
+    <leafLengthBase mean="0.44800001" stdDev="0.057"/>
+    <leafWidthBase mean="0.066" stdDev="0.0099999998"/>
+    <widthTaper mean="2.859" stdDev="0.1"/>
+    <leafAngleBase mean="43.974998" stdDev="10.132"/>
+    <leafTwist mean="14.707" stdDev="40.976002"/>
+    <leafCurl mean="0.113" stdDev="0.034000002"/>
+    <droopinessBase mean="-20" stdDev="4.1009998"/>
+    <stemInclination mean="-0.003" stdDev="0.204"/>
+    <waveAmp mean="0.0049999999" stdDev="0.001"/>
+    <waveFreq mean="7.5970001" stdDev="2"/>
+    <wavePhaseShift mean="3.326" stdDev="1"/>
+    <tillerAzimuthDeg value="180"/>
+    <tillerAzimuthNoise value="15"/>
+    <stemShrinkFactor value="0.64999998"/>
+    <stemShrinkMin value="0.0020000001"/>
+    <whorlStart value="0.53500003"/>
+    <whorlCompression value="1.5"/>
+    <whorlMinInternodeWeight value="0.30199999"/>
+    <leafSurfaceNoiseAmp value="0.0099999998"/>
+    <leafSurfaceNoiseFreq value="8"/>
+    <midribTipTaperStart value="0.85000002"/>
+    <midribTextureStrength value="0.75"/>
+    <liguleWrapLengthScale value="0.5"/>
+    <liguleUnfoldSharpness value="0.2"/>
+    <sheathOuterScale value="1.5"/>
+    <leafJitterScale value="0.68699998"/>
+    <traitCorrelationStrength value="0.73500001"/>
+    <leafLengthScaleCurve bottom="0.72899997" middle="1" top="0.417"/>
+    <leafWidthScaleCurve bottom="1" middle="1" top="0.77100003"/>
+    <widthTaperScaleCurve bottom="1" middle="1" top="1"/>
+    <waveAmpScaleCurve bottom="3" middle="1.36" top="1.783"/>
+    <waveFreqScaleCurve bottom="2.0050001" middle="2.4059999" top="1"/>
+    <leafAngleOffsetCurve bottom="-45" middle="-1.6289999" top="38.882"/>
+    <droopinessOffsetCurve bottom="7.9640002" middle="0" top="21.9"/>
+    <leafTwistOffsetCurve bottom="0" middle="0" top="0"/>
+    <leafCurlOffsetCurve bottom="-0.13500001" middle="0.149" top="0.63800001"/>
+    <stemInclinationOffsetCurve bottom="0" middle="0" top="0"/>
+    <traitLoadingsMatrix>
+        <parameter key="stemRadius" vigor="0.64999998" slenderness="-0.40000001" posture="0" texture="0"/>
+        <parameter key="numLeaves" vigor="0.55000001" slenderness="0.1" posture="0" texture="0"/>
+        <parameter key="height" vigor="0.60000002" slenderness="0.40000001" posture="0" texture="0"/>
+        <parameter key="leafLengthBase" vigor="0.60000002" slenderness="0.25" posture="0" texture="0"/>
+        <parameter key="leafWidthBase" vigor="0.5" slenderness="-0.15000001" posture="0" texture="0"/>
+        <parameter key="widthTaper" vigor="-0.1" slenderness="0.1" posture="0.15000001" texture="0"/>
+        <parameter key="leafAngleBase" vigor="0.1" slenderness="0" posture="0.64999998" texture="0"/>
+        <parameter key="leafTwist" vigor="0" slenderness="0" posture="0.1" texture="0.44999999"/>
+        <parameter key="leafCurl" vigor="0" slenderness="0" posture="0.1" texture="0.55000001"/>
+        <parameter key="droopinessBase" vigor="-0.55000001" slenderness="0" posture="0.30000001" texture="0"/>
+        <parameter key="stemInclination" vigor="0" slenderness="0.15000001" posture="0.44999999" texture="0"/>
+        <parameter key="waveAmp" vigor="0" slenderness="0" posture="0" texture="0.60000002"/>
+        <parameter key="waveFreq" vigor="0" slenderness="0" posture="0.1" texture="0.34999999"/>
+        <parameter key="wavePhaseShift" vigor="0" slenderness="0" posture="0" texture="0.30000001"/>
+    </traitLoadingsMatrix>
+    <splinePointsDefault value="40"/>
 </MaizeGeneratorConfig>
