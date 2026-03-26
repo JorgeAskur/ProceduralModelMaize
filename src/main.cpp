@@ -1,5 +1,6 @@
 ﻿#include <GL/freeglut.h>
 #include <GL/glu.h>
+#include <GL/glext.h>
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
@@ -7,6 +8,7 @@
 #include <commdlg.h>
 #include <vector>
 #include <string>
+#include <cstddef>
 #include <cstdio>
 #include <cmath>
 #include <algorithm>
@@ -51,10 +53,6 @@ static bool gShowNormals = false;
 
 static bool gLightingOn = true;
 static float gLightPos[4] = { 2.0f, 8.0f, 4.0f, 1.0f };
-static float gGlobalAmb[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
-static float gLightDiff[4] = { 0.8f, 0.8f, 0.8f, 1.0f };
-static float gLightSpec[4] = { 0.6f, 0.6f, 0.6f, 1.0f };
-static float gMatSpec[4] = { 0.2f, 0.2f, 0.2f, 1.0f };
 static float gShininess = 32.0f;
 
 // Paths and export destinations shown in the UI
@@ -72,6 +70,75 @@ static GLuint gTextureID = 0;
 static bool   gTextureOK = false;
 static GLuint gStemTextureID = 0;
 static bool   gStemTextureOK = false;
+
+struct GpuVertex {
+    float px, py, pz;
+    float nx, ny, nz;
+    float cr, cg, cb;
+    float u, v;
+};
+
+struct GpuMesh {
+    LeafGeom::GeomType type = LeafGeom::GEOM_BLADE;
+    GLuint vbo = 0;
+    GLuint ibo = 0;
+    GLsizei indexCount = 0;
+};
+
+struct PlantGpuRenderer {
+    bool initialized = false;
+    bool available = false;
+    bool meshDirty = true;
+    GLuint program = 0;
+    GLint locTexture = -1;
+    GLint locUseTexture = -1;
+    GLint locUseLighting = -1;
+    GLint locLeafFactor = -1;
+    GLint locLightPosEye = -1;
+    GLint locSkyDirEye = -1;
+    GLint locAmbientGround = -1;
+    GLint locAmbientSky = -1;
+    GLint locDiffuseStrength = -1;
+    GLint locWrap = -1;
+    GLint locSpecularStrength = -1;
+    GLint locShininess = -1;
+    GLint locTransmission = -1;
+    GLint locExposure = -1;
+    std::string error;
+    std::vector<GpuMesh> meshes;
+};
+
+static PlantGpuRenderer gPlantRenderer;
+static float gAmbientGroundStrength = 0.18f;
+static float gAmbientSkyStrength = 0.60f;
+static float gDiffuseStrength = 1.05f;
+static float gDiffuseWrap = 0.28f;
+static float gSpecularStrengthModern = 0.18f;
+static float gTransmissionStrength = 0.45f;
+static float gExposure = 1.10f;
+
+static PFNGLACTIVETEXTUREPROC gglActiveTexture = nullptr;
+static PFNGLGENBUFFERSPROC gglGenBuffers = nullptr;
+static PFNGLBINDBUFFERPROC gglBindBuffer = nullptr;
+static PFNGLBUFFERDATAPROC gglBufferData = nullptr;
+static PFNGLDELETEBUFFERSPROC gglDeleteBuffers = nullptr;
+static PFNGLCREATESHADERPROC gglCreateShader = nullptr;
+static PFNGLSHADERSOURCEPROC gglShaderSource = nullptr;
+static PFNGLCOMPILESHADERPROC gglCompileShader = nullptr;
+static PFNGLGETSHADERIVPROC gglGetShaderiv = nullptr;
+static PFNGLGETSHADERINFOLOGPROC gglGetShaderInfoLog = nullptr;
+static PFNGLDELETESHADERPROC gglDeleteShader = nullptr;
+static PFNGLCREATEPROGRAMPROC gglCreateProgram = nullptr;
+static PFNGLATTACHSHADERPROC gglAttachShader = nullptr;
+static PFNGLLINKPROGRAMPROC gglLinkProgram = nullptr;
+static PFNGLGETPROGRAMIVPROC gglGetProgramiv = nullptr;
+static PFNGLGETPROGRAMINFOLOGPROC gglGetProgramInfoLog = nullptr;
+static PFNGLDELETEPROGRAMPROC gglDeleteProgram = nullptr;
+static PFNGLUSEPROGRAMPROC gglUseProgram = nullptr;
+static PFNGLGETUNIFORMLOCATIONPROC gglGetUniformLocation = nullptr;
+static PFNGLUNIFORM1IPROC gglUniform1i = nullptr;
+static PFNGLUNIFORM1FPROC gglUniform1f = nullptr;
+static PFNGLUNIFORM3FPROC gglUniform3f = nullptr;
 
 // The procedural generator
 static MaizeGenerator gGen;
@@ -130,6 +197,298 @@ static bool PathInputWithBrowseButton(const char* label, char* buffer, size_t bu
     return changed;
 }
 
+template <typename T>
+static bool LoadGLProc(T& outProc, const char* name) {
+    outProc = reinterpret_cast<T>(glutGetProcAddress(name));
+    return outProc != nullptr;
+}
+
+static void DestroyGpuMeshes() {
+    if (!gglDeleteBuffers) {
+        gPlantRenderer.meshes.clear();
+        return;
+    }
+    for (auto& mesh : gPlantRenderer.meshes) {
+        if (mesh.vbo) gglDeleteBuffers(1, &mesh.vbo);
+        if (mesh.ibo) gglDeleteBuffers(1, &mesh.ibo);
+    }
+    gPlantRenderer.meshes.clear();
+}
+
+static void InvalidatePlantRendererMeshes() {
+    gPlantRenderer.meshDirty = true;
+}
+
+static Vect3d TransformPoint(const float m[16], const Vect3d& p) {
+    return {
+        m[0] * p.x() + m[4] * p.y() + m[8] * p.z() + m[12],
+        m[1] * p.x() + m[5] * p.y() + m[9] * p.z() + m[13],
+        m[2] * p.x() + m[6] * p.y() + m[10] * p.z() + m[14]
+    };
+}
+
+static Vect3d TransformVector(const float m[16], const Vect3d& v) {
+    return {
+        m[0] * v.x() + m[4] * v.y() + m[8] * v.z(),
+        m[1] * v.x() + m[5] * v.y() + m[9] * v.z(),
+        m[2] * v.x() + m[6] * v.y() + m[10] * v.z()
+    };
+}
+
+static GLuint CompileShader(GLenum type, const char* source, std::string& error) {
+    GLuint shader = gglCreateShader(type);
+    if (!shader) {
+        error = "glCreateShader failed.";
+        return 0;
+    }
+
+    gglShaderSource(shader, 1, &source, nullptr);
+    gglCompileShader(shader);
+
+    GLint compiled = GL_FALSE;
+    gglGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+    if (compiled == GL_TRUE) return shader;
+
+    GLint logLength = 0;
+    gglGetShaderiv(shader, GL_INFO_LOG_LENGTH, &logLength);
+    std::string log((std::max)(1, logLength), '\0');
+    gglGetShaderInfoLog(shader, (GLsizei)log.size(), nullptr, &log[0]);
+    gglDeleteShader(shader);
+    error = log;
+    return 0;
+}
+
+static bool BuildModernPlantShader() {
+    static const char* kVertexShader = R"GLSL(
+#version 120
+varying vec3 vEyePos;
+varying vec3 vEyeNormal;
+varying vec3 vColor;
+varying vec2 vTexCoord;
+
+void main() {
+    vec4 eyePos = gl_ModelViewMatrix * gl_Vertex;
+    vEyePos = eyePos.xyz;
+    vEyeNormal = normalize(gl_NormalMatrix * gl_Normal);
+    vColor = gl_Color.rgb;
+    vTexCoord = gl_MultiTexCoord0.xy;
+    gl_Position = gl_ProjectionMatrix * eyePos;
+}
+)GLSL";
+
+    static const char* kFragmentShader = R"GLSL(
+#version 120
+uniform sampler2D uTexture;
+uniform float uUseTexture;
+uniform float uUseLighting;
+uniform float uLeafFactor;
+uniform vec3 uLightPosEye;
+uniform vec3 uSkyDirEye;
+uniform vec3 uAmbientGround;
+uniform vec3 uAmbientSky;
+uniform float uDiffuseStrength;
+uniform float uWrap;
+uniform float uSpecularStrength;
+uniform float uShininess;
+uniform float uTransmission;
+uniform float uExposure;
+
+varying vec3 vEyePos;
+varying vec3 vEyeNormal;
+varying vec3 vColor;
+varying vec2 vTexCoord;
+
+void main() {
+    vec4 texSample = vec4(1.0);
+    if (uUseTexture > 0.5) texSample = texture2D(uTexture, vTexCoord);
+    vec3 albedo = vColor * mix(vec3(1.0), texSample.rgb, uUseTexture);
+    if (uUseTexture > 0.5 && texSample.a < 0.05) discard;
+
+    vec3 linear = albedo;
+    if (uUseLighting > 0.5) {
+        vec3 N = normalize(vEyeNormal);
+        vec3 V = normalize(-vEyePos);
+        vec3 L = normalize(uLightPosEye - vEyePos);
+        vec3 H = normalize(L + V);
+        vec3 skyDir = normalize(uSkyDirEye);
+
+        float hemiMask = clamp(0.5 + 0.5 * dot(N, skyDir), 0.0, 1.0);
+        vec3 ambient = mix(uAmbientGround, uAmbientSky, hemiMask);
+
+        float wrapped = max((dot(N, L) + uWrap) / (1.0 + uWrap), 0.0);
+        float diffuse = wrapped * uDiffuseStrength;
+
+        float specPower = pow(max(dot(N, H), 0.0), max(uShininess, 1.0));
+        float specMask = mix(0.45, 1.0, 1.0 - uLeafFactor);
+        vec3 specular = vec3(specPower * uSpecularStrength * specMask);
+
+        float rim = pow(clamp(1.0 - max(dot(N, V), 0.0), 0.0, 1.0), 0.75);
+        float backLight = pow(max(dot(-N, L), 0.0), 1.35);
+        vec3 transmission = albedo * vec3(0.92, 1.0, 0.88) * (uLeafFactor * uTransmission * backLight * (0.3 + 0.7 * rim));
+
+        linear = albedo * (ambient + diffuse) + specular + transmission;
+    }
+
+    vec3 mapped = vec3(1.0) - exp(-linear * uExposure);
+    vec3 gammaCorrected = pow(clamp(mapped, 0.0, 1.0), vec3(1.0 / 2.2));
+    gl_FragColor = vec4(gammaCorrected, 1.0);
+}
+)GLSL";
+
+    std::string error;
+    GLuint vertShader = CompileShader(GL_VERTEX_SHADER, kVertexShader, error);
+    if (!vertShader) {
+        gPlantRenderer.error = "Vertex shader compile failed:\n" + error;
+        return false;
+    }
+
+    GLuint fragShader = CompileShader(GL_FRAGMENT_SHADER, kFragmentShader, error);
+    if (!fragShader) {
+        gglDeleteShader(vertShader);
+        gPlantRenderer.error = "Fragment shader compile failed:\n" + error;
+        return false;
+    }
+
+    GLuint program = gglCreateProgram();
+    if (!program) {
+        gglDeleteShader(vertShader);
+        gglDeleteShader(fragShader);
+        gPlantRenderer.error = "glCreateProgram failed.";
+        return false;
+    }
+
+    gglAttachShader(program, vertShader);
+    gglAttachShader(program, fragShader);
+    gglLinkProgram(program);
+
+    GLint linked = GL_FALSE;
+    gglGetProgramiv(program, GL_LINK_STATUS, &linked);
+    if (linked != GL_TRUE) {
+        GLint logLength = 0;
+        gglGetProgramiv(program, GL_INFO_LOG_LENGTH, &logLength);
+        std::string log((std::max)(1, logLength), '\0');
+        gglGetProgramInfoLog(program, (GLsizei)log.size(), nullptr, &log[0]);
+        gglDeleteProgram(program);
+        gglDeleteShader(vertShader);
+        gglDeleteShader(fragShader);
+        gPlantRenderer.error = "Program link failed:\n" + log;
+        return false;
+    }
+
+    gglDeleteShader(vertShader);
+    gglDeleteShader(fragShader);
+
+    gPlantRenderer.program = program;
+    gPlantRenderer.locTexture = gglGetUniformLocation(program, "uTexture");
+    gPlantRenderer.locUseTexture = gglGetUniformLocation(program, "uUseTexture");
+    gPlantRenderer.locUseLighting = gglGetUniformLocation(program, "uUseLighting");
+    gPlantRenderer.locLeafFactor = gglGetUniformLocation(program, "uLeafFactor");
+    gPlantRenderer.locLightPosEye = gglGetUniformLocation(program, "uLightPosEye");
+    gPlantRenderer.locSkyDirEye = gglGetUniformLocation(program, "uSkyDirEye");
+    gPlantRenderer.locAmbientGround = gglGetUniformLocation(program, "uAmbientGround");
+    gPlantRenderer.locAmbientSky = gglGetUniformLocation(program, "uAmbientSky");
+    gPlantRenderer.locDiffuseStrength = gglGetUniformLocation(program, "uDiffuseStrength");
+    gPlantRenderer.locWrap = gglGetUniformLocation(program, "uWrap");
+    gPlantRenderer.locSpecularStrength = gglGetUniformLocation(program, "uSpecularStrength");
+    gPlantRenderer.locShininess = gglGetUniformLocation(program, "uShininess");
+    gPlantRenderer.locTransmission = gglGetUniformLocation(program, "uTransmission");
+    gPlantRenderer.locExposure = gglGetUniformLocation(program, "uExposure");
+    return true;
+}
+
+static bool EnsureModernPlantRendererReady() {
+    if (gPlantRenderer.initialized) return gPlantRenderer.available;
+    gPlantRenderer.initialized = true;
+
+    bool ok = true;
+    LoadGLProc(gglActiveTexture, "glActiveTexture");
+    ok &= LoadGLProc(gglGenBuffers, "glGenBuffers");
+    ok &= LoadGLProc(gglBindBuffer, "glBindBuffer");
+    ok &= LoadGLProc(gglBufferData, "glBufferData");
+    ok &= LoadGLProc(gglDeleteBuffers, "glDeleteBuffers");
+    ok &= LoadGLProc(gglCreateShader, "glCreateShader");
+    ok &= LoadGLProc(gglShaderSource, "glShaderSource");
+    ok &= LoadGLProc(gglCompileShader, "glCompileShader");
+    ok &= LoadGLProc(gglGetShaderiv, "glGetShaderiv");
+    ok &= LoadGLProc(gglGetShaderInfoLog, "glGetShaderInfoLog");
+    ok &= LoadGLProc(gglDeleteShader, "glDeleteShader");
+    ok &= LoadGLProc(gglCreateProgram, "glCreateProgram");
+    ok &= LoadGLProc(gglAttachShader, "glAttachShader");
+    ok &= LoadGLProc(gglLinkProgram, "glLinkProgram");
+    ok &= LoadGLProc(gglGetProgramiv, "glGetProgramiv");
+    ok &= LoadGLProc(gglGetProgramInfoLog, "glGetProgramInfoLog");
+    ok &= LoadGLProc(gglDeleteProgram, "glDeleteProgram");
+    ok &= LoadGLProc(gglUseProgram, "glUseProgram");
+    ok &= LoadGLProc(gglGetUniformLocation, "glGetUniformLocation");
+    ok &= LoadGLProc(gglUniform1i, "glUniform1i");
+    ok &= LoadGLProc(gglUniform1f, "glUniform1f");
+    ok &= LoadGLProc(gglUniform3f, "glUniform3f");
+    if (!ok) {
+        gPlantRenderer.error = "Required OpenGL shader/buffer entry points are unavailable, so the plant renderer cannot start on this machine.";
+        gPlantRenderer.available = false;
+        return false;
+    }
+
+    gPlantRenderer.available = BuildModernPlantShader();
+    return gPlantRenderer.available;
+}
+
+static bool UploadPlantRendererMeshes() {
+    if (!EnsureModernPlantRendererReady()) return false;
+    if (!gPlantRenderer.meshDirty) return true;
+
+    DestroyGpuMeshes();
+
+    for (const auto& geom : Maize::leafGeoms()) {
+        if (geom.rows <= 1 || geom.cols <= 1 || geom.pos.size() != geom.nrm.size() || geom.pos.size() != geom.col.size() || geom.pos.size() != geom.uv.size()) {
+            continue;
+        }
+
+        std::vector<GpuVertex> vertices(geom.pos.size());
+        for (size_t i = 0; i < geom.pos.size(); ++i) {
+            vertices[i] = {
+                (float)geom.pos[i].x(), (float)geom.pos[i].y(), (float)geom.pos[i].z(),
+                (float)geom.nrm[i].x(), (float)geom.nrm[i].y(), (float)geom.nrm[i].z(),
+                (float)geom.col[i].x(), (float)geom.col[i].y(), (float)geom.col[i].z(),
+                geom.uv[i].u, geom.uv[i].v
+            };
+        }
+
+        std::vector<unsigned int> indices;
+        indices.reserve((size_t)(geom.rows - 1) * (size_t)(geom.cols - 1) * 6);
+        for (int row = 0; row < geom.rows - 1; ++row) {
+            for (int col = 0; col < geom.cols - 1; ++col) {
+                unsigned int a = (unsigned int)(row * geom.cols + col);
+                unsigned int b = a + 1;
+                unsigned int c = a + (unsigned int)geom.cols;
+                unsigned int d = c + 1;
+                indices.push_back(a); indices.push_back(c); indices.push_back(b);
+                indices.push_back(b); indices.push_back(c); indices.push_back(d);
+            }
+        }
+
+        if (indices.empty()) continue;
+
+        GpuMesh mesh;
+        mesh.type = geom.type;
+        mesh.indexCount = (GLsizei)indices.size();
+        gglGenBuffers(1, &mesh.vbo);
+        gglBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
+        gglBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(vertices.size() * sizeof(GpuVertex)), vertices.data(), GL_STATIC_DRAW);
+
+        gglGenBuffers(1, &mesh.ibo);
+        gglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.ibo);
+        gglBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(indices.size() * sizeof(unsigned int)), indices.data(), GL_STATIC_DRAW);
+
+        gPlantRenderer.meshes.push_back(mesh);
+    }
+
+    gglBindBuffer(GL_ARRAY_BUFFER, 0);
+    gglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    gPlantRenderer.meshDirty = false;
+    return true;
+}
+
 static void loadTexture(const char* path, GLuint* textureId, bool* textureOk) {
     // The editor uses immediate texture reloads so the viewport always reflects the current export texture paths
     if (*textureId) { glDeleteTextures(1, textureId); *textureId = 0; }
@@ -178,64 +537,72 @@ static const LeafGeom* GetStemGeom() {
     return nullptr;
 }
 
-static void setupLighting() {
-    if (!gLightingOn) { glDisable(GL_LIGHTING); return; }
-    glEnable(GL_LIGHTING); glEnable(GL_LIGHT0);
-    glLightfv(GL_LIGHT0, GL_POSITION, gLightPos);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, gLightDiff);
-    glLightfv(GL_LIGHT0, GL_SPECULAR, gLightSpec);
-    glLightModelfv(GL_LIGHT_MODEL_AMBIENT, gGlobalAmb);
-    glEnable(GL_COLOR_MATERIAL);
-    glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
-    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, gMatSpec);
-    glMaterialf(GL_FRONT_AND_BACK, GL_SHININESS, gShininess);
+static bool drawPlant() {
+    if (!UploadPlantRendererMeshes()) return false;
+
+    float modelView[16] = {};
+    glGetFloatv(GL_MODELVIEW_MATRIX, modelView);
+
+    Vect3d lightEye = (std::fabs(gLightPos[3]) > 0.5f)
+        ? TransformPoint(modelView, { gLightPos[0], gLightPos[1], gLightPos[2] })
+        : TransformVector(modelView, { gLightPos[0], gLightPos[1], gLightPos[2] }).GetNormalized();
+    Vect3d skyDirEye = TransformVector(modelView, { 0.0f, 1.0f, 0.0f }).GetNormalized();
+    Vect3d ambientGround = Vect3d(0.28f, 0.26f, 0.23f) * gAmbientGroundStrength;
+    Vect3d ambientSky = Vect3d(0.72f, 0.82f, 0.98f) * gAmbientSkyStrength;
+
+    gglUseProgram(gPlantRenderer.program);
+    gglUniform1i(gPlantRenderer.locTexture, 0);
+    gglUniform1f(gPlantRenderer.locUseLighting, gLightingOn ? 1.0f : 0.0f);
+    gglUniform3f(gPlantRenderer.locLightPosEye, (float)lightEye.x(), (float)lightEye.y(), (float)lightEye.z());
+    gglUniform3f(gPlantRenderer.locSkyDirEye, (float)skyDirEye.x(), (float)skyDirEye.y(), (float)skyDirEye.z());
+    gglUniform3f(gPlantRenderer.locAmbientGround, (float)ambientGround.x(), (float)ambientGround.y(), (float)ambientGround.z());
+    gglUniform3f(gPlantRenderer.locAmbientSky, (float)ambientSky.x(), (float)ambientSky.y(), (float)ambientSky.z());
+    gglUniform1f(gPlantRenderer.locDiffuseStrength, gDiffuseStrength);
+    gglUniform1f(gPlantRenderer.locWrap, gDiffuseWrap);
+    gglUniform1f(gPlantRenderer.locSpecularStrength, gSpecularStrengthModern);
+    gglUniform1f(gPlantRenderer.locShininess, gShininess);
+    gglUniform1f(gPlantRenderer.locTransmission, gTransmissionStrength);
+    gglUniform1f(gPlantRenderer.locExposure, gExposure);
+
+    if (gglActiveTexture) gglActiveTexture(GL_TEXTURE0);
+    glEnableClientState(GL_VERTEX_ARRAY);
+    glEnableClientState(GL_NORMAL_ARRAY);
+    glEnableClientState(GL_COLOR_ARRAY);
+    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+
+    glDisable(GL_LIGHTING);
+    glDisable(GL_COLOR_MATERIAL);
     glEnable(GL_NORMALIZE);
-}
-
-static void drawPlant() {
-    // Draw all cached meshes
-    setupLighting();
-    glShadeModel(GL_SMOOTH);
-
-    glColor4f(1.f, 1.f, 1.f, 1.f);
-    bool textureEnabled = false;
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
     glPolygonMode(GL_FRONT_AND_BACK, gWireframe ? GL_LINE : GL_FILL);
+    glEnable(GL_TEXTURE_2D);
 
-    for (const auto& G : Maize::leafGeoms()) {
-        bool useTexture = (G.type == LeafGeom::GEOM_SHEATH) ? gStemTextureOK : gTextureOK;
-        GLuint texId = (G.type == LeafGeom::GEOM_SHEATH) ? gStemTextureID : gTextureID;
-        if (useTexture) {
-            if (!textureEnabled) { glEnable(GL_TEXTURE_2D); textureEnabled = true; }
-            glBindTexture(GL_TEXTURE_2D, texId);
-        } else if (textureEnabled) {
-            glDisable(GL_TEXTURE_2D);
-            textureEnabled = false;
-        }
-        if (G.rows <= 1 || G.cols <= 1) continue;
+    for (const auto& mesh : gPlantRenderer.meshes) {
+        bool useTexture = (mesh.type == LeafGeom::GEOM_SHEATH) ? gStemTextureOK : gTextureOK;
+        GLuint texId = (mesh.type == LeafGeom::GEOM_SHEATH) ? gStemTextureID : gTextureID;
+        glBindTexture(GL_TEXTURE_2D, useTexture ? texId : 0);
+        gglUniform1f(gPlantRenderer.locUseTexture, useTexture ? 1.0f : 0.0f);
+        gglUniform1f(gPlantRenderer.locLeafFactor, mesh.type == LeafGeom::GEOM_BLADE ? 1.0f : 0.0f);
 
-        for (int i = 0; i < G.rows - 1; ++i) {
-            glBegin(GL_TRIANGLE_STRIP);
-            for (int j = 0; j < G.cols; ++j) {
-                int a = i * G.cols + j, b = (i + 1) * G.cols + j;
-                Vect3d cA = G.col[a];
-                Vect3d cB = G.col[b];
-                glColor3f(cA.x(), cA.y(), cA.z());
-                glNormal3f(G.nrm[a].x(), G.nrm[a].y(), G.nrm[a].z());
-                glTexCoord2f(G.uv[a].u, G.uv[a].v);
-                glVertex3f(G.pos[a].x(), G.pos[a].y(), G.pos[a].z());
-
-                glColor3f(cB.x(), cB.y(), cB.z());
-                glNormal3f(G.nrm[b].x(), G.nrm[b].y(), G.nrm[b].z());
-                glTexCoord2f(G.uv[b].u, G.uv[b].v);
-                glVertex3f(G.pos[b].x(), G.pos[b].y(), G.pos[b].z());
-            }
-            glEnd();
-        }
+        gglBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
+        gglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.ibo);
+        glVertexPointer(3, GL_FLOAT, sizeof(GpuVertex), reinterpret_cast<const void*>(offsetof(GpuVertex, px)));
+        glNormalPointer(GL_FLOAT, sizeof(GpuVertex), reinterpret_cast<const void*>(offsetof(GpuVertex, nx)));
+        glColorPointer(3, GL_FLOAT, sizeof(GpuVertex), reinterpret_cast<const void*>(offsetof(GpuVertex, cr)));
+        glTexCoordPointer(2, GL_FLOAT, sizeof(GpuVertex), reinterpret_cast<const void*>(offsetof(GpuVertex, u)));
+        glDrawElements(GL_TRIANGLES, mesh.indexCount, GL_UNSIGNED_INT, nullptr);
     }
+
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glDisable(GL_TEXTURE_2D);
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+    glDisableClientState(GL_COLOR_ARRAY);
+    glDisableClientState(GL_NORMAL_ARRAY);
+    glDisableClientState(GL_VERTEX_ARRAY);
+    gglBindBuffer(GL_ARRAY_BUFFER, 0);
+    gglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    gglUseProgram(0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    if (textureEnabled) glDisable(GL_TEXTURE_2D);
-    if (gLightingOn) glDisable(GL_LIGHTING);
+    return true;
 }
 
 static void drawNormals() {
@@ -290,11 +657,16 @@ static void drawGridAndAxes() {
     glEnd();
 }
 
+static void RebuildGeometryAndRenderer() {
+    Maize::rebuildGeometry();
+    InvalidatePlantRendererMeshes();
+}
+
 static void RebuildFromGenerator(bool useMeansOnly = true, unsigned int seed = 1337) {
     // Regenerates the editable PlantDesc from the procedural generator and then rebuilds meshes from that fresh description
     gSkeletonOnlyView = false;
     Maize::plant() = gGen.generate(seed, useMeansOnly);
-    Maize::rebuildGeometry();
+    RebuildGeometryAndRenderer();
 }
 
 static float hash_to_float_minus1_1(unsigned int seed) {
@@ -737,7 +1109,7 @@ static void RenderExportPanel() {
     if (ImGui::Button("Load XML")) {
         if (Descriptor::loadPlantXML(gXmlPath)) {
             gSkeletonOnlyView = false;
-            Maize::rebuildGeometry();
+            RebuildGeometryAndRenderer();
         }
     }
     ImGui::SameLine();
@@ -754,7 +1126,7 @@ static void RenderExportPanel() {
         if (Descriptor::loadSkeletonXML(gSkeletonXmlPath)) {
             gSkeletonOnlyView = true;
             gShowSkeletonSpline = true;
-            Maize::rebuildGeometry();
+            RebuildGeometryAndRenderer();
         }
     }
     ImGui::SameLine();
@@ -782,12 +1154,31 @@ static void RenderVisualSettingsPanel(bool& needUpdate) {
     ImGui::Separator();
     if (!ImGui::CollapsingHeader("Visual Settings")) return;
 
+    if (!gPlantRenderer.initialized) {
+        ImGui::TextUnformatted("Renderer: not initialized yet");
+    } else if (gPlantRenderer.available) {
+        ImGui::TextUnformatted("Renderer: shader-based buffered path");
+    } else {
+        ImGui::TextUnformatted("Renderer unavailable:");
+        ImGui::TextWrapped("%s", gPlantRenderer.error.c_str());
+    }
+
     ImGui::Checkbox("Lighting", &gLightingOn);
     ImGui::Checkbox("Show Normals", &gShowNormals);
     ImGui::Checkbox("Show Control Points", &gShowCtrlPts);
     ImGui::Checkbox("Show Skeleton Spline", &gShowSkeletonSpline);
     ImGui::Checkbox("Skeleton Only View", &gSkeletonOnlyView);
     ImGui::Checkbox("Wireframe", &gWireframe);
+
+    ImGui::Separator();
+    ImGui::Text("Modern Shading");
+    ImGui::SliderFloat("Exposure", &gExposure, 0.4f, 2.5f);
+    ImGui::SliderFloat("Sky Ambient", &gAmbientSkyStrength, 0.0f, 1.4f);
+    ImGui::SliderFloat("Ground Ambient", &gAmbientGroundStrength, 0.0f, 0.8f);
+    ImGui::SliderFloat("Diffuse Strength", &gDiffuseStrength, 0.2f, 1.8f);
+    ImGui::SliderFloat("Diffuse Wrap", &gDiffuseWrap, 0.0f, 0.8f);
+    ImGui::SliderFloat("Leaf Transmission", &gTransmissionStrength, 0.0f, 1.2f);
+    ImGui::SliderFloat("Specular Strength", &gSpecularStrengthModern, 0.0f, 0.6f);
 
     ImGui::Separator();
     ImGui::Text("Stem Mesh");
@@ -805,7 +1196,7 @@ static void display() {
     ImGui_ImplOpenGL2_NewFrame(); ImGui_ImplGLUT_NewFrame(); ImGui::NewFrame();
     ImGuiIO& io = ImGui::GetIO();
     glViewport(0, 0, (GLsizei)io.DisplaySize.x, (GLsizei)io.DisplaySize.y);
-    glClearColor(1.f, 1.f, 1.f, 1.f); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glEnable(GL_DEPTH_TEST);
+    glClearColor(0.93f, 0.96f, 1.0f, 1.f); glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); glEnable(GL_DEPTH_TEST);
 
     glMatrixMode(GL_PROJECTION); glLoadIdentity();
     gluPerspective((GLdouble)gFovDeg, (GLdouble)io.DisplaySize.x / (GLdouble)io.DisplaySize.y, 0.1, 100.0);
@@ -857,7 +1248,7 @@ static void display() {
     ImGui::End();
 
     if (needRegen) RebuildFromGenerator();
-    else if (needUpdate) Maize::rebuildGeometry();
+    else if (needUpdate) RebuildGeometryAndRenderer();
 
     ImGui::Render(); ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
     glutSwapBuffers();
@@ -873,11 +1264,14 @@ static void idle() { glutPostRedisplay(); }
 int main(int argc, char** argv) {
     srand((unsigned int)time(NULL));
     glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH);
+    glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);
     glutInitWindowSize(gWinW, gWinH);
     glutCreateWindow("Maize Procedural Generator");
     ImGui::CreateContext();
     ImGui_ImplGLUT_Init(); ImGui_ImplGLUT_InstallFuncs(); ImGui_ImplOpenGL2_Init();
+    EnsureModernPlantRendererReady();
+    glEnable(GL_MULTISAMPLE);
+    glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 
     loadTexture(gTexPath, &gTextureID, &gTextureOK);
     loadTexture(gStemTexPath, &gStemTextureID, &gStemTextureOK);

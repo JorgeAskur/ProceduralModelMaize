@@ -279,8 +279,12 @@ void MaizeGenerator::resetTraitLoadings() {
 MaizeGenerator::TraitComputation MaizeGenerator::computeTraits(unsigned int seed, bool useMeansOnly) const {
     std::mt19937 gen(seed);
     TraitComputation traits;
+    traits.species = "Maize_Procedural";
     traits.seed = seed;
     traits.useMeansOnly = useMeansOnly;
+    traits.tillerType = "main";
+    traits.tillerAlphaDeg = 0.0f;
+    traits.tillerRandomSeed = seed;
 
     traits.latent = sampleLatentTraits(gen, useMeansOnly);
     traits.correlationStrength = std::clamp(traitCorrelationStrength, 0.0f, 1.0f);
@@ -303,6 +307,7 @@ MaizeGenerator::TraitComputation MaizeGenerator::computeTraits(unsigned int seed
         float t = (float)i / (float)(nLeaves - 1);
 
         ComputedLeafTraits leaf;
+        leaf.id = i;
         leaf.canopyT = t;
         leaf.distance = traits.totalHeight * (internodeWeights.values[i] / internodeWeights.sum);
         leaf.azimuthDeg = traits.tillerAzimuthDeg * (float)i + hash_to_float_minus1_1(seed + (unsigned int)i) * traits.tillerAzimuthNoise;
@@ -347,21 +352,21 @@ MaizeGenerator::TraitComputation MaizeGenerator::computeTraits(unsigned int seed
 
 PlantDesc MaizeGenerator::buildPlantFromTraits(const TraitComputation& traits) const {
     PlantDesc plant;
-    plant.species = "Maize_Procedural";
+    plant.species = traits.species;
 
     TillerDesc mainTiller;
-    mainTiller.type = "main";
+    mainTiller.type = traits.tillerType;
     mainTiller.radius = traits.stemRadius;
-    mainTiller.alphaDeg = 0.0f;
+    mainTiller.alphaDeg = traits.tillerAlphaDeg;
     mainTiller.stemShrink = traits.stemShrink;
     mainTiller.azimuthDeg = traits.tillerAzimuthDeg;
     mainTiller.azimuthNoise = traits.tillerAzimuthNoise;
-    mainTiller.randomSeed = traits.seed;
+    mainTiller.randomSeed = traits.tillerRandomSeed;
 
     for (size_t i = 0; i < traits.leaves.size(); ++i) {
         const ComputedLeafTraits& computed = traits.leaves[i];
         LeafDesc L;
-        L.id = (int)i;
+        L.id = computed.id;
         L.distance = computed.distance;
         L.leafLength = computed.leafLength;
         L.leafWidth = computed.leafWidth;

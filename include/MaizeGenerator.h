@@ -82,6 +82,7 @@ public:
     // Fully resolved leaf traits after canopy-curve modulation, jitter, and
     // generator-default visual fields have all been applied
     struct ComputedLeafTraits {
+        int id = 0;
         float canopyT = 0.0f;
         float distance = 0.0f;
         float leafLength = 0.0f;
@@ -111,14 +112,18 @@ public:
 
     // Snapshot of the full trait computation for one plant draw
     struct TraitComputation {
+        std::string species = "Maize_Procedural";
         unsigned int seed = 0;
         bool useMeansOnly = false;
         float correlationStrength = 0.0f;
+        std::string tillerType = "main";
+        float tillerAlphaDeg = 0.0f;
         float stemRadius = 0.0f;
         float totalHeight = 0.0f;
         float stemShrink = 0.0f;
         float tillerAzimuthDeg = 0.0f;
         float tillerAzimuthNoise = 0.0f;
+        unsigned int tillerRandomSeed = 0;
         LatentTraits latent;
         PlantLevelTraits plantLevel;
         std::vector<ComputedLeafTraits> leaves;
