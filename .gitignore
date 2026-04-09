@@ -365,7 +365,6 @@ FodyWeavers.xsd
 /Papers
 /Test
 /vcpkg_installed/x64-windows/vcpkg
-/Sorghum.vcxproj
 /plants.zip
 /imgui.ini
 /plants/plant_0.xml
@@ -379,7 +378,6 @@ FodyWeavers.xsd
 /plants/plant_8.xml
 /plants/plant_9.xml
 /.github
-/Sorghum.vcxproj.filters
 /vcpkg.json
 /CURRENT_MODEL_WRITEUP.md
 /plant_export
