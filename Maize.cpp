@@ -689,13 +689,19 @@ namespace Maize {
         return (pos == std::string::npos) ? std::string() : p.substr(0, pos);
     }
 
-    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath, const std::string& stemTexturePath) {
+    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath, const std::string& stemTexturePath, bool exportSkeleton) {
         Maize::plant() = plantDesc;
         Maize::rebuildGeometry();
         std::string xmlPath = baseFileName + ".xml";
         std::string objPath = baseFileName + ".obj";
         Descriptor::savePlantXML(xmlPath.c_str());
         Maize::savePlantOBJ(objPath.c_str(), leafTexturePath.c_str(), stemTexturePath.empty() ? nullptr : stemTexturePath.c_str());
+        if (exportSkeleton) {
+            std::string skelObjPath = baseFileName + "_skeleton.obj";
+            std::string skelXmlPath = baseFileName + "_skeleton.xml";
+            Maize::saveSkeletonOBJ(skelObjPath.c_str());
+            Descriptor::saveSkeletonXML(skelXmlPath.c_str());
+        }
     }
 }
 
@@ -712,7 +718,14 @@ void MaizeModel::rebuildGeometry() {
         StemSampler stemSampler{ td, stemData, globalUp };
 
         if (!stemData.leafStemPos.empty()) {
-            m_leafGeoms.push_back(buildStemGeometry(stemSampler, stemData, globalUp, m_densityV, m_densityU, m_stemDensityScale, ct, st));
+            LeafGeom stemGeom = buildStemGeometry(stemSampler, stemData, globalUp, m_densityV, m_densityU, m_stemDensityScale, ct, st);
+            int nSkelSamples = std::max(30, (int)(stemData.stemLength * 50));
+            stemGeom.stemCurve.reserve(nSkelSamples + 1);
+            for (int s = 0; s <= nSkelSamples; ++s) {
+                float t = (float)s / (float)nSkelSamples;
+                stemGeom.stemCurve.push_back(tiltPoint(stemSampler.posAt(t), ct, st));
+            }
+            m_leafGeoms.push_back(std::move(stemGeom));
         }
 
         for (size_t li = 0; li < td.leaves.size(); ++li) {
@@ -743,7 +756,23 @@ void MaizeModel::rebuildGeometry() {
             Vect3d sheath_exit_pos = (li < stemData.leafStemPos.size()) ? stemData.leafStemPos[li] : Vect3d(0.0f, 0.0f, 0.0f);
             BladeFrame bladeFrame = buildBladeFrame(sheath_exit_pos, stemSampler.tangentAt(tLeaf), rhat);
 
-            m_leafGeoms.push_back(buildBladeGeometry(L, bladeFrame, rhat, global_radius, m_densityV, m_densityU, ct, st, localCtrlC, localCtrlL, localCtrlR));
+            LeafGeom bladeGeom = buildBladeGeometry(L, bladeFrame, rhat, global_radius, m_densityV, m_densityU, ct, st, localCtrlC, localCtrlL, localCtrlR);
+            // Place the branch point on the stem centerline at the
+            // visual sheath-stem junction (sheathExitPos lowered by
+            // sheathBelowOffset, matching buildBladeGeometry)
+            if (!bladeGeom.ctrlCenter.empty()) {
+                float sOS = clampf(L.sheathOuterScale, 1.0f, 1.6f);
+                float fRC = std::max(0.001f, global_radius * sOS);
+                float sheathBelowOffset = std::max(fRC * 1.5f, L.leafLength * 0.04f);
+                Vect3d stemAxis = bladeFrame.yAxis.GetNormalized();
+                Vect3d visualJunction = sheath_exit_pos - stemAxis * sheathBelowOffset;
+                Vect3d branchPt = tiltPoint(visualJunction, ct, st);
+                bladeGeom.stemCurve.push_back(branchPt);
+                for (const auto& p : bladeGeom.ctrlCenter) {
+                    bladeGeom.stemCurve.push_back(p);
+                }
+            }
+            m_leafGeoms.push_back(std::move(bladeGeom));
         }
     }
 }

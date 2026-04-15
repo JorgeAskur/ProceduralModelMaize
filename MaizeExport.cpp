@@ -128,24 +128,25 @@ bool MaizeModel::saveMTL(const char* mtlPath, const char* leafTextureFileNameOnl
 }
 
 bool MaizeModel::saveSkeletonOBJ(const char* path) const {
-    // Skeleton export writes only center splines as OBJ line
+    // Skeleton export uses stemCurve for both stem (smooth B-spline)
+    // and leaves (stem exit point + blade center, sheath skipped).
     FILE* f = openWritableFile(path);
     if (!f) return false;
 
-    std::fprintf(f, "# Plant skeleton (center splines only)\n");
+    std::fprintf(f, "# Plant skeleton (leaves connected to stem)\n");
 
     int vertexOffset = 1;
     for (const auto& geom : m_leafGeoms) {
-        if (geom.ctrlCenter.size() < 2) continue;
-        for (const auto& p : geom.ctrlCenter) {
+        if (geom.stemCurve.size() < 2) continue;
+        for (const auto& p : geom.stemCurve) {
             std::fprintf(f, "v %.9g %.9g %.9g\n", p.x(), p.y(), p.z());
         }
         std::fprintf(f, "l");
-        for (size_t i = 0; i < geom.ctrlCenter.size(); ++i) {
-            std::fprintf(f, " %d", vertexOffset + (int)i);
+        for (int i = 0; i < (int)geom.stemCurve.size(); ++i) {
+            std::fprintf(f, " %d", vertexOffset + i);
         }
         std::fprintf(f, "\n");
-        vertexOffset += (int)geom.ctrlCenter.size();
+        vertexOffset += (int)geom.stemCurve.size();
     }
 
     std::fclose(f);

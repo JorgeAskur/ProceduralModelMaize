@@ -216,7 +216,7 @@ public:
     PlantDesc generate(unsigned int seed, bool useMeansOnly = false);
 
     // Generates and exports a numbered set of plants
-    void generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath = "", bool useMeansOnly = false);
+    void generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath = "", bool useMeansOnly = false, bool exportSkeleton = false);
 
     // Persistence for the generator UI state
     bool saveConfig(const std::string& path) const;

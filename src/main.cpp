@@ -512,16 +512,17 @@ static void loadTexture(const char* path, GLuint* textureId, bool* textureOk) {
 }
 
 static void drawSkeletonViz() {
-    // Draw all stored center splines as black polylines
+    // Draw skeleton using stemCurve for both stem (smooth B-spline)
+    // and leaves (stem exit point + blade center, sheath skipped)
     if (!gShowSkeletonSpline) return;
     glDisable(GL_LIGHTING);
     glDisable(GL_DEPTH_TEST);
     glLineWidth(2.0f);
     glColor3f(0.0f, 0.0f, 0.0f);
     for (const auto& G : Maize::leafGeoms()) {
-        if (G.ctrlCenter.size() < 2) continue;
+        if (G.stemCurve.size() < 2) continue;
         glBegin(GL_LINE_STRIP);
-        for (const auto& p : G.ctrlCenter) {
+        for (const auto& p : G.stemCurve) {
             glVertex3f(p.x(), p.y(), p.z());
         }
         glEnd();
@@ -891,6 +892,8 @@ static void RenderGlobalTraitsPanel(bool& needRegen) {
     ImGui::TextWrapped("Viewport preview uses parameter means. Use Set Generation to sample full plant sets from the configured distributions.");
 }
 
+static bool gExportSkeleton = false;
+
 static void RenderSetGenerationPanel() {
     // Batch export samples a fresh plant per output file using the current
     // generator distributions and latent trait settings
@@ -902,6 +905,7 @@ static void RenderSetGenerationPanel() {
     texturePathChanged |= PathInputWithBrowseButton("Leaf Texture Path", gTexPath, sizeof(gTexPath), "Browse...", "Choose leaf texture", kImageFilesFilter, false);
     texturePathChanged |= PathInputWithBrowseButton("Stem Texture Path", gStemTexPath, sizeof(gStemTexPath), "Browse...", "Choose stem texture", kImageFilesFilter, false);
     ImGui::SliderInt("Set Count", &gBatchCount, 1, 500);
+    ImGui::Checkbox("Export Skeleton", &gExportSkeleton);
 
     if (texturePathChanged || ImGui::Button("Reload Textures")) {
         loadTexture(gTexPath, &gTextureID, &gTextureOK);
@@ -917,7 +921,7 @@ static void RenderSetGenerationPanel() {
     }
 
     if (ImGui::Button("Generate Plant Set")) {
-        gGen.generateBatch(gBatchCount, gExportBasePath, gTexPath, gStemTexPath, false);
+        gGen.generateBatch(gBatchCount, gExportBasePath, gTexPath, gStemTexPath, false, gExportSkeleton);
     }
 }
 

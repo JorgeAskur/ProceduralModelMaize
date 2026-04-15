@@ -76,6 +76,7 @@ struct LeafGeom {
     std::vector<Vect3d> ctrlCenter;         // center control spline
     std::vector<Vect3d> ctrlLeft;           // left control spline
     std::vector<Vect3d> ctrlRight;          // right control spline
+    std::vector<Vect3d> stemCurve;          // smooth sampled stem B-spline for skeleton
 };
 
 // Model object shared by the UI, exporter, and procedural generator
@@ -121,5 +122,5 @@ namespace Maize {
     bool saveSkeletonOBJ(const char* path);
     bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly);
     std::string dirFromPath(const std::string& p);
-    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath = "", const std::string& stemTexturePath = "");
+    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath = "", const std::string& stemTexturePath = "", bool exportSkeleton = false);
 }

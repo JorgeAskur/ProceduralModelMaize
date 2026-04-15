@@ -402,7 +402,7 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     return buildPlantFromTraits(computeTraits(seed, useMeansOnly));
 }
 
-void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath, bool useMeansOnly) {
+void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath, bool useMeansOnly, bool exportSkeleton) {
     if (count <= 0) return;
 
     namespace fs = std::filesystem;
@@ -441,6 +441,22 @@ void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix,
     copyTextureToOutput(leafTexPath);
     if (!stemTexPath.empty() && stemTexPath != leafTexPath) {
         copyTextureToOutput(stemTexPath);
+    }
+
+    std::string leafTexFileOnly = leafTexPath.empty() ? "" : fs::path(leafTexPath).filename().string();
+    std::string stemTexFileOnly = stemTexPath.empty() ? "" : fs::path(stemTexPath).filename().string();
+    std::string leafTexFull = leafTexFileOnly.empty() ? "" : (outputDir / leafTexFileOnly).string();
+    std::string stemTexFull = stemTexFileOnly.empty() ? "" : (outputDir / stemTexFileOnly).string();
+
+    for (int i = 0; i < count; ++i) {
+        unsigned int seed = (unsigned int)i;
+        PlantDesc plant = generate(seed, useMeansOnly);
+
+        std::ostringstream suffix;
+        suffix << "_" << std::setw(4) << std::setfill('0') << i;
+        fs::path plantPath = outputDir / (fileStem.string() + suffix.str());
+
+        Maize::GeneratePlant(plant, plantPath.string(), leafTexFull, stemTexFull, exportSkeleton);
     }
 }
 
