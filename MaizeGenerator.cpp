@@ -400,8 +400,10 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     return buildPlantFromTraits(computeTraits(seed, useMeansOnly));
 }
 
-void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath, bool useMeansOnly, bool exportSkeleton, std::atomic<int>* outProgress) {
+void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath, bool useMeansOnly, bool exportSkeleton, std::atomic<int>* outProgress, int startIndex) {
     if (count <= 0) return;
+    if (startIndex < 0) startIndex = 0;
+    const int endIndex = startIndex + count;
 
     namespace fs = std::filesystem;
 
@@ -470,7 +472,7 @@ void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix,
 
     auto workerFn = [&](int workerIndex) {
         MaizeModel localModel;
-        for (int i = workerIndex; i < count; i += workerCount) {
+        for (int i = startIndex + workerIndex; i < endIndex; i += workerCount) {
             unsigned int seed = (unsigned int)i;
             PlantDesc plant = generate(seed, useMeansOnly);
 

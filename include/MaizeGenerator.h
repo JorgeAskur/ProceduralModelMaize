@@ -218,10 +218,14 @@ public:
     // If useMeansOnly is true, all distribution sampling is collapsed to means
     PlantDesc generate(unsigned int seed, bool useMeansOnly = false);
 
-    // Generates and exports a numbered set of plants. If outProgress is
-    // non-null, it is incremented once per completed plant so a UI thread can
-    // display progress while the batch runs on a worker thread.
-    void generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath = "", bool useMeansOnly = false, bool exportSkeleton = false, std::atomic<int>* outProgress = nullptr);
+    // Generates and exports a numbered set of plants. Plants are indexed
+    // [startIndex, startIndex + count); the seed and filename suffix both use
+    // the plant index so separate batches from different configs can populate
+    // non-overlapping index ranges into the same output directory.
+    // If outProgress is non-null, it is incremented once per completed plant
+    // so a UI thread can display progress while the batch runs on a worker
+    // thread.
+    void generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath = "", bool useMeansOnly = false, bool exportSkeleton = false, std::atomic<int>* outProgress = nullptr, int startIndex = 0);
 
     // Persistence for the generator UI state
     bool saveConfig(const std::string& path) const;

@@ -63,6 +63,7 @@ static char gStemTexPath[256] = "maize_stem_texture.png";
 static char gExportBasePath[256] = "plant_export/plant";
 static char gGeneratorConfigPath[256] = "maize_generator_config.xml";
 static int gBatchCount = 25;
+static int gBatchStartIndex = 0;
 
 // Background batch-generation state. The worker thread owns the global Maize
 // model while gBatchRunning is true; the UI thread must not touch the model
@@ -918,7 +919,9 @@ static void RenderSetGenerationPanel() {
     bool texturePathChanged = false;
     texturePathChanged |= PathInputWithBrowseButton("Leaf Texture Path", gTexPath, sizeof(gTexPath), "Browse...", "Choose leaf texture", kImageFilesFilter, false);
     texturePathChanged |= PathInputWithBrowseButton("Stem Texture Path", gStemTexPath, sizeof(gStemTexPath), "Browse...", "Choose stem texture", kImageFilesFilter, false);
-    ImGui::SliderInt("Set Count", &gBatchCount, 1, 500);
+    ImGui::SliderInt("Set Count", &gBatchCount, 1, 32000);
+    ImGui::InputInt("Start Index", &gBatchStartIndex);
+    if (gBatchStartIndex < 0) gBatchStartIndex = 0;
     ImGui::Checkbox("Export Skeleton", &gExportSkeleton);
 
     // Global identity parameters applied to every plant in this set
@@ -965,6 +968,7 @@ static void RenderSetGenerationPanel() {
             // Snapshot UI state and generator settings so the worker sees a
             // stable view even if the user tweaks things mid-run
             int count = gBatchCount;
+            int startIndex = gBatchStartIndex;
             std::string basePath = gExportBasePath;
             std::string leafTex = gTexPath;
             std::string stemTex = gStemTexPath;
@@ -975,8 +979,8 @@ static void RenderSetGenerationPanel() {
             gBatchProgress.store(0, std::memory_order_relaxed);
             gBatchRunning.store(true, std::memory_order_release);
 
-            gBatchThread = std::thread([genCopy, count, basePath, leafTex, stemTex, exportSkel]() mutable {
-                genCopy.generateBatch(count, basePath, leafTex, stemTex, false, exportSkel, &gBatchProgress);
+            gBatchThread = std::thread([genCopy, count, startIndex, basePath, leafTex, stemTex, exportSkel]() mutable {
+                genCopy.generateBatch(count, basePath, leafTex, stemTex, false, exportSkel, &gBatchProgress, startIndex);
                 gBatchRunning.store(false, std::memory_order_release);
             });
         }
