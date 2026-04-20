@@ -73,7 +73,7 @@ namespace {
     }
 }
 
-bool MaizeModel::savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath) {
+bool MaizeModel::savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath, bool writeMTL) {
     if (!path) return false;
 
     const std::string objPath(path);
@@ -88,6 +88,12 @@ bool MaizeModel::savePlantOBJ(const char* path, const char* leafTextureFullPath,
     writeObjVertexStreams(f, m_leafGeoms);
     writeObjFaces(f, m_leafGeoms);
     std::fclose(f);
+
+    if (!writeMTL) {
+        // MTL is shared across all plants in a batch. The batch driver writes it
+        // once upfront so concurrent workers don't race on maize.mtl.
+        return true;
+    }
 
     const char* leafTexName = nullptr;
     const char* stemTexName = nullptr;

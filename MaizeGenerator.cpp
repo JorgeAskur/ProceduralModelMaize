@@ -7,6 +7,8 @@
 #include <iostream>
 #include <limits>
 #include <sstream>
+#include <thread>
+#include <vector>
 #include "tinyxml2.h"
 
 namespace {
@@ -279,19 +281,17 @@ void MaizeGenerator::resetTraitLoadings() {
 MaizeGenerator::TraitComputation MaizeGenerator::computeTraits(unsigned int seed, bool useMeansOnly) const {
     std::mt19937 gen(seed);
     TraitComputation traits;
-    traits.species = "Maize_Procedural";
+    traits.species = speciesName.empty() ? std::string("Maize_Procedural") : speciesName;
+    traits.phenotypeId = phenotypeId;
     traits.seed = seed;
     traits.useMeansOnly = useMeansOnly;
     traits.tillerType = "main";
     traits.tillerAlphaDeg = 0.0f;
-    traits.tillerRandomSeed = seed;
 
     traits.latent = sampleLatentTraits(gen, useMeansOnly);
     traits.correlationStrength = std::clamp(traitCorrelationStrength, 0.0f, 1.0f);
     traits.stemRadius = std::max(0.005f, sampleCorrelatedValue(stemRadius, getTraitLoadings(CorrelatedParameter_StemRadius), traits.latent, traits.correlationStrength, gen, useMeansOnly));
     traits.stemShrink = std::max(stemShrinkMin, traits.stemRadius * stemShrinkFactor);
-    traits.tillerAzimuthDeg = tillerAzimuthDeg;
-    traits.tillerAzimuthNoise = tillerAzimuthNoise;
 
     float nLeavesFloat = sampleCorrelatedValue(numLeaves, getTraitLoadings(CorrelatedParameter_NumLeaves), traits.latent, traits.correlationStrength, gen, useMeansOnly);
     int nLeaves = (std::max)(3, (int)std::round(nLeavesFloat));
@@ -310,7 +310,7 @@ MaizeGenerator::TraitComputation MaizeGenerator::computeTraits(unsigned int seed
         leaf.id = i;
         leaf.canopyT = t;
         leaf.distance = traits.totalHeight * (internodeWeights.values[i] / internodeWeights.sum);
-        leaf.azimuthDeg = traits.tillerAzimuthDeg * (float)i + hash_to_float_minus1_1(seed + (unsigned int)i) * traits.tillerAzimuthNoise;
+        leaf.azimuthDeg = Maize::normalizeAzimuthDeg(tillerAzimuthDeg * (float)i + hash_to_float_minus1_1(seed + (unsigned int)i) * tillerAzimuthNoise);
 
         float lenBase = jitterLeafTrait(gen, traits.plantLevel.leafLengthBase, leafLengthBase, useMeansOnly, leafJitterScale);
         leaf.leafLength = (std::max)(0.1f, lenBase * leafLengthScaleCurve.get(t));
@@ -353,15 +353,13 @@ MaizeGenerator::TraitComputation MaizeGenerator::computeTraits(unsigned int seed
 PlantDesc MaizeGenerator::buildPlantFromTraits(const TraitComputation& traits) const {
     PlantDesc plant;
     plant.species = traits.species;
+    plant.phenotypeId = traits.phenotypeId;
 
     TillerDesc mainTiller;
     mainTiller.type = traits.tillerType;
     mainTiller.radius = traits.stemRadius;
     mainTiller.alphaDeg = traits.tillerAlphaDeg;
     mainTiller.stemShrink = traits.stemShrink;
-    mainTiller.azimuthDeg = traits.tillerAzimuthDeg;
-    mainTiller.azimuthNoise = traits.tillerAzimuthNoise;
-    mainTiller.randomSeed = traits.tillerRandomSeed;
 
     for (size_t i = 0; i < traits.leaves.size(); ++i) {
         const ComputedLeafTraits& computed = traits.leaves[i];
@@ -402,7 +400,7 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     return buildPlantFromTraits(computeTraits(seed, useMeansOnly));
 }
 
-void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath, bool useMeansOnly, bool exportSkeleton) {
+void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath, bool useMeansOnly, bool exportSkeleton, std::atomic<int>* outProgress) {
     if (count <= 0) return;
 
     namespace fs = std::filesystem;
@@ -448,16 +446,55 @@ void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix,
     std::string leafTexFull = leafTexFileOnly.empty() ? "" : (outputDir / leafTexFileOnly).string();
     std::string stemTexFull = stemTexFileOnly.empty() ? "" : (outputDir / stemTexFileOnly).string();
 
-    for (int i = 0; i < count; ++i) {
-        unsigned int seed = (unsigned int)i;
-        PlantDesc plant = generate(seed, useMeansOnly);
-
-        std::ostringstream suffix;
-        suffix << "_" << std::setw(4) << std::setfill('0') << i;
-        fs::path plantPath = outputDir / (fileStem.string() + suffix.str());
-
-        Maize::GeneratePlant(plant, plantPath.string(), leafTexFull, stemTexFull, exportSkeleton);
+    // Write the shared maize.mtl once upfront. All OBJs in the batch reference
+    // the same mtllib, and concurrent writes from worker threads would race on
+    // the same file handle, so this must be done serially before fanning out.
+    {
+        const std::string mtlFileName = "maize.mtl";
+        fs::path mtlPath = outputDir.empty() ? fs::path(mtlFileName) : (outputDir / mtlFileName);
+        const char* leafTexNameForMtl = leafTexFileOnly.empty() ? nullptr : leafTexFileOnly.c_str();
+        const char* stemTexNameForMtl = stemTexFileOnly.empty()
+            ? leafTexNameForMtl
+            : stemTexFileOnly.c_str();
+        MaizeModel mtlWriter;
+        mtlWriter.saveMTL(mtlPath.string().c_str(), leafTexNameForMtl, stemTexNameForMtl);
     }
+
+    // Decide worker count. Each worker owns a private MaizeModel and a private
+    // slice of plant indices, so there is no shared mutable state across
+    // threads beyond the atomic progress counter.
+    const unsigned hw = std::thread::hardware_concurrency();
+    int workerCount = (int)((hw == 0) ? 2u : hw);
+    if (workerCount > count) workerCount = count;
+    if (workerCount < 1) workerCount = 1;
+
+    auto workerFn = [&](int workerIndex) {
+        MaizeModel localModel;
+        for (int i = workerIndex; i < count; i += workerCount) {
+            unsigned int seed = (unsigned int)i;
+            PlantDesc plant = generate(seed, useMeansOnly);
+
+            std::ostringstream suffix;
+            suffix << "_" << std::setw(4) << std::setfill('0') << i;
+            fs::path plantPath = outputDir / (fileStem.string() + suffix.str());
+
+            Maize::GeneratePlantWith(localModel, plant, plantPath.string(), leafTexFull, stemTexFull, exportSkeleton, /*writeMTL=*/false);
+
+            if (outProgress) outProgress->fetch_add(1, std::memory_order_relaxed);
+        }
+    };
+
+    if (workerCount == 1) {
+        workerFn(0);
+        return;
+    }
+
+    std::vector<std::thread> workers;
+    workers.reserve(workerCount);
+    for (int w = 0; w < workerCount; ++w) {
+        workers.emplace_back(workerFn, w);
+    }
+    for (auto& t : workers) t.join();
 }
 
 bool MaizeGenerator::saveConfig(const std::string& path) const {
@@ -468,6 +505,8 @@ bool MaizeGenerator::saveConfig(const std::string& path) const {
 
     XMLElement* root = doc.NewElement("MaizeGeneratorConfig");
     root->SetAttribute("version", 4);
+    root->SetAttribute("speciesName", speciesName.c_str());
+    root->SetAttribute("phenotypeId", phenotypeId.c_str());
     doc.InsertEndChild(root);
 
     auto saveDist = [&](const char* name, const Dist& d) {
@@ -537,6 +576,9 @@ bool MaizeGenerator::loadConfig(const std::string& path) {
 
     const XMLElement* root = doc.FirstChildElement("MaizeGeneratorConfig");
     if (!root) return false;
+
+    if (const char* s = root->Attribute("speciesName")) speciesName = s;
+    if (const char* p = root->Attribute("phenotypeId")) phenotypeId = p;
 
     auto loadDist = [&](const char* name, Dist& d) {
         if (const XMLElement* elem = root->FirstChildElement(name)) {

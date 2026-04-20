@@ -14,6 +14,8 @@
 #include <algorithm>
 #include <ctime>
 #include <cstdlib>
+#include <thread>
+#include <atomic>
 #include <math/vect3d.h>
 
 #include "imgui.h"
@@ -61,6 +63,15 @@ static char gStemTexPath[256] = "maize_stem_texture.png";
 static char gExportBasePath[256] = "plant_export/plant";
 static char gGeneratorConfigPath[256] = "maize_generator_config.xml";
 static int gBatchCount = 25;
+
+// Background batch-generation state. The worker thread owns the global Maize
+// model while gBatchRunning is true; the UI thread must not touch the model
+// (render it, rebuild it, save it) during that window.
+static std::thread gBatchThread;
+static std::atomic<bool> gBatchRunning{ false };
+static std::atomic<int>  gBatchProgress{ 0 };
+static int               gBatchTotalSnapshot = 0;
+
 static char gXmlPath[256] = "plant_spline.xml";
 static char gSkeletonXmlPath[256] = "plant_skeleton.xml";
 static char gObjPath[256] = "plant_spline.obj";
@@ -659,12 +670,15 @@ static void drawGridAndAxes() {
 }
 
 static void RebuildGeometryAndRenderer() {
+    // Never mutate the global Maize model while the batch worker owns it
+    if (gBatchRunning.load(std::memory_order_acquire)) return;
     Maize::rebuildGeometry();
     InvalidatePlantRendererMeshes();
 }
 
 static void RebuildFromGenerator(bool useMeansOnly = true, unsigned int seed = 1337) {
     // Regenerates the editable PlantDesc from the procedural generator and then rebuilds meshes from that fresh description
+    if (gBatchRunning.load(std::memory_order_acquire)) return;
     gSkeletonOnlyView = false;
     Maize::plant() = gGen.generate(seed, useMeansOnly);
     RebuildGeometryAndRenderer();
@@ -736,12 +750,6 @@ static bool CopyBladeCtrlToLeafOverrides(PlantDesc& plant, int tillerIndex, int 
     for (const auto& p : bladeGeom->ctrlRight) leaf.ctrlRightOverride.push_back(toLocal(p));
 
     return true;
-}
-
-static void ApplyTillerAzimuthPattern(TillerDesc& tiller) {
-    for (int i = 0; i < (int)tiller.leaves.size(); ++i) {
-        tiller.leaves[i].azimuthDeg = Maize::computeLeafAzimuthDeg(tiller, i);
-    }
 }
 
 static bool DistUI(const char* label, Dist& d, float v_min, float v_max) {
@@ -894,6 +902,12 @@ static void RenderGlobalTraitsPanel(bool& needRegen) {
 
 static bool gExportSkeleton = false;
 
+static void JoinBatchThreadIfFinished() {
+    if (!gBatchRunning.load(std::memory_order_acquire) && gBatchThread.joinable()) {
+        gBatchThread.join();
+    }
+}
+
 static void RenderSetGenerationPanel() {
     // Batch export samples a fresh plant per output file using the current
     // generator distributions and latent trait settings
@@ -906,6 +920,23 @@ static void RenderSetGenerationPanel() {
     texturePathChanged |= PathInputWithBrowseButton("Stem Texture Path", gStemTexPath, sizeof(gStemTexPath), "Browse...", "Choose stem texture", kImageFilesFilter, false);
     ImGui::SliderInt("Set Count", &gBatchCount, 1, 500);
     ImGui::Checkbox("Export Skeleton", &gExportSkeleton);
+
+    // Global identity parameters applied to every plant in this set
+    {
+        char speciesBuf[128];
+        memset(speciesBuf, 0, sizeof(speciesBuf));
+        memcpy(speciesBuf, gGen.speciesName.c_str(), (std::min)(gGen.speciesName.size(), sizeof(speciesBuf) - 1));
+        if (ImGui::InputText("Species Name", speciesBuf, sizeof(speciesBuf))) {
+            gGen.speciesName = speciesBuf;
+        }
+
+        char phenoBuf[128];
+        memset(phenoBuf, 0, sizeof(phenoBuf));
+        memcpy(phenoBuf, gGen.phenotypeId.c_str(), (std::min)(gGen.phenotypeId.size(), sizeof(phenoBuf) - 1));
+        if (ImGui::InputText("Global Phenotype ID", phenoBuf, sizeof(phenoBuf))) {
+            gGen.phenotypeId = phenoBuf;
+        }
+    }
 
     if (texturePathChanged || ImGui::Button("Reload Textures")) {
         loadTexture(gTexPath, &gTextureID, &gTextureOK);
@@ -920,8 +951,35 @@ static void RenderSetGenerationPanel() {
         RebuildFromGenerator(false, (unsigned int)rand());
     }
 
-    if (ImGui::Button("Generate Plant Set")) {
-        gGen.generateBatch(gBatchCount, gExportBasePath, gTexPath, gStemTexPath, false, gExportSkeleton);
+    JoinBatchThreadIfFinished();
+
+    if (gBatchRunning.load(std::memory_order_acquire)) {
+        int done = gBatchProgress.load(std::memory_order_relaxed);
+        ImGui::Text("Generating: %d / %d", done, gBatchTotalSnapshot);
+        float frac = gBatchTotalSnapshot > 0 ? (float)done / (float)gBatchTotalSnapshot : 0.0f;
+        ImGui::ProgressBar(frac, ImVec2(-1.0f, 0.0f));
+        ImGui::TextWrapped("Viewport preview is paused while the batch runs.");
+    }
+    else {
+        if (ImGui::Button("Generate Plant Set")) {
+            // Snapshot UI state and generator settings so the worker sees a
+            // stable view even if the user tweaks things mid-run
+            int count = gBatchCount;
+            std::string basePath = gExportBasePath;
+            std::string leafTex = gTexPath;
+            std::string stemTex = gStemTexPath;
+            bool exportSkel = gExportSkeleton;
+            MaizeGenerator genCopy = gGen;
+
+            gBatchTotalSnapshot = count;
+            gBatchProgress.store(0, std::memory_order_relaxed);
+            gBatchRunning.store(true, std::memory_order_release);
+
+            gBatchThread = std::thread([genCopy, count, basePath, leafTex, stemTex, exportSkel]() mutable {
+                genCopy.generateBatch(count, basePath, leafTex, stemTex, false, exportSkel, &gBatchProgress);
+                gBatchRunning.store(false, std::memory_order_release);
+            });
+        }
     }
 }
 
@@ -977,17 +1035,27 @@ static void RenderLeafTraitsPanel(bool& needUpdate) {
     auto& tiller = plant.tillers[gSelTiller];
 
     ImGui::Separator();
+    ImGui::Text("Plant");
+    {
+        char speciesBuf[128];
+        memset(speciesBuf, 0, sizeof(speciesBuf));
+        memcpy(speciesBuf, plant.species.c_str(), (std::min)(plant.species.size(), sizeof(speciesBuf) - 1));
+        if (ImGui::InputText("Species", speciesBuf, sizeof(speciesBuf))) {
+            plant.species = speciesBuf;
+        }
+
+        char phenoBuf[128];
+        memset(phenoBuf, 0, sizeof(phenoBuf));
+        memcpy(phenoBuf, plant.phenotypeId.c_str(), (std::min)(plant.phenotypeId.size(), sizeof(phenoBuf) - 1));
+        if (ImGui::InputText("Phenotype ID", phenoBuf, sizeof(phenoBuf))) {
+            plant.phenotypeId = phenoBuf;
+        }
+    }
+
+    ImGui::Separator();
     ImGui::Text("Tiller");
     needUpdate |= ImGui::DragFloat("Radius", &tiller.radius, 0.001f);
     needUpdate |= ImGui::DragFloat("Stem Shrink", &tiller.stemShrink, 0.0002f);
-    bool azimuthPatternChanged = false;
-    azimuthPatternChanged |= ImGui::DragFloat("Azimuth Base", &tiller.azimuthDeg, 1.0f);
-    azimuthPatternChanged |= ImGui::DragFloat("Azimuth Noise", &tiller.azimuthNoise, 0.5f);
-    if (azimuthPatternChanged) {
-        ApplyTillerAzimuthPattern(tiller);
-        needUpdate = true;
-    }
-    ImGui::TextWrapped("Tiller azimuth settings rewrite the current per-leaf azimuth values. Use the leaf slider below for individual edits.");
 
     ImGui::Separator();
     bool useStemOverrides = tiller.useStemCtrlOverrides;
@@ -1031,7 +1099,10 @@ static void RenderLeafTraitsPanel(bool& needUpdate) {
     needUpdate |= ImGui::DragFloat("Distance", &leaf.distance, 0.01f);
     needUpdate |= ImGui::DragFloat("Length", &leaf.leafLength, 0.01f);
     needUpdate |= ImGui::DragFloat("Width", &leaf.leafWidth, 0.005f);
-    needUpdate |= ImGui::SliderFloat("Azimuth", &leaf.azimuthDeg, -360.f, 360.f);
+    if (ImGui::SliderFloat("Azimuth", &leaf.azimuthDeg, 0.f, 360.f)) {
+        leaf.azimuthDeg = Maize::normalizeAzimuthDeg(leaf.azimuthDeg);
+        needUpdate = true;
+    }
     needUpdate |= ImGui::SliderFloat("Angle", &leaf.leafAngle, -90.f, 90.f);
     needUpdate |= ImGui::SliderFloat("Leaf Curl", &leaf.leafCurl, -1.0f, 1.0f);
     needUpdate |= ImGui::SliderFloat("Droopiness", &leaf.droopiness, -80.f, 80.f);
@@ -1229,12 +1300,16 @@ static void display() {
     gluLookAt(eye.x(), eye.y(), eye.z(), gCamTarget.x(), gCamTarget.y(), gCamTarget.z(), 0, 1, 0);
 
     drawGridAndAxes();
-    if (!gSkeletonOnlyView) {
-        drawPlant();
-        drawNormals();
-        drawCtrlViz();
+    // While a batch is running, the worker thread is mutating the global
+    // Maize model. Skip all draws that read from it to avoid data races.
+    if (!gBatchRunning.load(std::memory_order_acquire)) {
+        if (!gSkeletonOnlyView) {
+            drawPlant();
+            drawNormals();
+            drawCtrlViz();
+        }
+        drawSkeletonViz();
     }
-    drawSkeletonViz();
 
     ImGui::Begin("Maize Generator");
 

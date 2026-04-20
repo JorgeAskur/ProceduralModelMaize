@@ -51,26 +51,23 @@ namespace Descriptor {
     static void buildLeafSidesFromCenter(LeafDesc& L);
 
     // Full plant XML stores both procedural parameters and any explicit editor control-point overrides
-    bool savePlantXML(const char* path) {
+    // Thread-safe: works on the caller-supplied PlantDesc instead of the global singleton
+    bool savePlantXML(const PlantDesc& plant, const char* path) {
         XMLDocument doc;
         doc.InsertFirstChild(doc.NewDeclaration());
 
         XMLElement* root = doc.NewElement("plant");
         doc.InsertEndChild(root);
 
-        XMLElement* species = doc.NewElement("species");
-        species->SetAttribute("name", Maize::plant().species.c_str());
-        root->InsertEndChild(species);
+        root->SetAttribute("species", plant.species.c_str());
+        root->SetAttribute("phenotypeId", plant.phenotypeId.c_str());
 
-        for (size_t ti = 0; ti < Maize::plant().tillers.size(); ++ti) {
-            const auto& td = Maize::plant().tillers[ti];
+        for (size_t ti = 0; ti < plant.tillers.size(); ++ti) {
+            const auto& td = plant.tillers[ti];
             XMLElement* tiller_elem = doc.NewElement("Tiller");
             tiller_elem->SetAttribute("type", td.type.c_str());
             tiller_elem->SetAttribute("radius", td.radius);
             tiller_elem->SetAttribute("alpha", td.alphaDeg);
-            tiller_elem->SetAttribute("beta", td.azimuthDeg);
-            tiller_elem->SetAttribute("azimuthNoise", td.azimuthNoise);
-            tiller_elem->SetAttribute("randomSeed", td.randomSeed);
             tiller_elem->SetAttribute("stemShrink", td.stemShrink);
             if (td.useStemCtrlOverrides && !td.stemCtrlOverride.empty()) {
                 tiller_elem->SetAttribute("useStemCtrlOverrides", 1);
@@ -89,7 +86,7 @@ namespace Descriptor {
                 // Save new high-level parameters
                 leaf_elem->SetAttribute("leafLength", L.leafLength);
                 leaf_elem->SetAttribute("leafWidth", L.leafWidth);
-                leaf_elem->SetAttribute("leafAzimuthDeg", L.azimuthDeg);
+                leaf_elem->SetAttribute("leafAzimuthDeg", Maize::normalizeAzimuthDeg(L.azimuthDeg));
                 leaf_elem->SetAttribute("leafAngle", L.leafAngle);
                 leaf_elem->SetAttribute("droopiness", L.droopiness);
                 leaf_elem->SetAttribute("stemInclinationDeg", L.stemInclinationDeg);
@@ -126,9 +123,13 @@ namespace Descriptor {
                 leaves_elem->InsertEndChild(leaf_elem);
             }
             tiller_elem->InsertEndChild(leaves_elem);
-            species->InsertEndChild(tiller_elem);
+            root->InsertEndChild(tiller_elem);
         }
         return (doc.SaveFile(path) == XML_SUCCESS);
+    }
+
+    bool savePlantXML(const char* path) {
+        return savePlantXML(Maize::plant(), path);
     }
 
     // Full plant XML load path
@@ -138,18 +139,36 @@ namespace Descriptor {
 
         Maize::plant() = PlantDesc{};
 
-        const XMLElement* species = doc.FirstChildElement("plant")->FirstChildElement("species");
-        if (!species) return false;
-        Maize::plant().species = species->Attribute("name");
+        const XMLElement* plantElem = doc.FirstChildElement("plant");
+        if (!plantElem) return false;
 
-        for (const XMLElement* t = species->FirstChildElement("Tiller"); t; t = t->NextSiblingElement("Tiller")) {
+        // Species name: attribute on <plant>, fall back to legacy <species name="...">
+        if (plantElem->Attribute("species")) {
+            Maize::plant().species = plantElem->Attribute("species");
+        }
+        if (plantElem->Attribute("phenotypeId")) {
+            Maize::plant().phenotypeId = plantElem->Attribute("phenotypeId");
+        }
+
+        // Tillers live directly under <plant>. Legacy files wrapped them in <species>.
+        const XMLElement* tillerParent = plantElem;
+        if (const XMLElement* legacySpecies = plantElem->FirstChildElement("species")) {
+            if (Maize::plant().species.empty() && legacySpecies->Attribute("name")) {
+                Maize::plant().species = legacySpecies->Attribute("name");
+            }
+            if (Maize::plant().phenotypeId.empty() && legacySpecies->Attribute("phenotypeId")) {
+                Maize::plant().phenotypeId = legacySpecies->Attribute("phenotypeId");
+            }
+            if (legacySpecies->FirstChildElement("Tiller")) {
+                tillerParent = legacySpecies;
+            }
+        }
+
+        for (const XMLElement* t = tillerParent->FirstChildElement("Tiller"); t; t = t->NextSiblingElement("Tiller")) {
             TillerDesc td;
             td.type = t->Attribute("type");
             t->QueryFloatAttribute("radius", &td.radius);
             t->QueryFloatAttribute("alpha", &td.alphaDeg);
-            t->QueryFloatAttribute("beta", &td.azimuthDeg);
-            t->QueryFloatAttribute("azimuthNoise", &td.azimuthNoise);
-            t->QueryUnsignedAttribute("randomSeed", &td.randomSeed);
             t->QueryFloatAttribute("stemShrink", &td.stemShrink);
             int useStemOverrides = 0;
             t->QueryIntAttribute("useStemCtrlOverrides", &useStemOverrides);
@@ -168,7 +187,7 @@ namespace Descriptor {
                     // some attributes still load into a usable plant
                     L.leafLength = 0.7f;
                     L.leafWidth = 0.08f;
-                    L.azimuthDeg = Maize::computeLeafAzimuthDeg(td, (int)td.leaves.size());
+                    L.azimuthDeg = 0.0f;
                     L.leafAngle = 45.0f;
                     L.droopiness = 0.5f;
                     L.stemInclinationDeg = 0.0f;
@@ -195,6 +214,7 @@ namespace Descriptor {
                     lf->QueryFloatAttribute("leafLength", &L.leafLength);
                     lf->QueryFloatAttribute("leafWidth", &L.leafWidth);
                     lf->QueryFloatAttribute("leafAzimuthDeg", &L.azimuthDeg);
+                    L.azimuthDeg = Maize::normalizeAzimuthDeg(L.azimuthDeg);
                     lf->QueryFloatAttribute("leafAngle", &L.leafAngle);
                     lf->QueryFloatAttribute("droopiness", &L.droopiness);
                     lf->QueryFloatAttribute("stemInclinationDeg", &L.stemInclinationDeg);
@@ -271,27 +291,24 @@ namespace Descriptor {
         L.ctrlRightOverride.back() = L.ctrlCenterOverride.back();
     }
 
-    bool saveSkeletonXML(const char* path) {
+    // Thread-safe: works on the caller-supplied PlantDesc instead of the global singleton
+    bool saveSkeletonXML(const PlantDesc& plant, const char* path) {
         // Skeleton XML is intentionally lighter than full plant XML, it records
         // just the stem center spline and the leaf center splines
         XMLDocument doc;
         doc.InsertFirstChild(doc.NewDeclaration());
 
         XMLElement* root = doc.NewElement("plantSkeleton");
+        root->SetAttribute("species", plant.species.c_str());
+        root->SetAttribute("phenotypeId", plant.phenotypeId.c_str());
         doc.InsertEndChild(root);
 
-        XMLElement* species = doc.NewElement("species");
-        species->SetAttribute("name", Maize::plant().species.c_str());
-        root->InsertEndChild(species);
-
-        for (size_t ti = 0; ti < Maize::plant().tillers.size(); ++ti) {
-            const auto& td = Maize::plant().tillers[ti];
+        for (size_t ti = 0; ti < plant.tillers.size(); ++ti) {
+            const auto& td = plant.tillers[ti];
             XMLElement* tiller_elem = doc.NewElement("Tiller");
             tiller_elem->SetAttribute("type", td.type.c_str());
             tiller_elem->SetAttribute("radius", td.radius);
             tiller_elem->SetAttribute("alpha", td.alphaDeg);
-            tiller_elem->SetAttribute("beta", td.azimuthDeg);
-            tiller_elem->SetAttribute("randomSeed", td.randomSeed);
             tiller_elem->SetAttribute("stemShrink", td.stemShrink);
 
             // Skeleton export always emits an explicit stem spline, even if the
@@ -323,7 +340,7 @@ namespace Descriptor {
                 const auto& L = td.leaves[li];
                 XMLElement* leaf_elem = doc.NewElement("leaf");
                 leaf_elem->SetAttribute("id", L.id);
-                leaf_elem->SetAttribute("leafAzimuthDeg", L.azimuthDeg);
+                leaf_elem->SetAttribute("leafAzimuthDeg", Maize::normalizeAzimuthDeg(L.azimuthDeg));
 
                 std::vector<Vect3d> center;
                 if (L.useCtrlOverrides && !L.ctrlCenterOverride.empty()) {
@@ -342,10 +359,14 @@ namespace Descriptor {
             }
 
             tiller_elem->InsertEndChild(leaves_elem);
-            species->InsertEndChild(tiller_elem);
+            root->InsertEndChild(tiller_elem);
         }
 
         return (doc.SaveFile(path) == XML_SUCCESS);
+    }
+
+    bool saveSkeletonXML(const char* path) {
+        return saveSkeletonXML(Maize::plant(), path);
     }
 
     bool loadSkeletonXML(const std::string& path) {
@@ -359,17 +380,36 @@ namespace Descriptor {
         if (!root) root = doc.FirstChildElement("plant");
         if (!root) return false;
 
-        const XMLElement* species = root->FirstChildElement("species");
-        if (!species) return false;
-        Maize::plant().species = species->Attribute("name") ? species->Attribute("name") : "Maize_Procedural";
+        // Species / phenotype attributes live on the root; fall back to legacy <species>
+        if (root->Attribute("species")) {
+            Maize::plant().species = root->Attribute("species");
+        }
+        if (root->Attribute("phenotypeId")) {
+            Maize::plant().phenotypeId = root->Attribute("phenotypeId");
+        }
 
-        for (const XMLElement* t = species->FirstChildElement("Tiller"); t; t = t->NextSiblingElement("Tiller")) {
+        const XMLElement* tillerParent = root;
+        if (const XMLElement* legacySpecies = root->FirstChildElement("species")) {
+            if (Maize::plant().species.empty() && legacySpecies->Attribute("name")) {
+                Maize::plant().species = legacySpecies->Attribute("name");
+            }
+            if (Maize::plant().phenotypeId.empty() && legacySpecies->Attribute("phenotypeId")) {
+                Maize::plant().phenotypeId = legacySpecies->Attribute("phenotypeId");
+            }
+            if (legacySpecies->FirstChildElement("Tiller")) {
+                tillerParent = legacySpecies;
+            }
+        }
+
+        if (Maize::plant().species.empty()) {
+            Maize::plant().species = "Maize_Procedural";
+        }
+
+        for (const XMLElement* t = tillerParent->FirstChildElement("Tiller"); t; t = t->NextSiblingElement("Tiller")) {
             TillerDesc td;
             td.type = t->Attribute("type") ? t->Attribute("type") : "main";
             t->QueryFloatAttribute("radius", &td.radius);
             t->QueryFloatAttribute("alpha", &td.alphaDeg);
-            t->QueryFloatAttribute("beta", &td.azimuthDeg);
-            t->QueryUnsignedAttribute("randomSeed", &td.randomSeed);
             t->QueryFloatAttribute("stemShrink", &td.stemShrink);
 
             int useStemOverrides = 0;
@@ -390,8 +430,9 @@ namespace Descriptor {
                 for (const XMLElement* lf = leaves->FirstChildElement("leaf"); lf; lf = lf->NextSiblingElement("leaf")) {
                     LeafDesc L;
                     lf->QueryIntAttribute("id", &L.id);
-                    L.azimuthDeg = Maize::computeLeafAzimuthDeg(td, (int)td.leaves.size());
+                    L.azimuthDeg = 0.0f;
                     lf->QueryFloatAttribute("leafAzimuthDeg", &L.azimuthDeg);
+                    L.azimuthDeg = Maize::normalizeAzimuthDeg(L.azimuthDeg);
 
                     loadSplineFromAttributes(lf, "ctrlCenter", L.ctrlCenterOverride);
                     if (!L.ctrlCenterOverride.empty()) {

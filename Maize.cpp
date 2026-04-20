@@ -678,10 +678,10 @@ namespace Maize {
         finalizeLeafSplineTip(outCenter, outLeft, outRight);
     }
 
-    float computeLeafAzimuthDeg(const TillerDesc& tiller, int leafIndex) {
-        unsigned int leafSeed = tiller.randomSeed + (unsigned int)(std::max)(0, leafIndex);
-        float noiseVal = hash_to_float_minus1_1(leafSeed);
-        return tiller.azimuthDeg * (float)leafIndex + (noiseVal * tiller.azimuthNoise);
+    float normalizeAzimuthDeg(float deg) {
+        float result = std::fmod(deg, 360.0f);
+        if (result < 0.0f) result += 360.0f;
+        return result;
     }
 
     std::string dirFromPath(const std::string& p) {
@@ -701,6 +701,26 @@ namespace Maize {
             std::string skelXmlPath = baseFileName + "_skeleton.xml";
             Maize::saveSkeletonOBJ(skelObjPath.c_str());
             Descriptor::saveSkeletonXML(skelXmlPath.c_str());
+        }
+    }
+
+    void GeneratePlantWith(MaizeModel& model, const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath, const std::string& stemTexturePath, bool exportSkeleton, bool writeMTL) {
+        // Thread-safe variant: mutates only the caller-supplied MaizeModel
+        // and serializes the PlantDesc directly, so multiple workers can run
+        // concurrently without touching the Maize singleton or racing on shared
+        // geometry/plant state. MTL is shared across the batch, so by default
+        // workers do not emit it (writeMTL = false).
+        model.plant() = plantDesc;
+        model.rebuildGeometry();
+        std::string xmlPath = baseFileName + ".xml";
+        std::string objPath = baseFileName + ".obj";
+        Descriptor::savePlantXML(plantDesc, xmlPath.c_str());
+        model.savePlantOBJ(objPath.c_str(), leafTexturePath.c_str(), stemTexturePath.empty() ? nullptr : stemTexturePath.c_str(), writeMTL);
+        if (exportSkeleton) {
+            std::string skelObjPath = baseFileName + "_skeleton.obj";
+            std::string skelXmlPath = baseFileName + "_skeleton.xml";
+            model.saveSkeletonOBJ(skelObjPath.c_str());
+            Descriptor::saveSkeletonXML(plantDesc, skelXmlPath.c_str());
         }
     }
 }

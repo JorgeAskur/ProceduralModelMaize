@@ -1,5 +1,6 @@
 #pragma once
 #include <array>
+#include <atomic>
 #include <vector>
 #include <random>
 #include <string>
@@ -113,6 +114,7 @@ public:
     // Snapshot of the full trait computation for one plant draw
     struct TraitComputation {
         std::string species = "Maize_Procedural";
+        std::string phenotypeId;
         unsigned int seed = 0;
         bool useMeansOnly = false;
         float correlationStrength = 0.0f;
@@ -121,9 +123,6 @@ public:
         float stemRadius = 0.0f;
         float totalHeight = 0.0f;
         float stemShrink = 0.0f;
-        float tillerAzimuthDeg = 0.0f;
-        float tillerAzimuthNoise = 0.0f;
-        unsigned int tillerRandomSeed = 0;
         LatentTraits latent;
         PlantLevelTraits plantLevel;
         std::vector<ComputedLeafTraits> leaves;
@@ -148,6 +147,10 @@ public:
     };
 
     MaizeGenerator();
+
+    // Global identity parameters applied to every generated plant
+    std::string speciesName = "Maize_Procedural";
+    std::string phenotypeId;
 
     // Whole-plant / tiller distributions
     Dist height = { 1.2f, 0.2f };
@@ -215,8 +218,10 @@ public:
     // If useMeansOnly is true, all distribution sampling is collapsed to means
     PlantDesc generate(unsigned int seed, bool useMeansOnly = false);
 
-    // Generates and exports a numbered set of plants
-    void generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath = "", bool useMeansOnly = false, bool exportSkeleton = false);
+    // Generates and exports a numbered set of plants. If outProgress is
+    // non-null, it is incremented once per completed plant so a UI thread can
+    // display progress while the batch runs on a worker thread.
+    void generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath = "", bool useMeansOnly = false, bool exportSkeleton = false, std::atomic<int>* outProgress = nullptr);
 
     // Persistence for the generator UI state
     bool saveConfig(const std::string& path) const;

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<MaizeGeneratorConfig version="4">
+<MaizeGeneratorConfig version="4" speciesName="Maize" phenotypeId="BTx99">
     <height mean="0.83200002" stdDev="0.104"/>
     <stemRadius mean="0.012" stdDev="0.0020000001"/>
     <numLeaves mean="12.352" stdDev="2.5669999"/>

@@ -50,9 +50,6 @@ struct TillerDesc {
     float radius = 0.02f;                    // stem radius
     float alphaDeg = 0.f;                    // tiller tilt
     float stemShrink = 0.001f;               // radius taper from base to top
-    float azimuthDeg = 180.f;                // default phyllotaxy step used to seed per-leaf azimuths
-    float azimuthNoise = 45.f;               // default azimuth jitter used to seed per-leaf azimuths
-    unsigned int randomSeed = 1337;          // seed used when seeding per-leaf azimuths
     bool useStemCtrlOverrides = false;       // use explicit stem control points
     std::vector<Vect3d> stemCtrlOverride;    // stem control points
     std::vector<LeafDesc> leaves;            // leaves attached to this tiller in bottom-to-top order
@@ -60,7 +57,8 @@ struct TillerDesc {
 
 // Full editable plant description
 struct PlantDesc {
-    std::string species = "maize";
+    std::string species = "maize";           // species name stored at the plant level
+    std::string phenotypeId;                 // phenotype identifier stored at the plant level
     std::vector<TillerDesc> tillers;
 };
 
@@ -98,7 +96,7 @@ public:
 
     void rebuildGeometry();
     int getTriangleCount() const;
-    bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath = nullptr);
+    bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath = nullptr, bool writeMTL = true);
     bool saveSkeletonOBJ(const char* path) const;
     bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly);
 };
@@ -117,10 +115,16 @@ namespace Maize {
 
     // Builds center/left/right control splines for a leaf
     void generateLeafSplines(const LeafDesc& L, float startRadius, std::vector<Vect3d>& outCenter, std::vector<Vect3d>& outLeft, std::vector<Vect3d>& outRight);
-    float computeLeafAzimuthDeg(const TillerDesc& tiller, int leafIndex);
+    // Wraps an azimuth angle (degrees) into [0, 360)
+    float normalizeAzimuthDeg(float deg);
     bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath = nullptr);
     bool saveSkeletonOBJ(const char* path);
     bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly);
     std::string dirFromPath(const std::string& p);
     void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath = "", const std::string& stemTexturePath = "", bool exportSkeleton = false);
+    // Thread-safe export: operates on a caller-owned MaizeModel instead of the
+    // global singleton so multiple worker threads can generate plants in parallel.
+    // writeMTL should be false for workers (MTL is written once upfront by the
+    // batch driver to avoid concurrent writes to maize.mtl).
+    void GeneratePlantWith(MaizeModel& model, const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath = "", const std::string& stemTexturePath = "", bool exportSkeleton = false, bool writeMTL = false);
 }
