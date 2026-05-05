@@ -106,6 +106,7 @@ public:
         float surfaceNoiseFreq = 0.0f;
         float midribTipTaperStart = 0.0f;
         float midribTextureStrength = 0.0f;
+        float midribWidth = 0.0f;
         float liguleWrapLengthScale = 0.0f;
         float liguleUnfoldSharpness = 0.0f;
         float sheathOuterScale = 0.0f;
@@ -187,6 +188,7 @@ public:
     float leafSurfaceNoiseFreq = 8.0f;
     float midribTipTaperStart = 0.75f;
     float midribTextureStrength = 0.35f;
+    float midribWidth = 0.075f;         // Gaussian half-width of the midrib ridge (UV space); varies by genotype
     float liguleWrapLengthScale = 6.8f;
     float liguleUnfoldSharpness = 2.2f;
     float sheathOuterScale = 1.12f;
@@ -225,11 +227,11 @@ public:
     // If outProgress is non-null, it is incremented once per completed plant
     // so a UI thread can display progress while the batch runs on a worker
     // thread.
-    void generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath = "", bool useMeansOnly = false, bool exportSkeleton = false, std::atomic<int>* outProgress = nullptr, int startIndex = 0);
+    void generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath = "", bool useMeansOnly = false, bool exportSkeleton = false, std::atomic<int>* outProgress = nullptr, int startIndex = 0, std::atomic<bool>* cancelFlag = nullptr);
 
     // Persistence for the generator UI state
     bool saveConfig(const std::string& path) const;
-    bool loadConfig(const std::string& path);
+    bool loadConfig(const std::string& path, std::string* outError = nullptr);
 
     static const char* getCorrelatedParameterName(int param);
     static TraitLoadings getDefaultTraitLoadings(int param);

@@ -70,6 +70,8 @@ struct StemSampler {
     Vect3d globalUp;
 
     float radiusAt(float s) const {
+        // Exponent 1.35 produces a slightly concave taper profile (radius shrinks
+        // faster near the tip than the base), consistent with measured maize culm profiles.
         float taper = std::pow(clampf(s, 0.0f, 1.0f), 1.35f);
         return std::max(0.001f, tiller.radius - tiller.stemShrink * taper);
     }
@@ -270,6 +272,8 @@ struct LeafSectionEmitter {
         if (normalAxis.Length() < 1e-6f) normalAxis = Vect3d(0.0f, 0.0f, 1.0f);
         normalAxis = normalAxis.GetNormalized();
 
+        // 0.35 gives ~35% apparent width reduction at maximum curl; derived from
+        // the geometric projection of a rolled cylinder onto the viewing plane.
         float widthShrink = 1.0f - 0.35f * std::abs(curlAmount);
         leftP.SetX(centerP.x() + (leftP.x() - centerP.x()) * widthShrink);
         rightP.SetX(centerP.x() + (rightP.x() - centerP.x()) * widthShrink);
@@ -454,7 +458,7 @@ static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& blade
 
             // Midrib is a narrow Gaussian ridge centered at u=0.5. It tapers
             // out near the tip so the blade can still resolve to a point
-            float midribMask = std::exp(-std::pow((u01 - 0.5f) / 0.075f, 2.0f));
+            float midribMask = std::exp(-std::pow((u01 - 0.5f) / leaf.midribWidth, 2.0f));
             float midribTipStart = clampf(leaf.midribTipTaperStart, 0.2f, 0.98f);
             float midribTipFade = 1.0f;
             if (sBlade > midribTipStart) {
@@ -606,6 +610,8 @@ namespace Maize {
         // The first sections are handled specially so the blade emerges from a
         // wrapped sheath instead of appearing as a flat ribbon from row 0
         float segmentLen = L.leafLength / (float)(L.splinePoints - 1);
+        // droopiness is stored in convenient UI units; the 5.0 factor converts
+        // one unit of droopiness to ~5 degrees of tip rotation at full droop (t=1).
         float gravityFactor = L.droopiness * 5.0f;
         float t_p1 = (L.splinePoints > 1) ? 1.0f / (float)(L.splinePoints - 1) : 1.0f;
         float halfWidth = L.leafWidth * 0.5f;

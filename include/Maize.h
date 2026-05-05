@@ -35,6 +35,7 @@ struct LeafDesc {
     float surfaceNoiseFreq = 8.0f;      // surface noise frequency
     float midribTipTaperStart = 0.75f;  // fraction where the midrib starts fading out
     float midribTextureStrength = 0.35f;// uv compression around the midrib strip
+    float midribWidth = 0.075f;         // Gaussian half-width of the midrib ridge in UV space (0–1); varies by genotype
     float liguleWrapLengthScale = 6.8f; // length of the wrapped part of the sheath 
     float liguleUnfoldSharpness = 2.2f; // sheath unwrapping into the blade
     float sheathOuterScale = 1.12f;     // Radius expansion around the collar cylinder

@@ -70,6 +70,7 @@ static int gBatchStartIndex = 0;
 // (render it, rebuild it, save it) during that window.
 static std::thread gBatchThread;
 static std::atomic<bool> gBatchRunning{ false };
+static std::atomic<bool> gBatchCancelRequested{ false };
 static std::atomic<int>  gBatchProgress{ 0 };
 static int               gBatchTotalSnapshot = 0;
 
@@ -880,6 +881,7 @@ static void RenderGlobalTraitsPanel(bool& needRegen) {
     needRegen |= ImGui::SliderFloat("Surface Noise Freq", &gGen.leafSurfaceNoiseFreq, 0.1f, 24.0f);
     needRegen |= ImGui::SliderFloat("Midrib Tip Taper", &gGen.midribTipTaperStart, 0.2f, 0.98f);
     needRegen |= ImGui::SliderFloat("Midrib Texture Strength", &gGen.midribTextureStrength, 0.0f, 0.95f);
+    needRegen |= ImGui::SliderFloat("Midrib Width", &gGen.midribWidth, 0.01f, 0.25f, "%.3f");
     needRegen |= ImGui::SliderFloat("Ligule Wrap Length", &gGen.liguleWrapLengthScale, 0.5f, 8.0f);
     needRegen |= ImGui::SliderFloat("Ligule Unfold Sharpness", &gGen.liguleUnfoldSharpness, 0.2f, 4.0f);
     needRegen |= ImGui::SliderFloat("Sheath Outer Scale", &gGen.sheathOuterScale, 1.0f, 1.6f);
@@ -961,6 +963,10 @@ static void RenderSetGenerationPanel() {
         ImGui::Text("Generating: %d / %d", done, gBatchTotalSnapshot);
         float frac = gBatchTotalSnapshot > 0 ? (float)done / (float)gBatchTotalSnapshot : 0.0f;
         ImGui::ProgressBar(frac, ImVec2(-1.0f, 0.0f));
+        if (ImGui::Button("Cancel")) {
+            gBatchCancelRequested.store(true, std::memory_order_relaxed);
+        }
+        ImGui::SameLine();
         ImGui::TextWrapped("Viewport preview is paused while the batch runs.");
     }
     else {
@@ -977,10 +983,11 @@ static void RenderSetGenerationPanel() {
 
             gBatchTotalSnapshot = count;
             gBatchProgress.store(0, std::memory_order_relaxed);
+            gBatchCancelRequested.store(false, std::memory_order_relaxed);
             gBatchRunning.store(true, std::memory_order_release);
 
             gBatchThread = std::thread([genCopy, count, startIndex, basePath, leafTex, stemTex, exportSkel]() mutable {
-                genCopy.generateBatch(count, basePath, leafTex, stemTex, false, exportSkel, &gBatchProgress, startIndex);
+                genCopy.generateBatch(count, basePath, leafTex, stemTex, false, exportSkel, &gBatchProgress, startIndex, &gBatchCancelRequested);
                 gBatchRunning.store(false, std::memory_order_release);
             });
         }
@@ -993,8 +1000,10 @@ static void RenderGeneratorConfigPanel() {
 
     ImGui::TextWrapped("Save or load the current generator parameter settings, including distributions and canopy shaping controls.");
     PathInputWithBrowseButton("Config Path", gGeneratorConfigPath, sizeof(gGeneratorConfigPath), "Browse...", "Choose generator config", kXmlFilesFilter, false, "xml");
+    static std::string sConfigLoadMsg;
     if (ImGui::Button("Load Generator Config")) {
-        if (gGen.loadConfig(gGeneratorConfigPath)) {
+        sConfigLoadMsg.clear();
+        if (gGen.loadConfig(gGeneratorConfigPath, &sConfigLoadMsg)) {
             RebuildFromGenerator(true, 1337);
         }
     }
@@ -1005,6 +1014,9 @@ static void RenderGeneratorConfigPanel() {
     ImGui::SameLine();
     if (ImGui::Button("Save Generator Config")) {
         gGen.saveConfig(gGeneratorConfigPath);
+    }
+    if (!sConfigLoadMsg.empty()) {
+        ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "%s", sConfigLoadMsg.c_str());
     }
 }
 
@@ -1139,6 +1151,7 @@ static void RenderLeafTraitsPanel(bool& needUpdate) {
     ImGui::Text("Midrib");
     needUpdate |= ImGui::SliderFloat("Midrib Tip Taper Start", &leaf.midribTipTaperStart, 0.2f, 0.98f);
     needUpdate |= ImGui::SliderFloat("Midrib Texture Strength", &leaf.midribTextureStrength, 0.0f, 0.95f);
+    needUpdate |= ImGui::SliderFloat("Midrib Width", &leaf.midribWidth, 0.01f, 0.25f, "%.3f");
 
     ImGui::Text("Sheath & Unfold");
     needUpdate |= ImGui::SliderFloat("Ligule Wrap Length", &leaf.liguleWrapLengthScale, 0.5f, 8.0f);
@@ -1184,9 +1197,11 @@ static void RenderExportPanel() {
     // Covers both the full-plant format and the lighter skeleton/OBJ exports
     if (!ImGui::CollapsingHeader("Export")) return;
 
+    static std::string sExportLoadMsg;
     PathInputWithBrowseButton("XML Path", gXmlPath, sizeof(gXmlPath), "Browse...", "Choose plant XML", kXmlFilesFilter, false, "xml");
     if (ImGui::Button("Load XML")) {
-        if (Descriptor::loadPlantXML(gXmlPath)) {
+        sExportLoadMsg.clear();
+        if (Descriptor::loadPlantXML(gXmlPath, &sExportLoadMsg)) {
             gSkeletonOnlyView = false;
             RebuildGeometryAndRenderer();
         }
@@ -1202,7 +1217,8 @@ static void RenderExportPanel() {
 
     PathInputWithBrowseButton("Skeleton XML Path", gSkeletonXmlPath, sizeof(gSkeletonXmlPath), "Browse...", "Choose skeleton XML", kXmlFilesFilter, false, "xml");
     if (ImGui::Button("Load Skeleton XML")) {
-        if (Descriptor::loadSkeletonXML(gSkeletonXmlPath)) {
+        sExportLoadMsg.clear();
+        if (Descriptor::loadSkeletonXML(gSkeletonXmlPath, &sExportLoadMsg)) {
             gSkeletonOnlyView = true;
             gShowSkeletonSpline = true;
             RebuildGeometryAndRenderer();
@@ -1225,6 +1241,9 @@ static void RenderExportPanel() {
     PathInputWithBrowseButton("Skeleton OBJ Path", gSkeletonObjPath, sizeof(gSkeletonObjPath), "Save As...", "Save skeleton OBJ", kObjFilesFilter, true, "obj");
     if (ImGui::Button("Save Skeleton OBJ")) {
         Maize::saveSkeletonOBJ(gSkeletonObjPath);
+    }
+    if (!sExportLoadMsg.empty()) {
+        ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "%s", sExportLoadMsg.c_str());
     }
 }
 

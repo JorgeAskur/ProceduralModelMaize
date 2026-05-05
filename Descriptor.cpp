@@ -105,6 +105,7 @@ namespace Descriptor {
                 leaf_elem->SetAttribute("surfaceNoiseFreq", L.surfaceNoiseFreq);
                 leaf_elem->SetAttribute("midribTipTaperStart", L.midribTipTaperStart);
                 leaf_elem->SetAttribute("midribTextureStrength", L.midribTextureStrength);
+                leaf_elem->SetAttribute("midribWidth", L.midribWidth);
                 leaf_elem->SetAttribute("liguleWrapLengthScale", L.liguleWrapLengthScale);
                 leaf_elem->SetAttribute("liguleUnfoldSharpness", L.liguleUnfoldSharpness);
                 leaf_elem->SetAttribute("sheathOuterScale", L.sheathOuterScale);
@@ -133,14 +134,20 @@ namespace Descriptor {
     }
 
     // Full plant XML load path
-    bool loadPlantXML(const std::string& path) {
+    bool loadPlantXML(const std::string& path, std::string* outError) {
         XMLDocument doc;
-        if (doc.LoadFile(path.c_str()) != XML_SUCCESS) return false;
+        if (doc.LoadFile(path.c_str()) != XML_SUCCESS) {
+            if (outError) *outError = std::string("Could not open '") + path + "': " + doc.ErrorStr();
+            return false;
+        }
 
         Maize::plant() = PlantDesc{};
 
         const XMLElement* plantElem = doc.FirstChildElement("plant");
-        if (!plantElem) return false;
+        if (!plantElem) {
+            if (outError) *outError = "No <plant> root element found in '" + path + "'";
+            return false;
+        }
 
         // Species name: attribute on <plant>, fall back to legacy <species name="...">
         if (plantElem->Attribute("species")) {
@@ -206,6 +213,7 @@ namespace Descriptor {
                     L.surfaceNoiseFreq = 8.0f;
                     L.midribTipTaperStart = 0.75f;
                     L.midribTextureStrength = 0.35f;
+                    L.midribWidth = 0.075f;
                     L.liguleWrapLengthScale = 6.8f;
                     L.liguleUnfoldSharpness = 2.2f;
                     L.sheathOuterScale = 1.12f;
@@ -233,6 +241,7 @@ namespace Descriptor {
                     lf->QueryFloatAttribute("surfaceNoiseFreq", &L.surfaceNoiseFreq);
                     lf->QueryFloatAttribute("midribTipTaperStart", &L.midribTipTaperStart);
                     lf->QueryFloatAttribute("midribTextureStrength", &L.midribTextureStrength);
+                    lf->QueryFloatAttribute("midribWidth", &L.midribWidth);
                     lf->QueryFloatAttribute("liguleWrapLengthScale", &L.liguleWrapLengthScale);
                     lf->QueryFloatAttribute("liguleUnfoldSharpness", &L.liguleUnfoldSharpness);
                     lf->QueryFloatAttribute("sheathOuterScale", &L.sheathOuterScale);
@@ -369,16 +378,22 @@ namespace Descriptor {
         return saveSkeletonXML(Maize::plant(), path);
     }
 
-    bool loadSkeletonXML(const std::string& path) {
+    bool loadSkeletonXML(const std::string& path, std::string* outError) {
         // Skeleton import reconstructs a minimally valid editable plant from the center splines alone
         XMLDocument doc;
-        if (doc.LoadFile(path.c_str()) != XML_SUCCESS) return false;
+        if (doc.LoadFile(path.c_str()) != XML_SUCCESS) {
+            if (outError) *outError = std::string("Could not open '") + path + "': " + doc.ErrorStr();
+            return false;
+        }
 
         Maize::plant() = PlantDesc{};
 
         const XMLElement* root = doc.FirstChildElement("plantSkeleton");
         if (!root) root = doc.FirstChildElement("plant");
-        if (!root) return false;
+        if (!root) {
+            if (outError) *outError = "No <plantSkeleton> or <plant> root element found in '" + path + "'";
+            return false;
+        }
 
         // Species / phenotype attributes live on the root; fall back to legacy <species>
         if (root->Attribute("species")) {

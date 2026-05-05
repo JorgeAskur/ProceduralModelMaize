@@ -108,6 +108,7 @@ namespace {
         { "leafSurfaceNoiseFreq", &MaizeGenerator::leafSurfaceNoiseFreq },
         { "midribTipTaperStart", &MaizeGenerator::midribTipTaperStart },
         { "midribTextureStrength", &MaizeGenerator::midribTextureStrength },
+        { "midribWidth", &MaizeGenerator::midribWidth },
         { "liguleWrapLengthScale", &MaizeGenerator::liguleWrapLengthScale },
         { "liguleUnfoldSharpness", &MaizeGenerator::liguleUnfoldSharpness },
         { "sheathOuterScale", &MaizeGenerator::sheathOuterScale },
@@ -246,6 +247,7 @@ namespace {
         leaf.surfaceNoiseFreq = generator.leafSurfaceNoiseFreq;
         leaf.midribTipTaperStart = generator.midribTipTaperStart;
         leaf.midribTextureStrength = generator.midribTextureStrength;
+        leaf.midribWidth = generator.midribWidth;
         leaf.liguleWrapLengthScale = generator.liguleWrapLengthScale;
         leaf.liguleUnfoldSharpness = generator.liguleUnfoldSharpness;
         leaf.sheathOuterScale = generator.sheathOuterScale;
@@ -386,6 +388,7 @@ PlantDesc MaizeGenerator::buildPlantFromTraits(const TraitComputation& traits) c
         L.surfaceNoiseFreq = computed.surfaceNoiseFreq;
         L.midribTipTaperStart = computed.midribTipTaperStart;
         L.midribTextureStrength = computed.midribTextureStrength;
+        L.midribWidth = computed.midribWidth;
         L.liguleWrapLengthScale = computed.liguleWrapLengthScale;
         L.liguleUnfoldSharpness = computed.liguleUnfoldSharpness;
         L.sheathOuterScale = computed.sheathOuterScale;
@@ -400,7 +403,7 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     return buildPlantFromTraits(computeTraits(seed, useMeansOnly));
 }
 
-void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath, bool useMeansOnly, bool exportSkeleton, std::atomic<int>* outProgress, int startIndex) {
+void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath, bool useMeansOnly, bool exportSkeleton, std::atomic<int>* outProgress, int startIndex, std::atomic<bool>* cancelFlag) {
     if (count <= 0) return;
     if (startIndex < 0) startIndex = 0;
     const int endIndex = startIndex + count;
@@ -473,6 +476,7 @@ void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix,
     auto workerFn = [&](int workerIndex) {
         MaizeModel localModel;
         for (int i = startIndex + workerIndex; i < endIndex; i += workerCount) {
+            if (cancelFlag && cancelFlag->load(std::memory_order_relaxed)) break;
             unsigned int seed = (unsigned int)i;
             PlantDesc plant = generate(seed, useMeansOnly);
 
@@ -570,14 +574,28 @@ bool MaizeGenerator::saveConfig(const std::string& path) const {
     return doc.SaveFile(path.c_str()) == XML_SUCCESS;
 }
 
-bool MaizeGenerator::loadConfig(const std::string& path) {
+bool MaizeGenerator::loadConfig(const std::string& path, std::string* outError) {
+    static const int kCurrentVersion = 4;
     using namespace tinyxml2;
 
     XMLDocument doc;
-    if (doc.LoadFile(path.c_str()) != XML_SUCCESS) return false;
+    if (doc.LoadFile(path.c_str()) != XML_SUCCESS) {
+        if (outError) *outError = std::string("Could not open '") + path + "': " + doc.ErrorStr();
+        return false;
+    }
 
     const XMLElement* root = doc.FirstChildElement("MaizeGeneratorConfig");
-    if (!root) return false;
+    if (!root) {
+        if (outError) *outError = "No <MaizeGeneratorConfig> root element in '" + path + "'";
+        return false;
+    }
+
+    int version = 0;
+    root->QueryIntAttribute("version", &version);
+    if (version > kCurrentVersion && outError) {
+        *outError = "Config version " + std::to_string(version) + " is newer than supported ("
+                    + std::to_string(kCurrentVersion) + "); some settings may not load correctly.";
+    }
 
     if (const char* s = root->Attribute("speciesName")) speciesName = s;
     if (const char* p = root->Attribute("phenotypeId")) phenotypeId = p;
