@@ -382,3 +382,4 @@ FodyWeavers.xsd
 /CURRENT_MODEL_WRITEUP.md
 /plant_export
 /.claude
+/vcpkg_installed/x64-windows-static
