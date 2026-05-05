@@ -1,0 +1,12 @@
+<AppSettings>
+    <TexPath>maize_leaf.png</TexPath>
+    <StemTexPath>maize_stem_texture.png</StemTexPath>
+    <ExportBasePath>plant_export/plant</ExportBasePath>
+    <GeneratorConfigPath>maize_generator_config.xml</GeneratorConfigPath>
+    <XmlPath>plant_spline.xml</XmlPath>
+    <SkeletonXmlPath>plant_skeleton.xml</SkeletonXmlPath>
+    <ObjPath>plant_spline.obj</ObjPath>
+    <SkeletonObjPath>plant_skeleton.obj</SkeletonObjPath>
+    <BatchCount>25</BatchCount>
+    <BatchStartIndex>0</BatchStartIndex>
+</AppSettings>

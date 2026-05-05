@@ -79,12 +79,20 @@ Alternatively, add `vcpkg_installed\x64-windows\bin` to your `PATH`.
 x64\Release\Maize.exe
 ```
 
-On first launch the app attempts to load:
-- `maize_leaf.png` — leaf blade texture (relative to working directory)
-- `maize_stem_texture.png` — stem/sheath texture
-- `maize_generator_config.xml` — saved generator settings
+The app saves all UI paths and settings to `app_settings.xml` in the working directory when the window is closed, and restores them on the next launch. On first launch (before `app_settings.xml` exists) it falls back to these defaults:
 
-All three paths are shown in the UI and can be changed at runtime via the browse buttons.
+| Setting | Default |
+|---|---|
+| Leaf texture | `maize_leaf.png` |
+| Stem texture | `maize_stem_texture.png` |
+| Generator config | `maize_generator_config.xml` |
+| Plant XML | `plant_spline.xml` |
+| Skeleton XML | `plant_skeleton.xml` |
+| OBJ output | `plant_spline.obj` |
+| Skeleton OBJ | `plant_skeleton.obj` |
+| Set base path | `plant_export/plant` |
+
+All paths are shown in the UI and can be changed at runtime via the browse buttons.
 
 **Viewport controls**
 

@@ -27,7 +27,8 @@
 
 #include "Maize.h"
 #include "Descriptor.h"
-#include "MaizeGenerator.h" 
+#include "MaizeGenerator.h"
+#include "tinyxml2.h"
 
 using namespace std;
 
@@ -248,6 +249,19 @@ static Vect3d TransformVector(const float m[16], const Vect3d& v) {
     };
 }
 
+static bool LoadTextFile(const char* path, std::string& out, std::string& error) {
+    FILE* f = nullptr;
+    fopen_s(&f, path, "rb");
+    if (!f) { error = std::string("Cannot open: ") + path; return false; }
+    fseek(f, 0, SEEK_END);
+    long sz = ftell(f);
+    rewind(f);
+    out.resize((size_t)sz);
+    fread(&out[0], 1, (size_t)sz, f);
+    fclose(f);
+    return true;
+}
+
 static GLuint CompileShader(GLenum type, const char* source, std::string& error) {
     GLuint shader = gglCreateShader(type);
     if (!shader) {
@@ -272,90 +286,23 @@ static GLuint CompileShader(GLenum type, const char* source, std::string& error)
 }
 
 static bool BuildModernPlantShader() {
-    static const char* kVertexShader = R"GLSL(
-#version 120
-varying vec3 vEyePos;
-varying vec3 vEyeNormal;
-varying vec3 vColor;
-varying vec2 vTexCoord;
-
-void main() {
-    vec4 eyePos = gl_ModelViewMatrix * gl_Vertex;
-    vEyePos = eyePos.xyz;
-    vEyeNormal = normalize(gl_NormalMatrix * gl_Normal);
-    vColor = gl_Color.rgb;
-    vTexCoord = gl_MultiTexCoord0.xy;
-    gl_Position = gl_ProjectionMatrix * eyePos;
-}
-)GLSL";
-
-    static const char* kFragmentShader = R"GLSL(
-#version 120
-uniform sampler2D uTexture;
-uniform float uUseTexture;
-uniform float uUseLighting;
-uniform float uLeafFactor;
-uniform vec3 uLightPosEye;
-uniform vec3 uSkyDirEye;
-uniform vec3 uAmbientGround;
-uniform vec3 uAmbientSky;
-uniform float uDiffuseStrength;
-uniform float uWrap;
-uniform float uSpecularStrength;
-uniform float uShininess;
-uniform float uTransmission;
-uniform float uExposure;
-
-varying vec3 vEyePos;
-varying vec3 vEyeNormal;
-varying vec3 vColor;
-varying vec2 vTexCoord;
-
-void main() {
-    vec4 texSample = vec4(1.0);
-    if (uUseTexture > 0.5) texSample = texture2D(uTexture, vTexCoord);
-    vec3 albedo = vColor * mix(vec3(1.0), texSample.rgb, uUseTexture);
-    if (uUseTexture > 0.5 && texSample.a < 0.05) discard;
-
-    vec3 linear = albedo;
-    if (uUseLighting > 0.5) {
-        vec3 N = normalize(vEyeNormal);
-        vec3 V = normalize(-vEyePos);
-        vec3 L = normalize(uLightPosEye - vEyePos);
-        vec3 H = normalize(L + V);
-        vec3 skyDir = normalize(uSkyDirEye);
-
-        float hemiMask = clamp(0.5 + 0.5 * dot(N, skyDir), 0.0, 1.0);
-        vec3 ambient = mix(uAmbientGround, uAmbientSky, hemiMask);
-
-        float wrapped = max((dot(N, L) + uWrap) / (1.0 + uWrap), 0.0);
-        float diffuse = wrapped * uDiffuseStrength;
-
-        float specPower = pow(max(dot(N, H), 0.0), max(uShininess, 1.0));
-        float specMask = mix(0.45, 1.0, 1.0 - uLeafFactor);
-        vec3 specular = vec3(specPower * uSpecularStrength * specMask);
-
-        float rim = pow(clamp(1.0 - max(dot(N, V), 0.0), 0.0, 1.0), 0.75);
-        float backLight = pow(max(dot(-N, L), 0.0), 1.35);
-        vec3 transmission = albedo * vec3(0.92, 1.0, 0.88) * (uLeafFactor * uTransmission * backLight * (0.3 + 0.7 * rim));
-
-        linear = albedo * (ambient + diffuse) + specular + transmission;
+    std::string vertSrc, fragSrc, error;
+    if (!LoadTextFile("shaders/plant.vert", vertSrc, error)) {
+        gPlantRenderer.error = "Vertex shader load failed: " + error;
+        return false;
+    }
+    if (!LoadTextFile("shaders/plant.frag", fragSrc, error)) {
+        gPlantRenderer.error = "Fragment shader load failed: " + error;
+        return false;
     }
 
-    vec3 mapped = vec3(1.0) - exp(-linear * uExposure);
-    vec3 gammaCorrected = pow(clamp(mapped, 0.0, 1.0), vec3(1.0 / 2.2));
-    gl_FragColor = vec4(gammaCorrected, 1.0);
-}
-)GLSL";
-
-    std::string error;
-    GLuint vertShader = CompileShader(GL_VERTEX_SHADER, kVertexShader, error);
+    GLuint vertShader = CompileShader(GL_VERTEX_SHADER, vertSrc.c_str(), error);
     if (!vertShader) {
         gPlantRenderer.error = "Vertex shader compile failed:\n" + error;
         return false;
     }
 
-    GLuint fragShader = CompileShader(GL_FRAGMENT_SHADER, kFragmentShader, error);
+    GLuint fragShader = CompileShader(GL_FRAGMENT_SHADER, fragSrc.c_str(), error);
     if (!fragShader) {
         gglDeleteShader(vertShader);
         gPlantRenderer.error = "Fragment shader compile failed:\n" + error;
@@ -801,7 +748,7 @@ static void RenderCorrelationMatrixEditor(bool& needRegen) {
         needRegen = true;
     }
 
-    if (ImGui::TreeNodeEx("Correlation Matrix", ImGuiTreeNodeFlags_DefaultOpen)) {
+    if (ImGui::TreeNode("Correlation Matrix")) {
         if (ImGui::BeginTable("TraitLoadingsTable", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingFixedFit)) {
             ImGui::TableSetupColumn("Parameter");
             ImGui::TableSetupColumn("Vigor");
@@ -841,66 +788,77 @@ static void RenderGlobalTraitsPanel(bool& needRegen) {
     // This panel edits the procedural generator
     if (!ImGui::CollapsingHeader("Global Traits", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
-    ImGui::TextWrapped("Edit global traits and defaults for the plant.");
+    ImGui::TextWrapped("Edit global traits and defaults for the plant. Viewport preview uses parameter means; use Set Generation to sample full distributions.");
 
-    needRegen |= DistUI("Height (m)", gGen.height, 0.5f, 4.0f);
-    needRegen |= DistUI("Stem Radius", gGen.stemRadius, 0.01f, 0.1f);
-    needRegen |= DistUI("Leaf Count", gGen.numLeaves, 3.0f, 20.0f);
-    needRegen |= ImGui::SliderFloat("Tiller Azimuth Base", &gGen.tillerAzimuthDeg, -360.0f, 360.0f);
-    needRegen |= ImGui::SliderFloat("Tiller Azimuth Noise", &gGen.tillerAzimuthNoise, 0.0f, 90.0f);
-    needRegen |= ImGui::SliderFloat("Stem Shrink Factor", &gGen.stemShrinkFactor, 0.0f, 2.0f);
-    needRegen |= ImGui::SliderFloat("Stem Shrink Min", &gGen.stemShrinkMin, 0.0f, 0.02f);
+    if (ImGui::TreeNodeEx("Stem", ImGuiTreeNodeFlags_DefaultOpen)) {
+        needRegen |= DistUI("Height (m)", gGen.height, 0.5f, 4.0f);
+        needRegen |= DistUI("Stem Radius", gGen.stemRadius, 0.01f, 0.1f);
+        needRegen |= DistUI("Leaf Count", gGen.numLeaves, 3.0f, 20.0f);
+        needRegen |= ImGui::SliderFloat("Tiller Azimuth Base", &gGen.tillerAzimuthDeg, -360.0f, 360.0f);
+        needRegen |= ImGui::SliderFloat("Tiller Azimuth Noise", &gGen.tillerAzimuthNoise, 0.0f, 90.0f);
+        needRegen |= ImGui::SliderFloat("Stem Shrink Factor", &gGen.stemShrinkFactor, 0.0f, 2.0f);
+        needRegen |= ImGui::SliderFloat("Stem Shrink Min", &gGen.stemShrinkMin, 0.0f, 0.02f);
+        ImGui::TreePop();
+    }
 
-    ImGui::Separator();
-    ImGui::Text("Leaf Defaults");
-    needRegen |= DistUI("Length", gGen.leafLengthBase, 0.2f, 1.5f);
-    needRegen |= DistUI("Width", gGen.leafWidthBase, 0.02f, 0.2f);
-    needRegen |= DistUI("Width Taper", gGen.widthTaper, 0.0f, 10.0f);
-    needRegen |= DistUI("Angle", gGen.leafAngleBase, 0.f, 90.f);
-    needRegen |= DistUI("Droopiness", gGen.droopinessBase, -80.f, 80.f);
-    needRegen |= DistUI("Stem Inclination", gGen.stemInclination, -90.f, 90.f);
-    needRegen |= DistUI("Leaf Twist", gGen.leafTwist, -180.f, 180.f);
-    needRegen |= DistUI("Leaf Curl", gGen.leafCurl, -1.0f, 1.0f);
-    needRegen |= ImGui::SliderInt("Spline Points", &gGen.splinePointsDefault, 4, 80);
+    if (ImGui::TreeNodeEx("Leaf Distributions", ImGuiTreeNodeFlags_DefaultOpen)) {
+        needRegen |= DistUI("Length", gGen.leafLengthBase, 0.2f, 1.5f);
+        needRegen |= DistUI("Width", gGen.leafWidthBase, 0.02f, 0.2f);
+        needRegen |= DistUI("Width Taper", gGen.widthTaper, 0.0f, 10.0f);
+        needRegen |= DistUI("Angle", gGen.leafAngleBase, 0.f, 90.f);
+        needRegen |= DistUI("Droopiness", gGen.droopinessBase, -80.f, 80.f);
+        needRegen |= DistUI("Stem Inclination", gGen.stemInclination, -90.f, 90.f);
+        needRegen |= DistUI("Leaf Twist", gGen.leafTwist, -180.f, 180.f);
+        needRegen |= DistUI("Leaf Curl", gGen.leafCurl, -1.0f, 1.0f);
+        needRegen |= ImGui::SliderInt("Spline Points", &gGen.splinePointsDefault, 4, 80);
+        needRegen |= ImGui::SliderFloat("Leaf Jitter", &gGen.leafJitterScale, 0.0f, 1.0f);
+        ImGui::TreePop();
+    }
 
-    ImGui::Separator();
-    ImGui::Text("Wave Defaults");
-    needRegen |= DistUI("Wave Amp", gGen.waveAmp, 0.f, 0.05f);
-    needRegen |= DistUI("Wave Freq", gGen.waveFreq, 0.f, 40.f);
-    needRegen |= DistUI("Wave Phase", gGen.wavePhaseShift, -6.283f, 6.283f);
+    if (ImGui::TreeNodeEx("Waves", ImGuiTreeNodeFlags_DefaultOpen)) {
+        needRegen |= DistUI("Wave Amp", gGen.waveAmp, 0.f, 0.05f);
+        needRegen |= DistUI("Wave Freq", gGen.waveFreq, 0.f, 40.f);
+        needRegen |= DistUI("Wave Phase", gGen.wavePhaseShift, -6.283f, 6.283f);
+        ImGui::TreePop();
+    }
 
-    ImGui::Separator();
-    ImGui::Text("Architecture");
-    needRegen |= ImGui::SliderFloat("Whorl Start", &gGen.whorlStart, 0.0f, 0.95f);
-    needRegen |= ImGui::SliderFloat("Whorl Compression", &gGen.whorlCompression, 0.0f, 1.5f);
-    needRegen |= ImGui::SliderFloat("Whorl Min Internode", &gGen.whorlMinInternodeWeight, 0.01f, 1.0f);
+    if (ImGui::TreeNodeEx("Architecture", ImGuiTreeNodeFlags_DefaultOpen)) {
+        needRegen |= ImGui::SliderFloat("Whorl Start", &gGen.whorlStart, 0.0f, 0.95f);
+        needRegen |= ImGui::SliderFloat("Whorl Compression", &gGen.whorlCompression, 0.0f, 1.5f);
+        needRegen |= ImGui::SliderFloat("Whorl Min Internode", &gGen.whorlMinInternodeWeight, 0.01f, 1.0f);
+        ImGui::TreePop();
+    }
 
-    ImGui::Separator();
-    ImGui::Text("Leaf Visual Shaping Defaults");
-    needRegen |= ImGui::SliderFloat("Surface Noise Amp", &gGen.leafSurfaceNoiseAmp, 0.0f, 0.05f);
-    needRegen |= ImGui::SliderFloat("Surface Noise Freq", &gGen.leafSurfaceNoiseFreq, 0.1f, 24.0f);
-    needRegen |= ImGui::SliderFloat("Midrib Tip Taper", &gGen.midribTipTaperStart, 0.2f, 0.98f);
-    needRegen |= ImGui::SliderFloat("Midrib Texture Strength", &gGen.midribTextureStrength, 0.0f, 0.95f);
-    needRegen |= ImGui::SliderFloat("Midrib Width", &gGen.midribWidth, 0.01f, 0.25f, "%.3f");
-    needRegen |= ImGui::SliderFloat("Ligule Wrap Length", &gGen.liguleWrapLengthScale, 0.5f, 8.0f);
-    needRegen |= ImGui::SliderFloat("Ligule Unfold Sharpness", &gGen.liguleUnfoldSharpness, 0.2f, 4.0f);
-    needRegen |= ImGui::SliderFloat("Sheath Outer Scale", &gGen.sheathOuterScale, 1.0f, 1.6f);
+    if (ImGui::TreeNodeEx("Visual Defaults", ImGuiTreeNodeFlags_DefaultOpen)) {
+        needRegen |= ImGui::SliderFloat("Surface Noise Amp", &gGen.leafSurfaceNoiseAmp, 0.0f, 0.05f);
+        needRegen |= ImGui::SliderFloat("Surface Noise Freq", &gGen.leafSurfaceNoiseFreq, 0.1f, 24.0f);
+        needRegen |= ImGui::SliderFloat("Midrib Tip Taper", &gGen.midribTipTaperStart, 0.2f, 0.98f);
+        needRegen |= ImGui::SliderFloat("Midrib Texture Strength", &gGen.midribTextureStrength, 0.0f, 0.95f);
+        needRegen |= ImGui::SliderFloat("Midrib Width", &gGen.midribWidth, 0.01f, 0.25f, "%.3f");
+        needRegen |= ImGui::SliderFloat("Ligule Wrap Length", &gGen.liguleWrapLengthScale, 0.5f, 8.0f);
+        needRegen |= ImGui::SliderFloat("Ligule Unfold Sharpness", &gGen.liguleUnfoldSharpness, 0.2f, 4.0f);
+        needRegen |= ImGui::SliderFloat("Sheath Outer Scale", &gGen.sheathOuterScale, 1.0f, 1.6f);
+        ImGui::TreePop();
+    }
 
-    ImGui::Separator();
-    ImGui::Text("Leaf Curves (Bottom / Middle / Top)");
-    needRegen |= Curve3UI("Length Scale Curve", gGen.leafLengthScaleCurve, 0.2f, 2.5f);
-    needRegen |= Curve3UI("Width Scale Curve", gGen.leafWidthScaleCurve, 0.2f, 2.5f);
-    needRegen |= Curve3UI("Taper Scale Curve", gGen.widthTaperScaleCurve, 0.2f, 2.5f);
-    needRegen |= Curve3UI("Wave Amp Scale Curve", gGen.waveAmpScaleCurve, 0.0f, 3.0f);
-    needRegen |= Curve3UI("Wave Freq Scale Curve", gGen.waveFreqScaleCurve, 0.2f, 3.0f);
-    needRegen |= Curve3UI("Angle Offset Curve", gGen.leafAngleOffsetCurve, -45.0f, 45.0f);
-    needRegen |= Curve3UI("Droopiness Offset Curve", gGen.droopinessOffsetCurve, -40.0f, 40.0f);
-    needRegen |= Curve3UI("Twist Offset Curve", gGen.leafTwistOffsetCurve, -90.0f, 90.0f);
-    needRegen |= Curve3UI("Curl Offset Curve", gGen.leafCurlOffsetCurve, -1.0f, 1.0f);
-    needRegen |= Curve3UI("Stem Inclination Offset Curve", gGen.stemInclinationOffsetCurve, -40.0f, 40.0f);
-    needRegen |= ImGui::SliderFloat("Leaf Jitter", &gGen.leafJitterScale, 0.0f, 1.0f);
-    RenderCorrelationMatrixEditor(needRegen);
-    ImGui::TextWrapped("Viewport preview uses parameter means. Use Set Generation to sample full plant sets from the configured distributions.");
+    if (ImGui::TreeNode("Canopy Curves (Bottom / Middle / Top)")) {
+        needRegen |= Curve3UI("Length Scale Curve", gGen.leafLengthScaleCurve, 0.2f, 2.5f);
+        needRegen |= Curve3UI("Width Scale Curve", gGen.leafWidthScaleCurve, 0.2f, 2.5f);
+        needRegen |= Curve3UI("Taper Scale Curve", gGen.widthTaperScaleCurve, 0.2f, 2.5f);
+        needRegen |= Curve3UI("Wave Amp Scale Curve", gGen.waveAmpScaleCurve, 0.0f, 3.0f);
+        needRegen |= Curve3UI("Wave Freq Scale Curve", gGen.waveFreqScaleCurve, 0.2f, 3.0f);
+        needRegen |= Curve3UI("Angle Offset Curve", gGen.leafAngleOffsetCurve, -45.0f, 45.0f);
+        needRegen |= Curve3UI("Droopiness Offset Curve", gGen.droopinessOffsetCurve, -40.0f, 40.0f);
+        needRegen |= Curve3UI("Twist Offset Curve", gGen.leafTwistOffsetCurve, -90.0f, 90.0f);
+        needRegen |= Curve3UI("Curl Offset Curve", gGen.leafCurlOffsetCurve, -1.0f, 1.0f);
+        needRegen |= Curve3UI("Stem Inclination Offset Curve", gGen.stemInclinationOffsetCurve, -40.0f, 40.0f);
+        ImGui::TreePop();
+    }
+
+    if (ImGui::TreeNode("Correlation")) {
+        RenderCorrelationMatrixEditor(needRegen);
+        ImGui::TreePop();
+    }
 }
 
 static bool gExportSkeleton = false;
@@ -917,7 +875,7 @@ static void RenderSetGenerationPanel() {
     if (!ImGui::CollapsingHeader("Set Generation", ImGuiTreeNodeFlags_DefaultOpen)) return;
 
     ImGui::TextWrapped("Generate multiple plants by sampling the configured mean/std dev distributions for each generator parameter.");
-    PathInputWithBrowseButton("Set Base Path / Prefix", gExportBasePath, sizeof(gExportBasePath), "Choose...", "Choose plant set base path / prefix", kAllFilesFilter, true);
+    PathInputWithBrowseButton("Set Base Path / Prefix", gExportBasePath, sizeof(gExportBasePath), "Browse...", "Choose plant set base path / prefix", kAllFilesFilter, true);
     bool texturePathChanged = false;
     texturePathChanged |= PathInputWithBrowseButton("Leaf Texture Path", gTexPath, sizeof(gTexPath), "Browse...", "Choose leaf texture", kImageFilesFilter, false);
     texturePathChanged |= PathInputWithBrowseButton("Stem Texture Path", gStemTexPath, sizeof(gStemTexPath), "Browse...", "Choose stem texture", kImageFilesFilter, false);
@@ -1000,11 +958,20 @@ static void RenderGeneratorConfigPanel() {
 
     ImGui::TextWrapped("Save or load the current generator parameter settings, including distributions and canopy shaping controls.");
     PathInputWithBrowseButton("Config Path", gGeneratorConfigPath, sizeof(gGeneratorConfigPath), "Browse...", "Choose generator config", kXmlFilesFilter, false, "xml");
-    static std::string sConfigLoadMsg;
+    static std::string sConfigStatus;
+    static ImVec4 sConfigStatusColor{ 1.0f, 1.0f, 1.0f, 1.0f };
     if (ImGui::Button("Load Generator Config")) {
-        sConfigLoadMsg.clear();
-        if (gGen.loadConfig(gGeneratorConfigPath, &sConfigLoadMsg)) {
+        sConfigStatus.clear();
+        std::string errMsg;
+        if (gGen.loadConfig(gGeneratorConfigPath, &errMsg)) {
             RebuildFromGenerator(true, 1337);
+            sConfigStatus = errMsg.empty() ? "Config loaded." : errMsg;
+            sConfigStatusColor = errMsg.empty()
+                ? ImVec4(0.2f, 1.0f, 0.4f, 1.0f)
+                : ImVec4(1.0f, 0.85f, 0.2f, 1.0f);
+        } else {
+            sConfigStatus = errMsg.empty() ? "Failed to load config." : errMsg;
+            sConfigStatusColor = ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
         }
     }
     ImGui::SameLine();
@@ -1013,10 +980,16 @@ static void RenderGeneratorConfigPanel() {
     }
     ImGui::SameLine();
     if (ImGui::Button("Save Generator Config")) {
-        gGen.saveConfig(gGeneratorConfigPath);
+        if (gGen.saveConfig(gGeneratorConfigPath)) {
+            sConfigStatus = "Config saved.";
+            sConfigStatusColor = ImVec4(0.2f, 1.0f, 0.4f, 1.0f);
+        } else {
+            sConfigStatus = "Failed to save config.";
+            sConfigStatusColor = ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
+        }
     }
-    if (!sConfigLoadMsg.empty()) {
-        ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "%s", sConfigLoadMsg.c_str());
+    if (!sConfigStatus.empty()) {
+        ImGui::TextColored(sConfigStatusColor, "%s", sConfigStatus.c_str());
     }
 }
 
@@ -1041,13 +1014,20 @@ static void EditControlPointList(const char* label, const char* idPrefix, std::v
 
 static void RenderLeafTraitsPanel(bool& needUpdate) {
     // This panel edits the currently loaded PlantDesc directly
-    if (!ImGui::CollapsingHeader("Leaf Traits")) return;
+    auto& plant = Maize::plant();
+    int tillerIdx = (!plant.tillers.empty()) ? std::min(gSelTiller, (int)plant.tillers.size() - 1) : 0;
+    int leafCount = (!plant.tillers.empty()) ? (int)plant.tillers[tillerIdx].leaves.size() : 0;
+    char leafHeader[64];
+    if (leafCount > 0)
+        snprintf(leafHeader, sizeof(leafHeader), "Leaf Traits  (leaf %d / %d)###LeafTraits", std::min(gSelLeaf, leafCount - 1) + 1, leafCount);
+    else
+        snprintf(leafHeader, sizeof(leafHeader), "Leaf Traits###LeafTraits");
+    if (!ImGui::CollapsingHeader(leafHeader)) return;
 
     ImGui::TextWrapped("Edit individual leaf traits and control points.");
-    auto& plant = Maize::plant();
     if (plant.tillers.empty()) return;
 
-    gSelTiller = std::min(gSelTiller, (int)plant.tillers.size() - 1);
+    gSelTiller = tillerIdx;
     auto& tiller = plant.tillers[gSelTiller];
 
     ImGui::Separator();
@@ -1107,7 +1087,9 @@ static void RenderLeafTraitsPanel(bool& needUpdate) {
     if (tiller.leaves.empty()) return;
 
     gSelLeaf = std::min(gSelLeaf, (int)tiller.leaves.size() - 1);
-    ImGui::SliderInt("Select Leaf", &gSelLeaf, 0, (int)tiller.leaves.size() - 1);
+    int dispLeaf = gSelLeaf + 1;
+    if (ImGui::SliderInt("Select Leaf", &dispLeaf, 1, (int)tiller.leaves.size()))
+        gSelLeaf = dispLeaf - 1;
     auto& leaf = tiller.leaves[gSelLeaf];
 
     ImGui::Separator();
@@ -1197,13 +1179,21 @@ static void RenderExportPanel() {
     // Covers both the full-plant format and the lighter skeleton/OBJ exports
     if (!ImGui::CollapsingHeader("Export")) return;
 
-    static std::string sExportLoadMsg;
+    static std::string sExportStatus;
+    static ImVec4 sExportStatusColor{ 1.0f, 1.0f, 1.0f, 1.0f };
+
     PathInputWithBrowseButton("XML Path", gXmlPath, sizeof(gXmlPath), "Browse...", "Choose plant XML", kXmlFilesFilter, false, "xml");
     if (ImGui::Button("Load XML")) {
-        sExportLoadMsg.clear();
-        if (Descriptor::loadPlantXML(gXmlPath, &sExportLoadMsg)) {
+        sExportStatus.clear();
+        std::string errMsg;
+        if (Descriptor::loadPlantXML(gXmlPath, &errMsg)) {
             gSkeletonOnlyView = false;
             RebuildGeometryAndRenderer();
+            sExportStatus = "Plant XML loaded.";
+            sExportStatusColor = ImVec4(0.2f, 1.0f, 0.4f, 1.0f);
+        } else {
+            sExportStatus = errMsg.empty() ? "Failed to load plant XML." : errMsg;
+            sExportStatusColor = ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
         }
     }
     ImGui::SameLine();
@@ -1212,16 +1202,28 @@ static void RenderExportPanel() {
     }
     ImGui::SameLine();
     if (ImGui::Button("Save XML")) {
-        Descriptor::savePlantXML(gXmlPath);
+        if (Descriptor::savePlantXML(gXmlPath)) {
+            sExportStatus = "Plant XML saved.";
+            sExportStatusColor = ImVec4(0.2f, 1.0f, 0.4f, 1.0f);
+        } else {
+            sExportStatus = "Failed to save plant XML.";
+            sExportStatusColor = ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
+        }
     }
 
     PathInputWithBrowseButton("Skeleton XML Path", gSkeletonXmlPath, sizeof(gSkeletonXmlPath), "Browse...", "Choose skeleton XML", kXmlFilesFilter, false, "xml");
     if (ImGui::Button("Load Skeleton XML")) {
-        sExportLoadMsg.clear();
-        if (Descriptor::loadSkeletonXML(gSkeletonXmlPath, &sExportLoadMsg)) {
+        sExportStatus.clear();
+        std::string errMsg;
+        if (Descriptor::loadSkeletonXML(gSkeletonXmlPath, &errMsg)) {
             gSkeletonOnlyView = true;
             gShowSkeletonSpline = true;
             RebuildGeometryAndRenderer();
+            sExportStatus = "Skeleton XML loaded.";
+            sExportStatusColor = ImVec4(0.2f, 1.0f, 0.4f, 1.0f);
+        } else {
+            sExportStatus = errMsg.empty() ? "Failed to load skeleton XML." : errMsg;
+            sExportStatusColor = ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
         }
     }
     ImGui::SameLine();
@@ -1230,20 +1232,39 @@ static void RenderExportPanel() {
     }
     ImGui::SameLine();
     if (ImGui::Button("Save Skeleton XML")) {
-        Descriptor::saveSkeletonXML(gSkeletonXmlPath);
+        if (Descriptor::saveSkeletonXML(gSkeletonXmlPath)) {
+            sExportStatus = "Skeleton XML saved.";
+            sExportStatusColor = ImVec4(0.2f, 1.0f, 0.4f, 1.0f);
+        } else {
+            sExportStatus = "Failed to save skeleton XML.";
+            sExportStatusColor = ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
+        }
     }
 
-    PathInputWithBrowseButton("OBJ Path", gObjPath, sizeof(gObjPath), "Save As...", "Save plant OBJ", kObjFilesFilter, true, "obj");
+    PathInputWithBrowseButton("OBJ Path", gObjPath, sizeof(gObjPath), "Browse...", "Save plant OBJ", kObjFilesFilter, true, "obj");
     if (ImGui::Button("Save OBJ")) {
-        Maize::savePlantOBJ(gObjPath, gTexPath, gStemTexPath);
+        if (Maize::savePlantOBJ(gObjPath, gTexPath, gStemTexPath)) {
+            sExportStatus = "Plant OBJ saved.";
+            sExportStatusColor = ImVec4(0.2f, 1.0f, 0.4f, 1.0f);
+        } else {
+            sExportStatus = "Failed to save plant OBJ.";
+            sExportStatusColor = ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
+        }
     }
 
-    PathInputWithBrowseButton("Skeleton OBJ Path", gSkeletonObjPath, sizeof(gSkeletonObjPath), "Save As...", "Save skeleton OBJ", kObjFilesFilter, true, "obj");
+    PathInputWithBrowseButton("Skeleton OBJ Path", gSkeletonObjPath, sizeof(gSkeletonObjPath), "Browse...", "Save skeleton OBJ", kObjFilesFilter, true, "obj");
     if (ImGui::Button("Save Skeleton OBJ")) {
-        Maize::saveSkeletonOBJ(gSkeletonObjPath);
+        if (Maize::saveSkeletonOBJ(gSkeletonObjPath)) {
+            sExportStatus = "Skeleton OBJ saved.";
+            sExportStatusColor = ImVec4(0.2f, 1.0f, 0.4f, 1.0f);
+        } else {
+            sExportStatus = "Failed to save skeleton OBJ.";
+            sExportStatusColor = ImVec4(1.0f, 0.35f, 0.35f, 1.0f);
+        }
     }
-    if (!sExportLoadMsg.empty()) {
-        ImGui::TextColored(ImVec4(1.0f, 0.35f, 0.35f, 1.0f), "%s", sExportLoadMsg.c_str());
+
+    if (!sExportStatus.empty()) {
+        ImGui::TextColored(sExportStatusColor, "%s", sExportStatus.c_str());
     }
 }
 
@@ -1363,6 +1384,66 @@ static void reshape(int w, int h) {
 
 static void idle() { glutPostRedisplay(); }
 
+static const char* kAppSettingsPath = "app_settings.xml";
+
+static void LoadAppSettings() {
+    tinyxml2::XMLDocument doc;
+    if (doc.LoadFile(kAppSettingsPath) != tinyxml2::XML_SUCCESS) return;
+    auto* root = doc.FirstChildElement("AppSettings");
+    if (!root) return;
+
+    auto readStr = [&](const char* name, char* buf, int bufSize) {
+        if (auto* e = root->FirstChildElement(name))
+            if (const char* v = e->GetText())
+                strncpy_s(buf, bufSize, v, bufSize - 1);
+    };
+    auto readInt = [&](const char* name, int& val) {
+        if (auto* e = root->FirstChildElement(name))
+            e->QueryIntText(&val);
+    };
+
+    readStr("TexPath",             gTexPath,             sizeof(gTexPath));
+    readStr("StemTexPath",         gStemTexPath,         sizeof(gStemTexPath));
+    readStr("ExportBasePath",      gExportBasePath,      sizeof(gExportBasePath));
+    readStr("GeneratorConfigPath", gGeneratorConfigPath, sizeof(gGeneratorConfigPath));
+    readStr("XmlPath",             gXmlPath,             sizeof(gXmlPath));
+    readStr("SkeletonXmlPath",     gSkeletonXmlPath,     sizeof(gSkeletonXmlPath));
+    readStr("ObjPath",             gObjPath,             sizeof(gObjPath));
+    readStr("SkeletonObjPath",     gSkeletonObjPath,     sizeof(gSkeletonObjPath));
+    readInt("BatchCount",          gBatchCount);
+    readInt("BatchStartIndex",     gBatchStartIndex);
+}
+
+static void SaveAppSettings() {
+    tinyxml2::XMLDocument doc;
+    auto* root = doc.NewElement("AppSettings");
+    doc.InsertFirstChild(root);
+
+    auto addStr = [&](const char* name, const char* val) {
+        auto* e = doc.NewElement(name);
+        e->SetText(val);
+        root->InsertEndChild(e);
+    };
+    auto addInt = [&](const char* name, int val) {
+        auto* e = doc.NewElement(name);
+        e->SetText(val);
+        root->InsertEndChild(e);
+    };
+
+    addStr("TexPath",             gTexPath);
+    addStr("StemTexPath",         gStemTexPath);
+    addStr("ExportBasePath",      gExportBasePath);
+    addStr("GeneratorConfigPath", gGeneratorConfigPath);
+    addStr("XmlPath",             gXmlPath);
+    addStr("SkeletonXmlPath",     gSkeletonXmlPath);
+    addStr("ObjPath",             gObjPath);
+    addStr("SkeletonObjPath",     gSkeletonObjPath);
+    addInt("BatchCount",          gBatchCount);
+    addInt("BatchStartIndex",     gBatchStartIndex);
+
+    doc.SaveFile(kAppSettingsPath);
+}
+
 int main(int argc, char** argv) {
     srand((unsigned int)time(NULL));
     glutInit(&argc, argv);
@@ -1375,6 +1456,8 @@ int main(int argc, char** argv) {
     glEnable(GL_MULTISAMPLE);
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 
+    LoadAppSettings();
+
     loadTexture(gTexPath, &gTextureID, &gTextureOK);
     loadTexture(gStemTexPath, &gStemTextureID, &gStemTextureOK);
     RebuildFromGenerator();
@@ -1382,6 +1465,7 @@ int main(int argc, char** argv) {
     glutDisplayFunc(display);
     glutReshapeFunc(reshape);
     glutIdleFunc(idle);
+    glutCloseFunc(SaveAppSettings);
     glutMainLoop();
     return 0;
 }
