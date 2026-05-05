@@ -1,11 +1,21 @@
-﻿#include <GL/freeglut.h>
+﻿// Silence MSVC's deprecation warnings for the portable C functions
+// (fopen, strncpy, etc.) used in the cross-platform fallback paths
+#ifdef _MSC_VER
+#  ifndef _CRT_SECURE_NO_WARNINGS
+#    define _CRT_SECURE_NO_WARNINGS
+#  endif
+#endif
+
+#include <GL/freeglut.h>
 #include <GL/glu.h>
 #include <GL/glext.h>
-#ifndef NOMINMAX
-#define NOMINMAX
+#ifdef _WIN32
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#  include <windows.h>
+#  include <commdlg.h>
 #endif
-#include <windows.h>
-#include <commdlg.h>
 #include <vector>
 #include <string>
 #include <cstddef>
@@ -171,6 +181,7 @@ static void CopyStringToBuffer(const std::string& value, char* buffer, size_t bu
     buffer[bufferSize - 1] = '\0';
 }
 
+#ifdef _WIN32
 static bool BrowseForFilePath(char* buffer, size_t bufferSize, const char* title, const char* filter, bool saveDialog, const char* defaultExt = nullptr) {
     char fileBuffer[4096] = {};
     CopyStringToBuffer(buffer, fileBuffer, sizeof(fileBuffer));
@@ -196,6 +207,51 @@ static bool BrowseForFilePath(char* buffer, size_t bufferSize, const char* title
     CopyStringToBuffer(fileBuffer, buffer, bufferSize);
     return true;
 }
+#else
+// Cross-platform fallback that shells out to a native dialog helper:
+//   - Linux:  zenity     (GNOME) — `apt install zenity`
+//   - macOS:  osascript  (built-in)
+// If neither is available the call returns false and the user can still edit
+// the path text field directly.
+static bool BrowseForFilePath(char* buffer, size_t bufferSize, const char* title, const char* /*filter*/, bool saveDialog, const char* /*defaultExt*/ = nullptr) {
+    std::string cmd;
+#  if defined(__APPLE__)
+    // AppleScript "choose file" / "choose file name" returns a POSIX path via the trailing transform
+    if (saveDialog) {
+        cmd  = "osascript -e 'POSIX path of (choose file name with prompt \"";
+        cmd += title ? title : "Save File";
+        cmd += "\")' 2>/dev/null";
+    } else {
+        cmd  = "osascript -e 'POSIX path of (choose file with prompt \"";
+        cmd += title ? title : "Open File";
+        cmd += "\")' 2>/dev/null";
+    }
+#  else
+    // Linux: prefer zenity (most common), fall back to kdialog if available
+    cmd  = "command -v zenity >/dev/null 2>&1 && zenity --file-selection ";
+    if (saveDialog) cmd += "--save --confirm-overwrite ";
+    cmd += "--title=\"";
+    cmd += title ? title : (saveDialog ? "Save File" : "Open File");
+    cmd += "\" 2>/dev/null";
+#  endif
+
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) return false;
+
+    char line[4096] = {};
+    char* got = fgets(line, sizeof(line), pipe);
+    int rc = pclose(pipe);
+    if (!got || rc != 0) return false;
+
+    // Strip trailing newline
+    size_t n = strlen(line);
+    while (n > 0 && (line[n - 1] == '\n' || line[n - 1] == '\r')) line[--n] = '\0';
+    if (n == 0) return false;
+
+    CopyStringToBuffer(line, buffer, bufferSize);
+    return true;
+}
+#endif
 
 static bool PathInputWithBrowseButton(const char* label, char* buffer, size_t bufferSize, const char* buttonLabel, const char* dialogTitle, const char* filter, bool saveDialog, const char* defaultExt = nullptr) {
     ImGui::PushID(label);
@@ -250,8 +306,7 @@ static Vect3d TransformVector(const float m[16], const Vect3d& v) {
 }
 
 static bool LoadTextFile(const char* path, std::string& out, std::string& error) {
-    FILE* f = nullptr;
-    fopen_s(&f, path, "rb");
+    FILE* f = std::fopen(path, "rb");
     if (!f) { error = std::string("Cannot open: ") + path; return false; }
     fseek(f, 0, SEEK_END);
     long sz = ftell(f);
@@ -1394,8 +1449,10 @@ static void LoadAppSettings() {
 
     auto readStr = [&](const char* name, char* buf, int bufSize) {
         if (auto* e = root->FirstChildElement(name))
-            if (const char* v = e->GetText())
-                strncpy_s(buf, bufSize, v, bufSize - 1);
+            if (const char* v = e->GetText()) {
+                std::strncpy(buf, v, (size_t)bufSize - 1);
+                buf[bufSize - 1] = '\0';
+            }
     };
     auto readInt = [&](const char* name, int& val) {
         if (auto* e = root->FirstChildElement(name))
@@ -1457,6 +1514,10 @@ int main(int argc, char** argv) {
     glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);
 
     LoadAppSettings();
+
+    // Apply the saved generator config (or the bundled default on first launch)
+    // before the first rebuild so the viewport reflects it immediately.
+    gGen.loadConfig(gGeneratorConfigPath);
 
     loadTexture(gTexPath, &gTextureID, &gTextureOK);
     loadTexture(gStemTexPath, &gStemTextureID, &gStemTextureOK);

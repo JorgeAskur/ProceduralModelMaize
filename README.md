@@ -13,6 +13,7 @@ An interactive C++ tool for generating procedural maize (*Zea mays*) plant geome
 - [Using the Generator](#using-the-generator)
 - [Export Formats](#export-formats)
 - [Generator Config File](#generator-config-file)
+- [Third-Party Licenses](#third-party-licenses)
 - [Known Limitations](#known-limitations)
 
 ---
@@ -21,16 +22,20 @@ An interactive C++ tool for generating procedural maize (*Zea mays*) plant geome
 
 | Requirement | Version | Notes |
 |---|---|---|
-| Windows | 10 or later | Linux/macOS not currently supported |
-| Visual Studio | 2022 (v17+) | Desktop development with C++ workload |
-| vcpkg | any recent | For managing freeglut and tinyxml2 |
+| OS | Windows 10+, Linux, macOS 12+ | Cross-platform via CMake; Visual Studio path is Windows-only |
+| Visual Studio | 2022 (v17+) | Windows / .vcxproj path; Desktop development with C++ workload |
+| CMake | 3.20+ | Required for Linux/macOS, optional alternative on Windows |
+| vcpkg | any recent | Used on Windows for freeglut and tinyxml2 |
 | OpenGL | 2.0+ | Any discrete or integrated GPU with OpenGL 2.0 support |
+| Native file dialog | platform-dependent | Windows: built-in; Linux: `zenity`; macOS: `osascript` (built-in) |
 
 ---
 
 ## Build Instructions
 
-### 1. Install vcpkg (if you do not already have it)
+### Windows
+
+#### 1. Install vcpkg (if you do not already have it)
 
 ```bat
 git clone https://github.com/microsoft/vcpkg.git
@@ -38,7 +43,7 @@ cd vcpkg
 bootstrap-vcpkg.bat
 ```
 
-### 2. Install dependencies
+#### 2. Install dependencies
 
 The project requires **freeglut** and **tinyxml2** for x64-windows:
 
@@ -53,13 +58,44 @@ Integrate vcpkg with Visual Studio so the project can find the installed headers
 vcpkg integrate install
 ```
 
-### 3. Open and build
+#### 3. Open and build
+
+**Option A — Visual Studio (primary, fully tested):**
 
 1. Open `Maize.sln` in Visual Studio 2022.
 2. Set the target to **Release | x64** (or Debug | x64).
 3. Build → Build Solution (`Ctrl+Shift+B`).
 
 The output executable (`Maize.exe`) is placed in `x64\Release\` (or `x64\Debug\`).
+
+**Option B — CMake (alternative):**
+
+```bat
+cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=<vcpkg-root>\scripts\buildsystems\vcpkg.cmake
+cmake --build build --config Release
+```
+
+### Linux
+
+```bash
+sudo apt install build-essential cmake freeglut3-dev libtinyxml2-dev zenity
+cmake -B build -S .
+cmake --build build -j
+./build/MaizeGenerator
+```
+
+`zenity` provides the native file-open / save dialogs. If it is not installed, the path text fields still work — just type the path manually.
+
+### macOS
+
+```bash
+brew install cmake freeglut tinyxml2
+cmake -B build -S .
+cmake --build build -j
+./build/MaizeGenerator
+```
+
+The native file dialog is provided by AppleScript (`osascript`), which ships with macOS. Note: macOS deprecated OpenGL in 10.14 and the project relies on the legacy compatibility profile (OpenGL 2.1) — works on macOS 12+ but may eventually be removed by Apple.
 
 ### 4. Copy runtime DLLs
 
@@ -205,8 +241,14 @@ Config files carry a `version` attribute (currently `4`). Partial configs are su
 
 ---
 
+## Third-Party Licenses
+
+This project bundles or links against several third-party libraries — Dear ImGui (MIT), stb_image (MIT / public domain), freeglut (MIT/X11), and tinyxml2 (zlib). Full attribution and license text is in [`THIRD_PARTY_LICENSES.md`](THIRD_PARTY_LICENSES.md). All third-party components are redistributable; no copyleft (GPL/LGPL) dependencies are present.
+
+---
+
 ## Known Limitations
 
 - **Single tiller only.** The data model and XML format support multiple tillers, but the procedural generator always produces a single main tiller. Multi-tiller generation (e.g. for sorghum ratoon shoots) is a planned future extension.
-- **Windows only.** The build system and windowing layer depend on Win32 APIs. A cross-platform CMake build is planned.
+- **Cross-platform but not equally tested.** Visual Studio + Win32 is the primary, fully-tested build. CMake builds for Linux and macOS work but receive less testing than the Windows path.
 - **No online reconstruction.** The tool takes a finished descriptor as input; real-time plant reconstruction from live sensor data is out of scope.
