@@ -26,6 +26,7 @@
 #include <cstdlib>
 #include <thread>
 #include <atomic>
+#include <iostream>
 #include <math/vect3d.h>
 
 #include "imgui.h"
@@ -846,7 +847,7 @@ static void RenderGlobalTraitsPanel(bool& needRegen) {
     ImGui::TextWrapped("Edit global traits and defaults for the plant. Viewport preview uses parameter means; use Set Generation to sample full distributions.");
 
     if (ImGui::TreeNodeEx("Stem", ImGuiTreeNodeFlags_DefaultOpen)) {
-        needRegen |= DistUI("Height (m)", gGen.height, 0.5f, 4.0f);
+        needRegen |= DistUI("Height (m)", gGen.height, 0.1f, 4.0f);
         needRegen |= DistUI("Stem Radius", gGen.stemRadius, 0.01f, 0.1f);
         needRegen |= DistUI("Leaf Count", gGen.numLeaves, 3.0f, 20.0f);
         needRegen |= ImGui::SliderFloat("Tiller Azimuth Base", &gGen.tillerAzimuthDeg, -360.0f, 360.0f);
@@ -861,7 +862,7 @@ static void RenderGlobalTraitsPanel(bool& needRegen) {
         needRegen |= DistUI("Width", gGen.leafWidthBase, 0.02f, 0.2f);
         needRegen |= DistUI("Width Taper", gGen.widthTaper, 0.0f, 10.0f);
         needRegen |= DistUI("Angle", gGen.leafAngleBase, 0.f, 90.f);
-        needRegen |= DistUI("Droopiness", gGen.droopinessBase, -80.f, 80.f);
+        needRegen |= DistUI("Droopiness", gGen.droopinessBase, -150.f, 150.f);
         needRegen |= DistUI("Stem Inclination", gGen.stemInclination, -90.f, 90.f);
         needRegen |= DistUI("Leaf Twist", gGen.leafTwist, -180.f, 180.f);
         needRegen |= DistUI("Leaf Curl", gGen.leafCurl, -1.0f, 1.0f);
@@ -934,7 +935,7 @@ static void RenderSetGenerationPanel() {
     bool texturePathChanged = false;
     texturePathChanged |= PathInputWithBrowseButton("Leaf Texture Path", gTexPath, sizeof(gTexPath), "Browse...", "Choose leaf texture", kImageFilesFilter, false);
     texturePathChanged |= PathInputWithBrowseButton("Stem Texture Path", gStemTexPath, sizeof(gStemTexPath), "Browse...", "Choose stem texture", kImageFilesFilter, false);
-    ImGui::SliderInt("Set Count", &gBatchCount, 1, 32000);
+    ImGui::InputInt("Set Count", &gBatchCount);
     ImGui::InputInt("Start Index", &gBatchStartIndex);
     if (gBatchStartIndex < 0) gBatchStartIndex = 0;
     ImGui::Checkbox("Export Skeleton", &gExportSkeleton);
@@ -1501,7 +1502,75 @@ static void SaveAppSettings() {
     doc.SaveFile(kAppSettingsPath);
 }
 
+// ---------------------------------------------------------------------------
+// Headless batch CLI. Invoked as:
+//   Maize.exe --headless --config CFG.xml --output PATH_PREFIX --count N
+//             [--seed-start K] [--leaf-tex LEAF.png] [--stem-tex STEM.png]
+//             [--export-skeleton]
+//
+// Skips glutInit / window / ImGui entirely so it works on headless machines
+// (CI, scripts, Python subprocess invocations from notebooks). The plant
+// XMLs end up at <output>_<seed>.xml in PyMaize-compatible format.
+// ---------------------------------------------------------------------------
+static int RunHeadless(int argc, char** argv) {
+    std::string configPath;
+    std::string outputPrefix = "plant_export/plant";
+    std::string leafTex      = "maize_leaf.png";
+    std::string stemTex      = "maize_stem_texture.png";
+    int count = 1;
+    int seedStart = 0;
+    bool exportSkeleton = false;
+
+    auto needArg = [&](int& i, const char* flag) -> const char* {
+        if (i + 1 >= argc) {
+            std::cerr << "Maize.exe: missing argument after " << flag << "\n";
+            std::exit(2);
+        }
+        return argv[++i];
+    };
+    for (int i = 1; i < argc; ++i) {
+        std::string a = argv[i];
+        if      (a == "--config")          configPath    = needArg(i, "--config");
+        else if (a == "--output")          outputPrefix  = needArg(i, "--output");
+        else if (a == "--count")           count         = std::atoi(needArg(i, "--count"));
+        else if (a == "--seed-start")      seedStart     = std::atoi(needArg(i, "--seed-start"));
+        else if (a == "--leaf-tex")        leafTex       = needArg(i, "--leaf-tex");
+        else if (a == "--stem-tex")        stemTex       = needArg(i, "--stem-tex");
+        else if (a == "--export-skeleton") exportSkeleton = true;
+        else if (a == "--headless")        {} // already detected
+        else { std::cerr << "Maize.exe: unknown flag " << a << "\n"; std::exit(2); }
+    }
+    if (configPath.empty()) {
+        std::cerr << "Maize.exe --headless: --config CONFIG.xml is required\n";
+        return 2;
+    }
+
+    MaizeGenerator gen;
+    std::string err;
+    if (!gen.loadConfig(configPath, &err)) {
+        std::cerr << "Failed to load config '" << configPath << "': " << err << "\n";
+        return 1;
+    }
+    std::cout << "[headless] config=" << configPath
+              << " output=" << outputPrefix
+              << " count=" << count
+              << " seedStart=" << seedStart << "\n";
+    std::atomic<int> progress{0};
+    gen.generateBatch(count, outputPrefix, leafTex, stemTex,
+                      /*useMeansOnly=*/false, exportSkeleton,
+                      &progress, seedStart, /*cancelFlag=*/nullptr);
+    std::cout << "[headless] wrote " << progress.load() << " plants\n";
+    return 0;
+}
+
 int main(int argc, char** argv) {
+    // Detect --headless anywhere in argv so we can fully bypass GLUT/ImGui setup.
+    for (int i = 1; i < argc; ++i) {
+        if (std::string(argv[i]) == "--headless") {
+            return RunHeadless(argc, argv);
+        }
+    }
+
     srand((unsigned int)time(NULL));
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE);

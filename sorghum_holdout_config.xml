@@ -1,0 +1,61 @@
+<?xml version='1.0' encoding='utf-8'?>
+<MaizeGeneratorConfig version="4" speciesName="Maize" phenotypeId="BTx99">
+    <height mean="0.279860" stdDev="0.091659" />
+    <stemRadius mean="0.012" stdDev="0.0020000001" />
+    <numLeaves mean="6.822394" stdDev="1.780417" />
+    <leafLengthBase mean="0.321017" stdDev="0.114885" />
+    <leafWidthBase mean="0.066" stdDev="0.0099999998" />
+    <widthTaper mean="2.200000" stdDev="0.200000" />
+    <leafAngleBase mean="59.804882" stdDev="16.208292" />
+    <leafTwist mean="0.000000" stdDev="25.000000" />
+    <leafCurl mean="0.050000" stdDev="0.040000" />
+    <droopinessBase mean="-81.028820" stdDev="63.389056" />
+    <stemInclination mean="-0.003" stdDev="0.204" />
+    <waveAmp mean="0.0049999999" stdDev="0.001" />
+    <waveFreq mean="7.5970001" stdDev="2" />
+    <wavePhaseShift mean="3.326" stdDev="1" />
+    <tillerAzimuthDeg value="180" />
+    <tillerAzimuthNoise value="53.910379" />
+    <stemShrinkFactor value="0.64999998" />
+    <stemShrinkMin value="0.0020000001" />
+    <whorlStart value="0.53500003" />
+    <whorlCompression value="1.5" />
+    <whorlMinInternodeWeight value="0.30199999" />
+    <leafSurfaceNoiseAmp value="0.0099999998" />
+    <leafSurfaceNoiseFreq value="8" />
+    <midribTipTaperStart value="0.85000002" />
+    <midribTextureStrength value="0.75" />
+    <midribWidth value="0.075000003" />
+    <liguleWrapLengthScale value="0.5" />
+    <liguleUnfoldSharpness value="0.2" />
+    <sheathOuterScale value="1.5" />
+    <leafJitterScale value="0.600000" />
+    <traitCorrelationStrength value="0.73500001" />
+    <leafLengthScaleCurve bottom="0.745549" middle="1.000000" top="0.922422" />
+    <leafWidthScaleCurve bottom="1" middle="1" top="0.77100003" />
+    <widthTaperScaleCurve bottom="1" middle="1" top="1" />
+    <waveAmpScaleCurve bottom="3" middle="1.36" top="1.783" />
+    <waveFreqScaleCurve bottom="2.0050001" middle="2.4059999" top="1" />
+    <leafAngleOffsetCurve bottom="-6.445415" middle="0.000000" top="2.365565" />
+    <droopinessOffsetCurve bottom="-25.177900" middle="0.000000" top="37.711246" />
+    <leafTwistOffsetCurve bottom="0" middle="0" top="0" />
+    <leafCurlOffsetCurve bottom="-0.13500001" middle="0.149" top="0.63800001" />
+    <stemInclinationOffsetCurve bottom="0" middle="0" top="0" />
+    <traitLoadingsMatrix>
+        <parameter key="stemRadius" vigor="0.64999998" slenderness="-0.40000001" posture="0" texture="0" />
+        <parameter key="numLeaves" vigor="0.55000001" slenderness="0.1" posture="0" texture="0" />
+        <parameter key="height" vigor="0.60000002" slenderness="0.40000001" posture="0" texture="0" />
+        <parameter key="leafLengthBase" vigor="0.60000002" slenderness="0.25" posture="0" texture="0" />
+        <parameter key="leafWidthBase" vigor="0.5" slenderness="-0.15000001" posture="0" texture="0" />
+        <parameter key="widthTaper" vigor="-0.1" slenderness="0.1" posture="0.15000001" texture="0" />
+        <parameter key="leafAngleBase" vigor="0.1" slenderness="0" posture="0.64999998" texture="0" />
+        <parameter key="leafTwist" vigor="0" slenderness="0" posture="0.1" texture="0.44999999" />
+        <parameter key="leafCurl" vigor="0" slenderness="0" posture="0.1" texture="0.55000001" />
+        <parameter key="droopinessBase" vigor="-0.55000001" slenderness="0" posture="0.30000001" texture="0" />
+        <parameter key="stemInclination" vigor="0" slenderness="0.15000001" posture="0.44999999" texture="0" />
+        <parameter key="waveAmp" vigor="0" slenderness="0" posture="0" texture="0.60000002" />
+        <parameter key="waveFreq" vigor="0" slenderness="0" posture="0.1" texture="0.34999999" />
+        <parameter key="wavePhaseShift" vigor="0" slenderness="0" posture="0" texture="0.30000001" />
+    </traitLoadingsMatrix>
+    <splinePointsDefault value="40" />
+</MaizeGeneratorConfig>

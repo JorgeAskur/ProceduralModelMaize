@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<MaizeGeneratorConfig version="4">
-    <height mean="0.5" stdDev="0.057999998"/>
+<MaizeGeneratorConfig version="4" speciesName="Maize" phenotypeId="BTx99">
+    <height mean="0.345" stdDev="0.066"/>
     <stemRadius mean="0.012" stdDev="0.001"/>
-    <numLeaves mean="7.2930002" stdDev="2.5669999"/>
+    <numLeaves mean="7.2930002" stdDev="2.0050001"/>
     <leafLengthBase mean="0.31799999" stdDev="0.052999999"/>
     <leafWidthBase mean="0.066" stdDev="0.0099999998"/>
     <widthTaper mean="2.859" stdDev="0.1"/>
     <leafAngleBase mean="43.974998" stdDev="7.073"/>
     <leafTwist mean="9.1800003" stdDev="25.580999"/>
     <leafCurl mean="0.113" stdDev="0.034000002"/>
-    <droopinessBase mean="-20" stdDev="4.1009998"/>
+    <droopinessBase mean="-99.778999" stdDev="4.1009998"/>
     <stemInclination mean="-0.003" stdDev="0.204"/>
     <waveAmp mean="0.003" stdDev="0.001"/>
     <waveFreq mean="7.1560001" stdDev="3.3570001"/>
@@ -25,6 +25,7 @@
     <leafSurfaceNoiseFreq value="8"/>
     <midribTipTaperStart value="0.85000002"/>
     <midribTextureStrength value="0.75599998"/>
+    <midribWidth value="0.075000003"/>
     <liguleWrapLengthScale value="0.5"/>
     <liguleUnfoldSharpness value="0.2"/>
     <sheathOuterScale value="1.382"/>

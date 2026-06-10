@@ -1,5 +1,5 @@
-prefix=C:/Users/csuser/Documents/ProceduralModelMaize/vcpkg_installed/x64-windows/vcpkg/pkgs/freeglut_x64-windows
-libdir=C:/Users/csuser/Documents/ProceduralModelMaize/vcpkg_installed/x64-windows/vcpkg/pkgs/freeglut_x64-windows/lib
+prefix=C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/pkgs/freeglut_x64-windows
+libdir=C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/pkgs/freeglut_x64-windows/lib
 includedir=${prefix}/include
 
 Name: glut

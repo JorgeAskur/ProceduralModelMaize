@@ -610,9 +610,7 @@ namespace Maize {
         // The first sections are handled specially so the blade emerges from a
         // wrapped sheath instead of appearing as a flat ribbon from row 0
         float segmentLen = L.leafLength / (float)(L.splinePoints - 1);
-        // droopiness is stored in convenient UI units; the 5.0 factor converts
-        // one unit of droopiness to ~5 degrees of tip rotation at full droop (t=1).
-        float gravityFactor = L.droopiness * 5.0f;
+        float gravityFactor = L.droopiness;
         float t_p1 = (L.splinePoints > 1) ? 1.0f / (float)(L.splinePoints - 1) : 1.0f;
         float halfWidth = L.leafWidth * 0.5f;
         LeafSectionEmitter emitter{ outLeft, outRight, clampf(L.leafCurl, -1.f, 1.f) };

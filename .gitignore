@@ -383,3 +383,11 @@ FodyWeavers.xsd
 /plant_export
 /.claude
 /vcpkg_installed/x64-windows-static
+
+# Runtime artifacts written by the app on close / on export
+app_settings.xml
+maize.mtl
+/plant_spline*.obj
+/plant_spline*.xml
+/plant_skeleton*.obj
+/plant_skeleton*.xml

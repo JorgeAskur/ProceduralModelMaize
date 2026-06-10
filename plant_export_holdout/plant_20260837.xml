@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plant species="Maize" phenotypeId="BTx99">
+    <Tiller type="main" radius="0.012754364" alpha="0" stemShrink="0.0082903365">
+        <leaves number="3">
+            <leaf id="0" distance="0.17051131" leafLength="0.1" leafWidth="0.056802828" leafAzimuthDeg="347.44241" leafAngle="87.501274" droopiness="-148.80379" stemInclinationDeg="-0.077477828" splinePoints="40" widthTaper="1.8002129" leafTwist="40.23365" leafCurl="-0.0044797808" waveLAmp="0.019380223" waveLFreq="16.9478" waveLPhase="2.0977583" waveRAmp="0.019380223" waveRFreq="16.9478" waveRPhase="3.6677585" surfaceNoiseAmp="0.0099999998" surfaceNoiseFreq="8" midribTipTaperStart="0.85000002" midribTextureStrength="0.75" midribWidth="0.075000003" liguleWrapLengthScale="0.5" liguleUnfoldSharpness="0.2" sheathOuterScale="1.5"/>
+            <leaf id="1" distance="0.17051131" leafLength="0.22795108" leafWidth="0.060721245" leafAzimuthDeg="183.64548" leafAngle="83.006432" droopiness="-87.211746" stemInclinationDeg="-0.21122441" splinePoints="40" widthTaper="1.9526217" leafTwist="48.736103" leafCurl="0.31544942" waveLAmp="0.0082214605" waveLFreq="21.237671" waveLPhase="2.2800395" waveRAmp="0.0082214605" waveRFreq="21.237671" waveRPhase="3.8500395" surfaceNoiseAmp="0.0099999998" surfaceNoiseFreq="8" midribTipTaperStart="0.85000002" midribTextureStrength="0.75" midribWidth="0.075000003" liguleWrapLengthScale="0.5" liguleUnfoldSharpness="0.2" sheathOuterScale="1.5"/>
+            <leaf id="2" distance="0.051494408" leafLength="0.1" leafWidth="0.04697885" leafAzimuthDeg="337.83936" leafAngle="74.666939" droopiness="-57.462498" stemInclinationDeg="-0.035551362" splinePoints="40" widthTaper="1.9479344" leafTwist="44.556015" leafCurl="0.77373987" waveLAmp="0.010487232" waveLFreq="8.7167511" waveLPhase="1.6077411" waveRAmp="0.010487232" waveRFreq="8.7167511" waveRPhase="3.1777411" surfaceNoiseAmp="0.0099999998" surfaceNoiseFreq="8" midribTipTaperStart="0.85000002" midribTextureStrength="0.75" midribWidth="0.075000003" liguleWrapLengthScale="0.5" liguleUnfoldSharpness="0.2" sheathOuterScale="1.5"/>
+        </leaves>
+    </Tiller>
+</plant>
