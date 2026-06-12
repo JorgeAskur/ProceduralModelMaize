@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.16)
 project(MaizeGenerator CXX)
 
 # -----------------------------------------------------------------------------
@@ -25,7 +25,7 @@ project(MaizeGenerator CXX)
 #   cmake -B build -S . && cmake --build build -j
 # -----------------------------------------------------------------------------
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 16)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
