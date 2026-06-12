@@ -102,6 +102,7 @@ add_executable(MaizeGenerator
 # -----------------------------------------------------------------------------
 target_include_directories(MaizeGenerator PRIVATE
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/include/ImGUI
     ${CMAKE_SOURCE_DIR}/include/stb_image
     ${CMAKE_SOURCE_DIR}
 )

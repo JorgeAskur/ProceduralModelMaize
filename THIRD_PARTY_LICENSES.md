@@ -117,36 +117,6 @@ distribution.
 
 ---
 
-## GLUI (vendored, no longer used)
-
-The repository contains `lib/glui32.lib`, `lib/glui32d.lib`, and `include/GL/glui.h` from a previous version of the project. These files are **not used** by the current codebase (no source file includes `glui.h` or links against the library). They are retained only because they sit in the legacy repository tree.
-
-- **Author:** Paul Rademacher (1998)
-- **License:** zlib-style
-- **Upstream:** https://sourceforge.net/projects/glui/
-
-```
-Copyright (c) 1998 Paul Rademacher
-
-This software is provided 'as-is', without any express or implied warranty.
-In no event will the authors be held liable for any damages arising from
-the use of this software.
-
-Permission is granted to anyone to use this software for any purpose,
-including commercial applications, and to alter it and redistribute it
-freely, subject to the following restrictions:
-
-1. The origin of this software must not be misrepresented; you must not
-claim that you wrote the original software. If you use this software in
-a product, an acknowledgment in the product documentation would be
-appreciated but is not required.
-2. Altered source versions must be plainly marked as such, and must not
-be misrepresented as being the original software.
-3. This notice may not be removed or altered from any source distribution.
-```
-
----
-
 ## OpenGL / GLU
 
 System libraries provided by the operating system (Windows). No redistribution by this project.

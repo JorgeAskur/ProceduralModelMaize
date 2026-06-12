@@ -9,7 +9,7 @@
     <leafAngleBase mean="43.974998" stdDev="10.132"/>
     <leafTwist mean="14.707" stdDev="40.976002"/>
     <leafCurl mean="0.113" stdDev="0.034000002"/>
-    <droopinessBase mean="-20" stdDev="4.1009998"/>
+    <droopinessBase mean="-99.779999" stdDev="4.1009998"/>
     <stemInclination mean="-0.003" stdDev="0.204"/>
     <waveAmp mean="0.0049999999" stdDev="0.001"/>
     <waveFreq mean="7.5970001" stdDev="2"/>
@@ -25,6 +25,7 @@
     <leafSurfaceNoiseFreq value="8"/>
     <midribTipTaperStart value="0.85000002"/>
     <midribTextureStrength value="0.75"/>
+    <midribWidth value="0.075000003"/>
     <liguleWrapLengthScale value="0.5"/>
     <liguleUnfoldSharpness value="0.2"/>
     <sheathOuterScale value="1.5"/>

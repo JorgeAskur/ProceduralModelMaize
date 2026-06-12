@@ -1,4 +1,4 @@
-prefix=C:/Users/csuser/Documents/ProceduralModelMaize/vcpkg_installed/x64-windows/vcpkg/pkgs/tinyxml2_x64-windows/debug
+prefix=C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/pkgs/tinyxml2_x64-windows/debug
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include

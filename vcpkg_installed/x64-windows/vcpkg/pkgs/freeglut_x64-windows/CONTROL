@@ -4,5 +4,5 @@ Port-Version: 1
 Depends: opengl, vcpkg-cmake, vcpkg-cmake-config
 Architecture: x64-windows
 Multi-Arch: same
-Abi: 709ce48872f9337e1748d4527d2b3e20af318b10f2643d02adb4d9de1f5c7f45
+Abi: e31438c1d4999a63347d1fd11cc022dc67a1d93d074e67ed8c12fd055485854d
 Description: A free OpenGL utility toolkit, the open-sourced alternative to the GLUT library.

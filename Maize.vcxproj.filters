@@ -71,12 +71,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="include\shapes.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
-    <ClInclude Include="include\trackball.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
     <ClInclude Include="include\GL\freeglut.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
@@ -86,9 +80,6 @@
     <ClInclude Include="include\GL\freeglut_std.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
-    <ClInclude Include="include\GL\glut.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
     <ClInclude Include="include\math\matrix4d.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
@@ -96,9 +87,6 @@
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="include\math\vect4d.h">
-      <Filter>Archivos de encabezado</Filter>
-    </ClInclude>
-    <ClInclude Include="include\GL\glui.h">
       <Filter>Archivos de encabezado</Filter>
     </ClInclude>
     <ClInclude Include="include\imconfig.h">
