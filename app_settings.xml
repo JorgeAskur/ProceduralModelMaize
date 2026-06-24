@@ -7,6 +7,6 @@
     <SkeletonXmlPath>plant_skeleton.xml</SkeletonXmlPath>
     <ObjPath>plant_spline.obj</ObjPath>
     <SkeletonObjPath>plant_skeleton.obj</SkeletonObjPath>
-    <BatchCount>500</BatchCount>
+    <BatchCount>20</BatchCount>
     <BatchStartIndex>0</BatchStartIndex>
 </AppSettings>

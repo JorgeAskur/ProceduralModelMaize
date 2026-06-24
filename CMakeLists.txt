@@ -63,6 +63,10 @@ if(NOT TARGET tinyxml2::tinyxml2)
     add_library(tinyxml2::tinyxml2 ALIAS PkgConfig::TINYXML2)
 endif()
 
+# glm: header-only. CONFIG (vcpkg/system) provides the glm::glm target; if it is
+# missing we fall back to whatever <glm/glm.hpp> is on the include path.
+find_package(glm CONFIG QUIET)
+
 # -----------------------------------------------------------------------------
 # Sources
 # -----------------------------------------------------------------------------
@@ -74,6 +78,13 @@ set(CORE_SOURCES
     src/math/matrix4d.cpp
     src/math/vect3d.cpp
     src/math/vect4d.cpp
+)
+
+# Ported L-system maize-tassel model (see include/lsystem/).
+set(LSYSTEM_SOURCES
+    src/lsystem/TasselGrowthModel.cpp
+    src/lsystem/TasselDescriptorDefaults.cpp
+    src/lsystem/TasselMesh.cpp
 )
 
 set(IMGUI_SOURCES
@@ -93,6 +104,7 @@ set(APP_SOURCES
 
 add_executable(MaizeGenerator
     ${CORE_SOURCES}
+    ${LSYSTEM_SOURCES}
     ${IMGUI_SOURCES}
     ${APP_SOURCES}
 )
@@ -103,6 +115,7 @@ add_executable(MaizeGenerator
 target_include_directories(MaizeGenerator PRIVATE
     ${CMAKE_SOURCE_DIR}/include
     ${CMAKE_SOURCE_DIR}/include/ImGUI
+    ${CMAKE_SOURCE_DIR}/include/lsystem
     ${CMAKE_SOURCE_DIR}/include/stb_image
     ${CMAKE_SOURCE_DIR}
 )
@@ -115,6 +128,10 @@ target_link_libraries(MaizeGenerator PRIVATE
     FreeGLUT::freeglut
     tinyxml2::tinyxml2
 )
+
+if(TARGET glm::glm)
+    target_link_libraries(MaizeGenerator PRIVATE glm::glm)
+endif()
 
 if(WIN32)
     # GLU + Win32 common-dialog API (file browser).

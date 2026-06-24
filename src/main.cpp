@@ -105,6 +105,7 @@ struct GpuVertex {
 
 struct GpuMesh {
     LeafGeom::GeomType type = LeafGeom::GEOM_BLADE;
+    bool isTassel = false;
     GLuint vbo = 0;
     GLuint ibo = 0;
     GLsizei indexCount = 0;
@@ -499,6 +500,36 @@ static bool UploadPlantRendererMeshes() {
         gPlantRenderer.meshes.push_back(mesh);
     }
 
+    // Tassel: a single indexed triangle mesh produced by the L-system port.
+    {
+        const auto& tassel = Maize::tasselMesh();
+        if (tassel.pos.size() == tassel.nrm.size() && tassel.pos.size() == tassel.u.size() &&
+            tassel.pos.size() == tassel.v.size() && !tassel.indices.empty()) {
+            const float tcr = 0.86f, tcg = 0.80f, tcb = 0.55f;  // pale straw
+            std::vector<GpuVertex> vertices(tassel.pos.size());
+            for (size_t i = 0; i < tassel.pos.size(); ++i) {
+                vertices[i] = {
+                    (float)tassel.pos[i].x(), (float)tassel.pos[i].y(), (float)tassel.pos[i].z(),
+                    (float)tassel.nrm[i].x(), (float)tassel.nrm[i].y(), (float)tassel.nrm[i].z(),
+                    tcr, tcg, tcb,
+                    tassel.u[i], tassel.v[i]
+                };
+            }
+
+            GpuMesh mesh;
+            mesh.isTassel = true;
+            mesh.type = LeafGeom::GEOM_SHEATH;  // opaque/solid shading path
+            mesh.indexCount = (GLsizei)tassel.indices.size();
+            gglGenBuffers(1, &mesh.vbo);
+            gglBindBuffer(GL_ARRAY_BUFFER, mesh.vbo);
+            gglBufferData(GL_ARRAY_BUFFER, (GLsizeiptr)(vertices.size() * sizeof(GpuVertex)), vertices.data(), GL_STATIC_DRAW);
+            gglGenBuffers(1, &mesh.ibo);
+            gglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mesh.ibo);
+            gglBufferData(GL_ELEMENT_ARRAY_BUFFER, (GLsizeiptr)(tassel.indices.size() * sizeof(unsigned int)), tassel.indices.data(), GL_STATIC_DRAW);
+            gPlantRenderer.meshes.push_back(mesh);
+        }
+    }
+
     gglBindBuffer(GL_ARRAY_BUFFER, 0);
     gglBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     gPlantRenderer.meshDirty = false;
@@ -540,6 +571,17 @@ static void drawSkeletonViz() {
         glBegin(GL_LINE_STRIP);
         for (const auto& p : G.stemCurve) {
             glVertex3f(p.x(), p.y(), p.z());
+        }
+        glEnd();
+    }
+
+    // Tassel skeleton: rachis + branch centerlines (segment pairs).
+    const auto& tsk = Maize::tasselMesh().skeleton;
+    if (tsk.size() >= 2) {
+        glBegin(GL_LINES);
+        for (size_t i = 0; i + 1 < tsk.size(); i += 2) {
+            glVertex3f(tsk[i].x(), tsk[i].y(), tsk[i].z());
+            glVertex3f(tsk[i + 1].x(), tsk[i + 1].y(), tsk[i + 1].z());
         }
         glEnd();
     }
@@ -596,6 +638,7 @@ static bool drawPlant() {
     for (const auto& mesh : gPlantRenderer.meshes) {
         bool useTexture = (mesh.type == LeafGeom::GEOM_SHEATH) ? gStemTextureOK : gTextureOK;
         GLuint texId = (mesh.type == LeafGeom::GEOM_SHEATH) ? gStemTextureID : gTextureID;
+        if (mesh.isTassel) { useTexture = false; }  // tassel uses its pale vertex color
         glBindTexture(GL_TEXTURE_2D, useTexture ? texId : 0);
         gglUniform1f(gPlantRenderer.locUseTexture, useTexture ? 1.0f : 0.0f);
         gglUniform1f(gPlantRenderer.locLeafFactor, mesh.type == LeafGeom::GEOM_BLADE ? 1.0f : 0.0f);
@@ -1324,6 +1367,49 @@ static void RenderExportPanel() {
     }
 }
 
+static void RenderTasselPanel(bool& needRegen) {
+    // Edits the generator's tassel template. A tassel is grown for every
+    // generated plant when enabled; each plant's tassel follows its own seed,
+    // and latent vigor modulates uprightness (see Vigor->Upright).
+    if (!ImGui::CollapsingHeader("Tassel")) return;
+
+    needRegen |= ImGui::Checkbox("Enable Tassel", &gGen.tasselEnabled);
+    needRegen |= ImGui::SliderFloat("Tassel Scale", &gGen.tasselParams.scale, 0.001f, 0.05f, "%.4f");
+
+    ImGui::TextWrapped("A tassel is grown for every generated plant when enabled, attached to the main stem tip. Its genotype follows the plant seed (so a set varies). Tassel droop is a correlated trait: vigorous plants hold it upright. Edit the 'Tassel Droop' row in the Global Traits correlation matrix to tune how vigor/posture/etc. drive uprightness; use Preview Random Sample to see the spread.");
+
+    if (ImGui::TreeNode("Tassel Parameters")) {
+        auto& T = gGen.tasselParams;
+        ImGui::TextUnformatted("Structure");
+        needRegen |= ImGui::SliderInt("Branch Nodes", &T.branchNodeCount, 0, 30);
+        needRegen |= ImGui::SliderInt("Spike Nodes", &T.spikeNodeCount, 1, 60);
+        needRegen |= ImGui::SliderInt("Secondary Nodes", &T.secondaryNodeCount, 0, 20);
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("Shape");
+        needRegen |= ImGui::SliderFloat("Phyllotaxis Angle", &T.phyllotaxisAngle, 0.0f, 360.0f);
+        needRegen |= ImGui::SliderFloat("Lateral Thickness", &T.lateralThicknessRatio, 0.1f, 1.0f);
+        needRegen |= ImGui::SliderFloat("Secondary Angle", &T.secondaryInsertionAngle, 0.0f, 90.0f);
+        needRegen |= ImGui::SliderFloat("Branch Relax", &T.branchAngleRelaxation, 0.003f, 0.5f, "%.3f");
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("Droop (correlated trait; see matrix loadings)");
+        needRegen |= ImGui::SliderFloat("Droop Mean", &gGen.tasselDroop.mean, 0.0f, 60.0f);
+        needRegen |= ImGui::SliderFloat("Droop Variation", &gGen.tasselDroop.stdDev, 0.0f, 30.0f);
+        needRegen |= ImGui::SliderFloat("Droop Start", &T.matureDroopStartT, 0.0f, 1.0f);
+        // Scales the genotype's baked gravitropism (a separate, per-seed droop
+        // source). Lower this if some tassels collapse downward.
+        needRegen |= ImGui::SliderFloat("Gravitropism", &T.gravitropism, 0.0f, 1.0f);
+
+        ImGui::Separator();
+        ImGui::TextUnformatted("Timing (Growing Degree Days)");
+        needRegen |= ImGui::SliderFloat("Plastochron GDD", &T.plastochronGdd, 5.0f, 120.0f);
+        needRegen |= ImGui::SliderFloat("Maturity GDD", &T.maturityGdd, 30.0f, 600.0f);
+
+        ImGui::TreePop();
+    }
+}
+
 static void RenderVisualSettingsPanel(bool& needUpdate) {
     // Pure viewport/render controls
     ImGui::Separator();
@@ -1421,6 +1507,7 @@ static void display() {
     RenderSetGenerationPanel();
     RenderGeneratorConfigPanel();
     RenderLeafTraitsPanel(needUpdate);
+    RenderTasselPanel(needRegen);
     RenderExportPanel();
     RenderVisualSettingsPanel(needUpdate);
 

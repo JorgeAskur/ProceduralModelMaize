@@ -124,6 +124,7 @@ public:
         float stemRadius = 0.0f;
         float totalHeight = 0.0f;
         float stemShrink = 0.0f;
+        float tasselDroop = 0.0f;   // correlated tassel droop (degrees), latent-driven
         LatentTraits latent;
         PlantLevelTraits plantLevel;
         std::vector<ComputedLeafTraits> leaves;
@@ -144,6 +145,7 @@ public:
         CorrelatedParameter_WaveAmp,
         CorrelatedParameter_WaveFreq,
         CorrelatedParameter_WavePhaseShift,
+        CorrelatedParameter_TasselDroop,
         CorrelatedParameter_Count
     };
 
@@ -211,6 +213,18 @@ public:
     float traitCorrelationStrength = 0.7f; // Global blend from independent draws to the full latent model
     std::array<TraitLoadings, CorrelatedParameter_Count> traitLoadings = {}; // Editable loading matrix shown in the UI
     int splinePointsDefault = 40; // Default spline resolution assigned to newly generated leaves
+
+    // Tassel template applied to every generated plant when tasselEnabled is set.
+    // Each plant's tassel is seeded from its own plant seed so a set varies, and
+    // its uprightness is modulated by the latent vigor trait (see buildPlantFromTraits).
+    bool tasselEnabled = false;
+    TasselDesc tasselParams;                  // base genotype knobs (also the per-plant defaults)
+
+    // Tassel droop is a correlated trait (see CorrelatedParameter_TasselDroop):
+    // its mean is the baseline droop and the latent loadings in the trait matrix
+    // decide how vigor/slenderness/posture/texture shift it. Vigor has a strong
+    // negative loading so vigorous plants hold the tassel upright.
+    Dist tasselDroop = { 0.0f, 12.0f };
 
     // Exposes the current internal trait sampler as a reusable public API
     TraitComputation computeTraits(unsigned int seed, bool useMeansOnly = false) const;

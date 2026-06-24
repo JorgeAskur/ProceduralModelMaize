@@ -77,6 +77,8 @@ namespace {
         { "waveAmp", "Wave Amp", makeLoadings(0.0f, 0.0f, 0.0f, 0.60f) },
         { "waveFreq", "Wave Freq", makeLoadings(0.0f, 0.0f, 0.10f, 0.35f) },
         { "wavePhaseShift", "Wave Phase", makeLoadings(0.0f, 0.0f, 0.0f, 0.30f) },
+        // Strong negative vigor loading -> high vigor drives the tassel upright.
+        { "tasselDroop", "Tassel Droop", makeLoadings(-1.0f, 0.0f, -0.25f, 0.0f) },
     };
 
     const DistField kDistFields[] = {
@@ -94,6 +96,7 @@ namespace {
         { "waveAmp", &MaizeGenerator::waveAmp },
         { "waveFreq", &MaizeGenerator::waveFreq },
         { "wavePhaseShift", &MaizeGenerator::wavePhaseShift },
+        { "tasselDroop", &MaizeGenerator::tasselDroop },
     };
 
     const FloatField kFloatFields[] = {
@@ -300,6 +303,10 @@ MaizeGenerator::TraitComputation MaizeGenerator::computeTraits(unsigned int seed
 
     traits.totalHeight = std::max(0.1f, sampleCorrelatedValue(height, getTraitLoadings(CorrelatedParameter_Height), traits.latent, traits.correlationStrength, gen, useMeansOnly));
 
+    // Tassel droop is correlated like the other traits; latent loadings decide
+    // how vigor/posture/etc. shift it (negative vigor loading -> upright when vigorous).
+    traits.tasselDroop = std::max(0.0f, sampleCorrelatedValue(tasselDroop, getTraitLoadings(CorrelatedParameter_TasselDroop), traits.latent, traits.correlationStrength, gen, useMeansOnly));
+
     traits.plantLevel = samplePlantLevelTraits(*this, traits.latent, traits.correlationStrength, gen, useMeansOnly);
 
     const InternodeWeights internodeWeights = buildInternodeWeights(nLeaves, whorlStart, whorlCompression, whorlMinInternodeWeight);
@@ -396,6 +403,19 @@ PlantDesc MaizeGenerator::buildPlantFromTraits(const TraitComputation& traits) c
     }
 
     plant.tillers.push_back(mainTiller);
+
+    // Tassel: applied per generated plant when enabled. The plant's own seed
+    // drives the tassel genotype draw (so a set varies), and the latent vigor
+    // trait modulates uprightness — vigorous plants hold the tassel upright,
+    // weaker plants droop more.
+    if (tasselEnabled) {
+        plant.tassel = tasselParams;
+        plant.tassel.enabled = true;
+        plant.tassel.seed = traits.seed;
+        // Droop comes from the correlated trait (latent-driven via the matrix).
+        plant.tassel.matureDroopStrength = std::max(0.0f, traits.tasselDroop);
+    }
+
     return plant;
 }
 
@@ -571,6 +591,26 @@ bool MaizeGenerator::saveConfig(const std::string& path) const {
         saveInt(field.name, this->*(field.member));
     }
 
+    // Tassel template (omits the per-plant seed, which is derived at generation).
+    {
+        XMLElement* t = doc.NewElement("Tassel");
+        t->SetAttribute("enabled", tasselEnabled ? 1 : 0);
+        t->SetAttribute("scale", tasselParams.scale);
+        t->SetAttribute("branchNodeCount", tasselParams.branchNodeCount);
+        t->SetAttribute("spikeNodeCount", tasselParams.spikeNodeCount);
+        t->SetAttribute("secondaryNodeCount", tasselParams.secondaryNodeCount);
+        t->SetAttribute("phyllotaxisAngle", tasselParams.phyllotaxisAngle);
+        t->SetAttribute("lateralThicknessRatio", tasselParams.lateralThicknessRatio);
+        t->SetAttribute("secondaryInsertionAngle", tasselParams.secondaryInsertionAngle);
+        t->SetAttribute("plastochronGdd", tasselParams.plastochronGdd);
+        t->SetAttribute("maturityGdd", tasselParams.maturityGdd);
+        t->SetAttribute("branchAngleRelaxation", tasselParams.branchAngleRelaxation);
+        t->SetAttribute("matureDroopStrength", tasselParams.matureDroopStrength);
+        t->SetAttribute("matureDroopStartT", tasselParams.matureDroopStartT);
+        t->SetAttribute("gravitropism", tasselParams.gravitropism);
+        root->InsertEndChild(t);
+    }
+
     return doc.SaveFile(path.c_str()) == XML_SUCCESS;
 }
 
@@ -656,6 +696,27 @@ bool MaizeGenerator::loadConfig(const std::string& path, std::string* outError) 
     for (const auto& field : kIntFields) {
         loadInt(field.name, this->*(field.member));
     }
+
+    // Tassel template (absent in older configs -> current defaults retained).
+    if (const XMLElement* t = root->FirstChildElement("Tassel")) {
+        int en = tasselEnabled ? 1 : 0;
+        t->QueryIntAttribute("enabled", &en);
+        tasselEnabled = (en != 0);
+        t->QueryFloatAttribute("scale", &tasselParams.scale);
+        t->QueryIntAttribute("branchNodeCount", &tasselParams.branchNodeCount);
+        t->QueryIntAttribute("spikeNodeCount", &tasselParams.spikeNodeCount);
+        t->QueryIntAttribute("secondaryNodeCount", &tasselParams.secondaryNodeCount);
+        t->QueryFloatAttribute("phyllotaxisAngle", &tasselParams.phyllotaxisAngle);
+        t->QueryFloatAttribute("lateralThicknessRatio", &tasselParams.lateralThicknessRatio);
+        t->QueryFloatAttribute("secondaryInsertionAngle", &tasselParams.secondaryInsertionAngle);
+        t->QueryFloatAttribute("plastochronGdd", &tasselParams.plastochronGdd);
+        t->QueryFloatAttribute("maturityGdd", &tasselParams.maturityGdd);
+        t->QueryFloatAttribute("branchAngleRelaxation", &tasselParams.branchAngleRelaxation);
+        t->QueryFloatAttribute("matureDroopStrength", &tasselParams.matureDroopStrength);
+        t->QueryFloatAttribute("matureDroopStartT", &tasselParams.matureDroopStartT);
+        t->QueryFloatAttribute("gravitropism", &tasselParams.gravitropism);
+    }
+
     traitCorrelationStrength = std::clamp(traitCorrelationStrength, 0.0f, 1.0f);
     splinePointsDefault = (std::max)(4, splinePointsDefault);
 

@@ -14,6 +14,7 @@
     <waveAmp mean="0.0049999999" stdDev="0.001"/>
     <waveFreq mean="7.5970001" stdDev="2"/>
     <wavePhaseShift mean="3.326" stdDev="1"/>
+    <tasselDroop mean="0" stdDev="0.61400002"/>
     <tillerAzimuthDeg value="180"/>
     <tillerAzimuthNoise value="15"/>
     <stemShrinkFactor value="0.64999998"/>
@@ -36,7 +37,7 @@
     <widthTaperScaleCurve bottom="1" middle="1" top="1"/>
     <waveAmpScaleCurve bottom="3" middle="1.36" top="1.783"/>
     <waveFreqScaleCurve bottom="2.0050001" middle="2.4059999" top="1"/>
-    <leafAngleOffsetCurve bottom="-45" middle="-1.6289999" top="38.882"/>
+    <leafAngleOffsetCurve bottom="-45" middle="-25.951" top="2.6110001"/>
     <droopinessOffsetCurve bottom="7.9640002" middle="0" top="21.9"/>
     <leafTwistOffsetCurve bottom="0" middle="0" top="0"/>
     <leafCurlOffsetCurve bottom="-0.13500001" middle="0.149" top="0.63800001"/>
@@ -56,6 +57,8 @@
         <parameter key="waveAmp" vigor="0" slenderness="0" posture="0" texture="0.60000002"/>
         <parameter key="waveFreq" vigor="0" slenderness="0" posture="0.1" texture="0.34999999"/>
         <parameter key="wavePhaseShift" vigor="0" slenderness="0" posture="0" texture="0.30000001"/>
+        <parameter key="tasselDroop" vigor="-1" slenderness="0" posture="-0.25" texture="0"/>
     </traitLoadingsMatrix>
     <splinePointsDefault value="40"/>
+    <Tassel enabled="1" scale="0.0076000001" branchNodeCount="9" spikeNodeCount="22" secondaryNodeCount="11" phyllotaxisAngle="180" lateralThicknessRatio="1" secondaryInsertionAngle="35.016998" plastochronGdd="55" maturityGdd="180" branchAngleRelaxation="0.5" matureDroopStrength="0" matureDroopStartT="0.85000002" gravitropism="0.109"/>
 </MaizeGeneratorConfig>

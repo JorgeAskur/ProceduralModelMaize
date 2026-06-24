@@ -17,7 +17,7 @@ events:
       - "CMakeLists.txt:2 (PROJECT)"
     message: |
       Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
-      Compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/cl.exe 
+      Compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe 
       Build flags: /nologo;/DWIN32;/D_WINDOWS;/utf-8;/MP
       Id flags:  
       
@@ -55,8 +55,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-5y6wif"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-5y6wif"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-csodq9"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-csodq9"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -83,11 +83,11 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-5y6wif'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-csodq9'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_4e261
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_4e261.dir\\CMakeCCompilerABI.c.obj /FdCMakeFiles\\cmTC_4e261.dir\\ /FS -c C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\share\\cmake-3.31\\Modules\\CMakeCCompilerABI.c
-        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_4e261.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_4e261.dir\\CMakeCCompilerABI.c.obj  /out:cmTC_4e261.exe /implib:cmTC_4e261.lib /pdb:cmTC_4e261.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_e7a89
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_e7a89.dir\\CMakeCCompilerABI.c.obj /FdCMakeFiles\\cmTC_e7a89.dir\\ /FS -c C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\share\\cmake-3.31\\Modules\\CMakeCCompilerABI.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_e7a89.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_e7a89.dir\\CMakeCCompilerABI.c.obj  /out:cmTC_e7a89.exe /implib:cmTC_e7a89.lib /pdb:cmTC_e7a89.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
         
       exitCode: 0
   -
@@ -100,7 +100,7 @@ events:
       Parsed C implicit link information:
         link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
         linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
-        linker tool for 'C': C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1450~1.357/bin/Hostx64/x64/link.exe
+        linker tool for 'C': C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1451~1.362/bin/Hostx64/x64/link.exe
         implicit libs: []
         implicit objs: []
         implicit dirs: []
@@ -115,8 +115,8 @@ events:
       - "C:/Users/jorge/AppData/Local/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
       - "CMakeLists.txt:2 (PROJECT)"
     message: |
-      Running the C compiler's linker: "C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1450~1.357/bin/Hostx64/x64/link.exe" "-v"
-      Microsoft (R) Incremental Linker Version 14.50.35730.0
+      Running the C compiler's linker: "C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1451~1.362/bin/Hostx64/x64/link.exe" "-v"
+      Microsoft (R) Incremental Linker Version 14.51.36247.0
       Copyright (C) Microsoft Corporation.  All rights reserved.
   -
     kind: "try_compile-v1"
@@ -126,8 +126,8 @@ events:
     checks:
       - "Looking for include file sys/types.h"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-2hoiev"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-2hoiev"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-g22645"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-g22645"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -154,11 +154,11 @@ events:
       variable: "HAVE_SYS_TYPES_H"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-2hoiev'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-g22645'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_207b4
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_207b4.dir\\HAVE_SYS_TYPES_H.c.obj /FdCMakeFiles\\cmTC_207b4.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-2hoiev\\HAVE_SYS_TYPES_H.c
-        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_207b4.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_207b4.dir\\HAVE_SYS_TYPES_H.c.obj  /out:cmTC_207b4.exe /implib:cmTC_207b4.lib /pdb:cmTC_207b4.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_49ede
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_49ede.dir\\HAVE_SYS_TYPES_H.c.obj /FdCMakeFiles\\cmTC_49ede.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-g22645\\HAVE_SYS_TYPES_H.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_49ede.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_49ede.dir\\HAVE_SYS_TYPES_H.c.obj  /out:cmTC_49ede.exe /implib:cmTC_49ede.lib /pdb:cmTC_49ede.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
         
       exitCode: 0
   -
@@ -169,8 +169,8 @@ events:
     checks:
       - "Looking for include file unistd.h"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-47dav7"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-47dav7"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-cfslj3"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-cfslj3"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -197,13 +197,13 @@ events:
       variable: "HAVE_UNISTD_H"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-47dav7'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-cfslj3'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_edb78
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_edb78.dir\\HAVE_UNISTD_H.c.obj /FdCMakeFiles\\cmTC_edb78.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-47dav7\\HAVE_UNISTD_H.c
-        FAILED: [code=2] CMakeFiles/cmTC_edb78.dir/HAVE_UNISTD_H.c.obj 
-        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_edb78.dir\\HAVE_UNISTD_H.c.obj /FdCMakeFiles\\cmTC_edb78.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-47dav7\\HAVE_UNISTD_H.c
-        C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-47dav7\\HAVE_UNISTD_H.c(2): fatal error C1083: Cannot open include file: 'unistd.h': No such file or directory
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_6a182
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_6a182.dir\\HAVE_UNISTD_H.c.obj /FdCMakeFiles\\cmTC_6a182.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-cfslj3\\HAVE_UNISTD_H.c
+        FAILED: [code=2] CMakeFiles/cmTC_6a182.dir/HAVE_UNISTD_H.c.obj 
+        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_6a182.dir\\HAVE_UNISTD_H.c.obj /FdCMakeFiles\\cmTC_6a182.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-cfslj3\\HAVE_UNISTD_H.c
+        C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-cfslj3\\HAVE_UNISTD_H.c(2): fatal error C1083: Cannot open include file: 'unistd.h': No such file or directory
         ninja: build stopped: subcommand failed.
         
       exitCode: 2
@@ -215,8 +215,8 @@ events:
     checks:
       - "Looking for include file sys/time.h"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-zg6pob"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-zg6pob"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-bpy2j7"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-bpy2j7"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -243,13 +243,13 @@ events:
       variable: "HAVE_SYS_TIME_H"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-zg6pob'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-bpy2j7'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_b4d0e
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_b4d0e.dir\\HAVE_SYS_TIME_H.c.obj /FdCMakeFiles\\cmTC_b4d0e.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-zg6pob\\HAVE_SYS_TIME_H.c
-        FAILED: [code=2] CMakeFiles/cmTC_b4d0e.dir/HAVE_SYS_TIME_H.c.obj 
-        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_b4d0e.dir\\HAVE_SYS_TIME_H.c.obj /FdCMakeFiles\\cmTC_b4d0e.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-zg6pob\\HAVE_SYS_TIME_H.c
-        C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-zg6pob\\HAVE_SYS_TIME_H.c(2): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_393ef
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_393ef.dir\\HAVE_SYS_TIME_H.c.obj /FdCMakeFiles\\cmTC_393ef.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-bpy2j7\\HAVE_SYS_TIME_H.c
+        FAILED: [code=2] CMakeFiles/cmTC_393ef.dir/HAVE_SYS_TIME_H.c.obj 
+        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_393ef.dir\\HAVE_SYS_TIME_H.c.obj /FdCMakeFiles\\cmTC_393ef.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-bpy2j7\\HAVE_SYS_TIME_H.c
+        C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-bpy2j7\\HAVE_SYS_TIME_H.c(2): fatal error C1083: Cannot open include file: 'sys/time.h': No such file or directory
         ninja: build stopped: subcommand failed.
         
       exitCode: 2
@@ -261,8 +261,8 @@ events:
     checks:
       - "Looking for include file stdbool.h"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-8qk6ss"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-8qk6ss"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-f3cnzw"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-f3cnzw"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -289,11 +289,11 @@ events:
       variable: "HAVE_STDBOOL_H"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-8qk6ss'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-f3cnzw'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_e02b5
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_e02b5.dir\\HAVE_STDBOOL_H.c.obj /FdCMakeFiles\\cmTC_e02b5.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-8qk6ss\\HAVE_STDBOOL_H.c
-        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_e02b5.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_e02b5.dir\\HAVE_STDBOOL_H.c.obj  /out:cmTC_e02b5.exe /implib:cmTC_e02b5.lib /pdb:cmTC_e02b5.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_a44bd
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_a44bd.dir\\HAVE_STDBOOL_H.c.obj /FdCMakeFiles\\cmTC_a44bd.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-f3cnzw\\HAVE_STDBOOL_H.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_a44bd.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_a44bd.dir\\HAVE_STDBOOL_H.c.obj  /out:cmTC_a44bd.exe /implib:cmTC_a44bd.lib /pdb:cmTC_a44bd.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
         
       exitCode: 0
   -
@@ -304,8 +304,8 @@ events:
     checks:
       - "Looking for include file sys/param.h"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-7efljm"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-7efljm"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-ohv6nk"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-ohv6nk"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -332,13 +332,13 @@ events:
       variable: "HAVE_SYS_PARAM_H"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-7efljm'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-ohv6nk'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_3a0be
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_3a0be.dir\\HAVE_SYS_PARAM_H.c.obj /FdCMakeFiles\\cmTC_3a0be.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-7efljm\\HAVE_SYS_PARAM_H.c
-        FAILED: [code=2] CMakeFiles/cmTC_3a0be.dir/HAVE_SYS_PARAM_H.c.obj 
-        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_3a0be.dir\\HAVE_SYS_PARAM_H.c.obj /FdCMakeFiles\\cmTC_3a0be.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-7efljm\\HAVE_SYS_PARAM_H.c
-        C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-7efljm\\HAVE_SYS_PARAM_H.c(2): fatal error C1083: Cannot open include file: 'sys/param.h': No such file or directory
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_3799d
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_3799d.dir\\HAVE_SYS_PARAM_H.c.obj /FdCMakeFiles\\cmTC_3799d.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-ohv6nk\\HAVE_SYS_PARAM_H.c
+        FAILED: [code=2] CMakeFiles/cmTC_3799d.dir/HAVE_SYS_PARAM_H.c.obj 
+        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_3799d.dir\\HAVE_SYS_PARAM_H.c.obj /FdCMakeFiles\\cmTC_3799d.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-ohv6nk\\HAVE_SYS_PARAM_H.c
+        C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-ohv6nk\\HAVE_SYS_PARAM_H.c(2): fatal error C1083: Cannot open include file: 'sys/param.h': No such file or directory
         ninja: build stopped: subcommand failed.
         
       exitCode: 2
@@ -350,8 +350,8 @@ events:
     checks:
       - "Looking for include file sys/ioctl.h"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-mzhhk9"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-mzhhk9"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-h5ihre"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-h5ihre"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -378,13 +378,13 @@ events:
       variable: "HAVE_SYS_IOCTL_H"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-mzhhk9'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-h5ihre'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_ae324
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_ae324.dir\\HAVE_SYS_IOCTL_H.c.obj /FdCMakeFiles\\cmTC_ae324.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-mzhhk9\\HAVE_SYS_IOCTL_H.c
-        FAILED: [code=2] CMakeFiles/cmTC_ae324.dir/HAVE_SYS_IOCTL_H.c.obj 
-        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_ae324.dir\\HAVE_SYS_IOCTL_H.c.obj /FdCMakeFiles\\cmTC_ae324.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-mzhhk9\\HAVE_SYS_IOCTL_H.c
-        C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-mzhhk9\\HAVE_SYS_IOCTL_H.c(2): fatal error C1083: Cannot open include file: 'sys/ioctl.h': No such file or directory
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_472f4
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_472f4.dir\\HAVE_SYS_IOCTL_H.c.obj /FdCMakeFiles\\cmTC_472f4.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-h5ihre\\HAVE_SYS_IOCTL_H.c
+        FAILED: [code=2] CMakeFiles/cmTC_472f4.dir/HAVE_SYS_IOCTL_H.c.obj 
+        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_472f4.dir\\HAVE_SYS_IOCTL_H.c.obj /FdCMakeFiles\\cmTC_472f4.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-h5ihre\\HAVE_SYS_IOCTL_H.c
+        C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-h5ihre\\HAVE_SYS_IOCTL_H.c(2): fatal error C1083: Cannot open include file: 'sys/ioctl.h': No such file or directory
         ninja: build stopped: subcommand failed.
         
       exitCode: 2
@@ -396,8 +396,8 @@ events:
     checks:
       - "Looking for include file fcntl.h"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-s8ies7"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-s8ies7"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-vh02zc"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-vh02zc"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -424,11 +424,11 @@ events:
       variable: "HAVE_FCNTL_H"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-s8ies7'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-vh02zc'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_03366
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_03366.dir\\HAVE_FCNTL_H.c.obj /FdCMakeFiles\\cmTC_03366.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-s8ies7\\HAVE_FCNTL_H.c
-        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_03366.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_03366.dir\\HAVE_FCNTL_H.c.obj  /out:cmTC_03366.exe /implib:cmTC_03366.lib /pdb:cmTC_03366.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_22aec
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_22aec.dir\\HAVE_FCNTL_H.c.obj /FdCMakeFiles\\cmTC_22aec.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-vh02zc\\HAVE_FCNTL_H.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_22aec.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_22aec.dir\\HAVE_FCNTL_H.c.obj  /out:cmTC_22aec.exe /implib:cmTC_22aec.lib /pdb:cmTC_22aec.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
         
       exitCode: 0
   -
@@ -439,8 +439,8 @@ events:
     checks:
       - "Looking for include file usbhid.h"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-url8sv"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-url8sv"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-6q8k4w"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-6q8k4w"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -467,13 +467,13 @@ events:
       variable: "HAVE_USBHID_H"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-url8sv'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-6q8k4w'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_096c7
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_096c7.dir\\HAVE_USBHID_H.c.obj /FdCMakeFiles\\cmTC_096c7.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-url8sv\\HAVE_USBHID_H.c
-        FAILED: [code=2] CMakeFiles/cmTC_096c7.dir/HAVE_USBHID_H.c.obj 
-        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_096c7.dir\\HAVE_USBHID_H.c.obj /FdCMakeFiles\\cmTC_096c7.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-url8sv\\HAVE_USBHID_H.c
-        C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-url8sv\\HAVE_USBHID_H.c(2): fatal error C1083: Cannot open include file: 'usbhid.h': No such file or directory
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_97c0e
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_97c0e.dir\\HAVE_USBHID_H.c.obj /FdCMakeFiles\\cmTC_97c0e.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-6q8k4w\\HAVE_USBHID_H.c
+        FAILED: [code=2] CMakeFiles/cmTC_97c0e.dir/HAVE_USBHID_H.c.obj 
+        C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_97c0e.dir\\HAVE_USBHID_H.c.obj /FdCMakeFiles\\cmTC_97c0e.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-6q8k4w\\HAVE_USBHID_H.c
+        C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-6q8k4w\\HAVE_USBHID_H.c(2): fatal error C1083: Cannot open include file: 'usbhid.h': No such file or directory
         ninja: build stopped: subcommand failed.
         
       exitCode: 2
@@ -485,8 +485,8 @@ events:
     checks:
       - "Looking for gettimeofday"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-ceb17v"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-ceb17v"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-s62pyk"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-s62pyk"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -513,16 +513,16 @@ events:
       variable: "HAVE_GETTIMEOFDAY"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-ceb17v'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-s62pyk'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_99a53
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP  -DCHECK_FUNCTION_EXISTS=gettimeofday /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_99a53.dir\\CheckFunctionExists.c.obj /FdCMakeFiles\\cmTC_99a53.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-ceb17v\\CheckFunctionExists.c
-        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_99a53.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_99a53.dir\\CheckFunctionExists.c.obj  /out:cmTC_99a53.exe /implib:cmTC_99a53.lib /pdb:cmTC_99a53.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
-        FAILED: [code=4294967295] cmTC_99a53.exe 
-        C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_99a53.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_99a53.dir\\CheckFunctionExists.c.obj  /out:cmTC_99a53.exe /implib:cmTC_99a53.lib /pdb:cmTC_99a53.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
-        LINK Pass 1: command "C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_99a53.dir\\CheckFunctionExists.c.obj /out:cmTC_99a53.exe /implib:cmTC_99a53.lib /pdb:cmTC_99a53.pdb /version:0.0 /machine:x64 /nologo /debug /INCREMENTAL /subsystem:console kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTFILE:CMakeFiles\\cmTC_99a53.dir/intermediate.manifest CMakeFiles\\cmTC_99a53.dir/manifest.res" failed (exit code 1120) with the following output:
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_e3c23
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP  -DCHECK_FUNCTION_EXISTS=gettimeofday /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_e3c23.dir\\CheckFunctionExists.c.obj /FdCMakeFiles\\cmTC_e3c23.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-s62pyk\\CheckFunctionExists.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_e3c23.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_e3c23.dir\\CheckFunctionExists.c.obj  /out:cmTC_e3c23.exe /implib:cmTC_e3c23.lib /pdb:cmTC_e3c23.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        FAILED: [code=4294967295] cmTC_e3c23.exe 
+        C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_e3c23.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_e3c23.dir\\CheckFunctionExists.c.obj  /out:cmTC_e3c23.exe /implib:cmTC_e3c23.lib /pdb:cmTC_e3c23.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        LINK Pass 1: command "C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_e3c23.dir\\CheckFunctionExists.c.obj /out:cmTC_e3c23.exe /implib:cmTC_e3c23.lib /pdb:cmTC_e3c23.pdb /version:0.0 /machine:x64 /nologo /debug /INCREMENTAL /subsystem:console kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTFILE:CMakeFiles\\cmTC_e3c23.dir/intermediate.manifest CMakeFiles\\cmTC_e3c23.dir/manifest.res" failed (exit code 1120) with the following output:
         CheckFunctionExists.c.obj : error LNK2019: unresolved external symbol gettimeofday referenced in function main
-        cmTC_99a53.exe : fatal error LNK1120: 1 unresolved externals
+        cmTC_e3c23.exe : fatal error LNK1120: 1 unresolved externals
         ninja: build stopped: subcommand failed.
         
       exitCode: -1
@@ -534,8 +534,8 @@ events:
     checks:
       - "Looking for XParseGeometry"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-4he1zb"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-4he1zb"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-0wvegs"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-0wvegs"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -562,16 +562,16 @@ events:
       variable: "HAVE_XPARSEGEOMETRY"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-4he1zb'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-0wvegs'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_62b83
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP  -DCHECK_FUNCTION_EXISTS=XParseGeometry /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_62b83.dir\\CheckFunctionExists.c.obj /FdCMakeFiles\\cmTC_62b83.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-4he1zb\\CheckFunctionExists.c
-        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_62b83.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_62b83.dir\\CheckFunctionExists.c.obj  /out:cmTC_62b83.exe /implib:cmTC_62b83.lib /pdb:cmTC_62b83.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
-        FAILED: [code=4294967295] cmTC_62b83.exe 
-        C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_62b83.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_62b83.dir\\CheckFunctionExists.c.obj  /out:cmTC_62b83.exe /implib:cmTC_62b83.lib /pdb:cmTC_62b83.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
-        LINK Pass 1: command "C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_62b83.dir\\CheckFunctionExists.c.obj /out:cmTC_62b83.exe /implib:cmTC_62b83.lib /pdb:cmTC_62b83.pdb /version:0.0 /machine:x64 /nologo /debug /INCREMENTAL /subsystem:console kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTFILE:CMakeFiles\\cmTC_62b83.dir/intermediate.manifest CMakeFiles\\cmTC_62b83.dir/manifest.res" failed (exit code 1120) with the following output:
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_5a403
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP  -DCHECK_FUNCTION_EXISTS=XParseGeometry /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_5a403.dir\\CheckFunctionExists.c.obj /FdCMakeFiles\\cmTC_5a403.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-0wvegs\\CheckFunctionExists.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_5a403.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_5a403.dir\\CheckFunctionExists.c.obj  /out:cmTC_5a403.exe /implib:cmTC_5a403.lib /pdb:cmTC_5a403.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        FAILED: [code=4294967295] cmTC_5a403.exe 
+        C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_5a403.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_5a403.dir\\CheckFunctionExists.c.obj  /out:cmTC_5a403.exe /implib:cmTC_5a403.lib /pdb:cmTC_5a403.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        LINK Pass 1: command "C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_5a403.dir\\CheckFunctionExists.c.obj /out:cmTC_5a403.exe /implib:cmTC_5a403.lib /pdb:cmTC_5a403.pdb /version:0.0 /machine:x64 /nologo /debug /INCREMENTAL /subsystem:console kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTFILE:CMakeFiles\\cmTC_5a403.dir/intermediate.manifest CMakeFiles\\cmTC_5a403.dir/manifest.res" failed (exit code 1120) with the following output:
         CheckFunctionExists.c.obj : error LNK2019: unresolved external symbol XParseGeometry referenced in function main
-        cmTC_62b83.exe : fatal error LNK1120: 1 unresolved externals
+        cmTC_5a403.exe : fatal error LNK1120: 1 unresolved externals
         ninja: build stopped: subcommand failed.
         
       exitCode: -1
@@ -583,8 +583,8 @@ events:
     checks:
       - "Looking for include file stdint.h"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-qeuisd"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-qeuisd"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-2xwirm"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-2xwirm"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -611,11 +611,11 @@ events:
       variable: "HAVE_STDINT_H"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-qeuisd'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-2xwirm'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_bc48d
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_bc48d.dir\\HAVE_STDINT_H.c.obj /FdCMakeFiles\\cmTC_bc48d.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-qeuisd\\HAVE_STDINT_H.c
-        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_bc48d.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_bc48d.dir\\HAVE_STDINT_H.c.obj  /out:cmTC_bc48d.exe /implib:cmTC_bc48d.lib /pdb:cmTC_bc48d.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_ac651
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_ac651.dir\\HAVE_STDINT_H.c.obj /FdCMakeFiles\\cmTC_ac651.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-2xwirm\\HAVE_STDINT_H.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_ac651.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_ac651.dir\\HAVE_STDINT_H.c.obj  /out:cmTC_ac651.exe /implib:cmTC_ac651.lib /pdb:cmTC_ac651.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
         
       exitCode: 0
   -
@@ -626,8 +626,8 @@ events:
     checks:
       - "Looking for include file inttypes.h"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-qdjhek"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-qdjhek"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-axql62"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-axql62"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_MSVC_DEBUG_INFORMATION_FORMAT: ""
@@ -654,11 +654,11 @@ events:
       variable: "HAVE_INTTYPES_H"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-qdjhek'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/freeglut/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-axql62'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_6700f
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_6700f.dir\\HAVE_INTTYPES_H.c.obj /FdCMakeFiles\\cmTC_6700f.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-qdjhek\\HAVE_INTTYPES_H.c
-        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_6700f.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_6700f.dir\\HAVE_INTTYPES_H.c.obj  /out:cmTC_6700f.exe /implib:cmTC_6700f.lib /pdb:cmTC_6700f.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_4ac5b
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1 /showIncludes /FoCMakeFiles\\cmTC_4ac5b.dir\\HAVE_INTTYPES_H.c.obj /FdCMakeFiles\\cmTC_4ac5b.dir\\ /FS -c C:\\Users\\jorge\\Documents\\Research\\MaizeProceduralModel\\vcpkg_installed\\x64-windows\\vcpkg\\blds\\freeglut\\x64-windows-dbg\\CMakeFiles\\CMakeScratch\\TryCompile-axql62\\HAVE_INTTYPES_H.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_4ac5b.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_4ac5b.dir\\HAVE_INTTYPES_H.c.obj  /out:cmTC_4ac5b.exe /implib:cmTC_4ac5b.lib /pdb:cmTC_4ac5b.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
         
       exitCode: 0
 ...

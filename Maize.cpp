@@ -1,5 +1,8 @@
 ﻿#include "Maize.h"
 #include "Descriptor.h"
+#include "lsystem/TasselDescriptor.hpp"
+#include "lsystem/TasselGrowthModel.hpp"
+#include "lsystem/TasselMesh.hpp"
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -572,6 +575,7 @@ namespace Maize {
 
     PlantDesc& plant() { return getModel().plant(); }
     const std::vector<LeafGeom>& leafGeoms() { return getModel().leafGeoms(); }
+    const l_system_plugin::TasselMesh& tasselMesh() { return getModel().tasselMesh(); }
     void rebuildGeometry() { getModel().rebuildGeometry(); }
     int getTriangleCount() { return getModel().getTriangleCount(); }
     bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath) { return getModel().savePlantOBJ(path, leafTextureFullPath, stemTextureFullPath); }
@@ -734,12 +738,27 @@ void MaizeModel::rebuildGeometry() {
     m_leafGeoms.clear();
     const Vect3d globalUp = { 0,1,0 };
 
+    // Captured from the main tiller so a tassel can be attached at its tip.
+    bool   haveMainTop = false;
+    Vect3d mainTopPos = { 0,0,0 };
+    Vect3d mainTopTangent = globalUp;
+
     for (size_t ti = 0; ti < m_plant.tillers.size(); ++ti) {
         const auto& td = m_plant.tillers[ti];
         const float tilt = radiansf(td.alphaDeg);
         const float ct = std::cos(tilt), st = std::sin(tilt);
         StemBuildData stemData = buildStemData(td);
         StemSampler stemSampler{ td, stemData, globalUp };
+
+        if (ti == 0) {
+            // Top of the main stem (world space, including tiller tilt).
+            Vect3d top = tiltPoint(stemSampler.posAt(1.0f), ct, st);
+            Vect3d belowTop = tiltPoint(stemSampler.posAt(0.97f), ct, st);
+            Vect3d tan = top - belowTop;
+            mainTopTangent = (tan.Length() > 1e-6f) ? tan.GetNormalized() : globalUp;
+            mainTopPos = top;
+            haveMainTop = true;
+        }
 
         if (!stemData.leafStemPos.empty()) {
             LeafGeom stemGeom = buildStemGeometry(stemSampler, stemData, globalUp, m_densityV, m_densityU, m_stemDensityScale, ct, st);
@@ -799,6 +818,119 @@ void MaizeModel::rebuildGeometry() {
             m_leafGeoms.push_back(std::move(bladeGeom));
         }
     }
+
+    // Tassel atop the main stem.
+    m_tasselMesh.clear();
+    if (m_plant.tassel.enabled && haveMainTop) {
+        rebuildTasselGeometry(mainTopPos, mainTopTangent);
+    } else {
+        m_tasselCacheValid = false;
+    }
+}
+
+// Tassel parameters that affect growth (everything except scale, which is only
+// a placement transform). When any of these change the cached mesh is regrown.
+static bool tasselGrowthEqual(const TasselDesc& a, const TasselDesc& b) {
+    return a.seed == b.seed &&
+           a.branchNodeCount == b.branchNodeCount &&
+           a.spikeNodeCount == b.spikeNodeCount &&
+           a.secondaryNodeCount == b.secondaryNodeCount &&
+           a.phyllotaxisAngle == b.phyllotaxisAngle &&
+           a.lateralThicknessRatio == b.lateralThicknessRatio &&
+           a.secondaryInsertionAngle == b.secondaryInsertionAngle &&
+           a.plastochronGdd == b.plastochronGdd &&
+           a.maturityGdd == b.maturityGdd &&
+           a.branchAngleRelaxation == b.branchAngleRelaxation &&
+           a.matureDroopStrength == b.matureDroopStrength &&
+           a.matureDroopStartT == b.matureDroopStartT &&
+           a.gravitropism == b.gravitropism;
+}
+
+void MaizeModel::rebuildTasselGeometry(const Vect3d& topPos, const Vect3d& topTangent) {
+    using namespace l_system_plugin;
+    const TasselDesc& T = m_plant.tassel;
+
+    // Growth is expensive (thousands of steps); only regrow when a growth-
+    // affecting parameter changes. Scale-only edits reuse the cached mesh.
+    if (!m_tasselCacheValid || !tasselGrowthEqual(m_tasselCacheDesc, T)) {
+        TasselDescriptor desc;
+
+        // Start from the tuned genotype, then override the exposed scalar knobs.
+        desc.branch_node_count.mean = (float)T.branchNodeCount;
+        desc.branch_node_count.deviation = 0.0f;
+        desc.spike_node_count.mean = (float)T.spikeNodeCount;
+        desc.spike_node_count.deviation = 0.0f;
+        desc.secondary_node_count.mean = (float)T.secondaryNodeCount;
+        desc.secondary_node_count.deviation = 0.0f;
+        desc.phyllotaxis_angle.mean = T.phyllotaxisAngle;
+        desc.lateral_thickness_ratio.mean = T.lateralThicknessRatio;
+        desc.secondary_insertion_angle.mean = T.secondaryInsertionAngle;
+        desc.plastochron_gdd.mean = T.plastochronGdd;
+        desc.maturity_gdd.mean = T.maturityGdd;
+        desc.branch_angle_relaxation.mean = T.branchAngleRelaxation;
+        desc.mature_droop_strength.mean = T.matureDroopStrength;
+        desc.mature_droop_start_t.mean = T.matureDroopStartT;
+
+        // Gravitropism scales the baked tropisms (applied post-sampling inside
+        // Initialize, so structure is seed-stable; 0 stops the random collapse).
+        TasselGrowthModel model;
+        model.Initialize(desc, T.seed, glm::vec3(0), kDefaultRootRotation, T.gravitropism);
+
+        // "Mature tassel" = grow until topology is fully derived (all meristems
+        // consumed), then a little extra GDD so the last-born spikelets reach
+        // full size. maturity_gdd in the genotype is a per-organ value, not a
+        // whole-plant cap, so we drive topology completion directly.
+        const int kStepCap = 8000;
+        int steps = 0;
+        while (steps < kStepCap) {
+            model.GrowStep();
+            ++steps;
+            if (model.IsTopologyComplete()) break;
+        }
+        model.GrowToGDD(model.accumulated_gdd + 400.0f, (unsigned int)kStepCap);
+
+        m_tasselLocal = BuildTasselMesh(model);
+        m_tasselCacheValid = true;
+        m_tasselCacheDesc = T;
+    }
+
+    // Transform the cached local mesh onto the stem tip: scale, rotate local +Y
+    // onto the stem tangent, then translate to the tip.
+    const Vect3d up = { 0,1,0 };
+    Vect3d tan = (topTangent.Length() > 1e-6f) ? topTangent.GetNormalized() : up;
+    const float d = clampf(up.Dot(tan), -1.0f, 1.0f);
+    Vect3d axis = up.Cross(tan);
+    const float axisLen = axis.Length();
+    const bool doRot = (axisLen > 1e-5f) && (d < 0.9999f);
+    if (doRot) axis = axis / axisLen;
+    const double angle = std::acos((double)d);
+    const float s = T.scale;
+
+    const size_t n = m_tasselLocal.pos.size();
+    m_tasselMesh.clear();
+    m_tasselMesh.pos.resize(n);
+    m_tasselMesh.nrm.resize(n);
+    m_tasselMesh.u = m_tasselLocal.u;
+    m_tasselMesh.v = m_tasselLocal.v;
+    m_tasselMesh.indices = m_tasselLocal.indices;
+    for (size_t i = 0; i < n; ++i) {
+        Vect3d p = m_tasselLocal.pos[i] * s;
+        Vect3d nv = m_tasselLocal.nrm[i];
+        if (doRot) {
+            p = p.GetRotatedAxis(angle, axis);
+            nv = nv.GetRotatedAxis(angle, axis);
+        }
+        m_tasselMesh.pos[i] = topPos + p;
+        m_tasselMesh.nrm[i] = nv.GetNormalized();
+    }
+
+    // Same transform for the skeleton centerline segments.
+    m_tasselMesh.skeleton.resize(m_tasselLocal.skeleton.size());
+    for (size_t i = 0; i < m_tasselLocal.skeleton.size(); ++i) {
+        Vect3d p = m_tasselLocal.skeleton[i] * s;
+        if (doRot) p = p.GetRotatedAxis(angle, axis);
+        m_tasselMesh.skeleton[i] = topPos + p;
+    }
 }
 
 int MaizeModel::getTriangleCount() const {
@@ -806,5 +938,6 @@ int MaizeModel::getTriangleCount() const {
     for (const auto& geom : m_leafGeoms) {
         if (geom.rows > 1 && geom.cols > 1) count += (geom.rows - 1) * (geom.cols - 1) * 2;
     }
+    count += (int)m_tasselMesh.triangleCount();
     return count;
 }

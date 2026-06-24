@@ -62,6 +62,28 @@ namespace Descriptor {
         root->SetAttribute("species", plant.species.c_str());
         root->SetAttribute("phenotypeId", plant.phenotypeId.c_str());
 
+        // Procedural tassel: store the genotype seed + scale so the L-system
+        // regrows the identical tassel on load (geometry is not serialized).
+        {
+            XMLElement* tassel_elem = doc.NewElement("Tassel");
+            tassel_elem->SetAttribute("enabled", plant.tassel.enabled ? 1 : 0);
+            tassel_elem->SetAttribute("seed", (unsigned)plant.tassel.seed);
+            tassel_elem->SetAttribute("scale", plant.tassel.scale);
+            tassel_elem->SetAttribute("branchNodeCount", plant.tassel.branchNodeCount);
+            tassel_elem->SetAttribute("spikeNodeCount", plant.tassel.spikeNodeCount);
+            tassel_elem->SetAttribute("secondaryNodeCount", plant.tassel.secondaryNodeCount);
+            tassel_elem->SetAttribute("phyllotaxisAngle", plant.tassel.phyllotaxisAngle);
+            tassel_elem->SetAttribute("lateralThicknessRatio", plant.tassel.lateralThicknessRatio);
+            tassel_elem->SetAttribute("secondaryInsertionAngle", plant.tassel.secondaryInsertionAngle);
+            tassel_elem->SetAttribute("plastochronGdd", plant.tassel.plastochronGdd);
+            tassel_elem->SetAttribute("maturityGdd", plant.tassel.maturityGdd);
+            tassel_elem->SetAttribute("branchAngleRelaxation", plant.tassel.branchAngleRelaxation);
+            tassel_elem->SetAttribute("matureDroopStrength", plant.tassel.matureDroopStrength);
+            tassel_elem->SetAttribute("matureDroopStartT", plant.tassel.matureDroopStartT);
+            tassel_elem->SetAttribute("gravitropism", plant.tassel.gravitropism);
+            root->InsertEndChild(tassel_elem);
+        }
+
         for (size_t ti = 0; ti < plant.tillers.size(); ++ti) {
             const auto& td = plant.tillers[ti];
             XMLElement* tiller_elem = doc.NewElement("Tiller");
@@ -155,6 +177,31 @@ namespace Descriptor {
         }
         if (plantElem->Attribute("phenotypeId")) {
             Maize::plant().phenotypeId = plantElem->Attribute("phenotypeId");
+        }
+
+        // Procedural tassel (optional; absent in legacy files).
+        if (const XMLElement* tasselElem = plantElem->FirstChildElement("Tassel")) {
+            int enabled = 0;
+            tasselElem->QueryIntAttribute("enabled", &enabled);
+            Maize::plant().tassel.enabled = (enabled != 0);
+            unsigned seed = Maize::plant().tassel.seed;
+            tasselElem->QueryUnsignedAttribute("seed", &seed);
+            Maize::plant().tassel.seed = seed;
+            tasselElem->QueryFloatAttribute("scale", &Maize::plant().tassel.scale);
+
+            auto& T = Maize::plant().tassel;
+            tasselElem->QueryIntAttribute("branchNodeCount", &T.branchNodeCount);
+            tasselElem->QueryIntAttribute("spikeNodeCount", &T.spikeNodeCount);
+            tasselElem->QueryIntAttribute("secondaryNodeCount", &T.secondaryNodeCount);
+            tasselElem->QueryFloatAttribute("phyllotaxisAngle", &T.phyllotaxisAngle);
+            tasselElem->QueryFloatAttribute("lateralThicknessRatio", &T.lateralThicknessRatio);
+            tasselElem->QueryFloatAttribute("secondaryInsertionAngle", &T.secondaryInsertionAngle);
+            tasselElem->QueryFloatAttribute("plastochronGdd", &T.plastochronGdd);
+            tasselElem->QueryFloatAttribute("maturityGdd", &T.maturityGdd);
+            tasselElem->QueryFloatAttribute("branchAngleRelaxation", &T.branchAngleRelaxation);
+            tasselElem->QueryFloatAttribute("matureDroopStrength", &T.matureDroopStrength);
+            tasselElem->QueryFloatAttribute("matureDroopStartT", &T.matureDroopStartT);
+            tasselElem->QueryFloatAttribute("gravitropism", &T.gravitropism);
         }
 
         // Tillers live directly under <plant>. Legacy files wrapped them in <species>.

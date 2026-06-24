@@ -63,8 +63,8 @@ UpdateOptions:
 UpdateType: 
 
 # Compiler info
-Compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/cl.exe
-CompilerVersion: 19.50.35730.0
+Compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe
+CompilerVersion: 19.51.36247.0
 
 # Dynamic analysis (MemCheck)
 PurifyCommand: 

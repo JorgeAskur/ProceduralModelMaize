@@ -3,6 +3,7 @@
 #include <map>
 #include <string>
 #include <math/vect3d.h>
+#include "lsystem/TasselMesh.hpp"
 
 struct Vec2 { float u, v; };
 
@@ -56,11 +57,37 @@ struct TillerDesc {
     std::vector<LeafDesc> leaves;            // leaves attached to this tiller in bottom-to-top order
 };
 
+// Procedural maize tassel grown atop the main stem by the ported L-system model
+// (see include/lsystem/). The tassel is reproducible from `seed`; geometry is
+// baked at rebuild time and grown to full maturity.
+struct TasselDesc {
+    bool  enabled = false;       // whether this plant carries a tassel
+    unsigned int seed = 12345;   // deterministic genotype draw
+    float scale = 0.01f;         // tassel-local units -> plant world units
+
+    // Editable genotype knobs. Defaults match the bundled tuned genotype so an
+    // untouched tassel reproduces the baked look. These override the descriptor
+    // means before growth; the position-dependent curves stay at baked defaults.
+    int   branchNodeCount = 12;            // lower-zone rachis nodes bearing lateral branches
+    int   spikeNodeCount = 36;             // central-spike rachis nodes
+    int   secondaryNodeCount = 6;          // nodes produced per secondary branch
+    float phyllotaxisAngle = 180.0f;       // azimuth step between successive organs (deg)
+    float lateralThicknessRatio = 0.5f;    // lateral branch thickness vs. rachis
+    float secondaryInsertionAngle = 60.0f; // secondary-branch departure angle (deg)
+    float plastochronGdd = 55.0f;          // thermal time between node initiations
+    float maturityGdd = 180.0f;            // per-organ maturation GDD
+    float branchAngleRelaxation = 0.08f;   // how fast laterals swing out (0=stiff..1=instant)
+    float matureDroopStrength = 0.0f;      // gravitropic droop of mature branches (correlated, set by generator)
+    float matureDroopStartT = 0.85f;       // organ-age fraction at which droop begins
+    float gravitropism = 1.0f;             // scales the baked gravitropic tropisms (0 = none, 1 = genotype default)
+};
+
 // Full editable plant description
 struct PlantDesc {
     std::string species = "maize";           // species name stored at the plant level
     std::string phenotypeId;                 // phenotype identifier stored at the plant level
     std::vector<TillerDesc> tillers;
+    TasselDesc tassel;                       // optional tassel atop the main tiller
 };
 
 struct LeafGeom {
@@ -84,6 +111,18 @@ private:
     PlantDesc   m_plant;
     std::vector<LeafGeom> m_leafGeoms;
 
+    // Tassel geometry. m_tasselLocal is the grown mesh in tassel-local space,
+    // cached and only regrown when the seed/enabled state changes (growth is
+    // expensive). m_tasselMesh is that mesh transformed onto the stem top and is
+    // what the renderer/exporter consume.
+    l_system_plugin::TasselMesh m_tasselLocal;
+    l_system_plugin::TasselMesh m_tasselMesh;
+    bool       m_tasselCacheValid = false;
+    TasselDesc m_tasselCacheDesc;   // params the cached local mesh was grown from
+
+    // Grows (or reuses cached) the tassel and transforms it onto the stem top.
+    void rebuildTasselGeometry(const Vect3d& topPos, const Vect3d& topTangent);
+
 public:
     float m_densityV;         // Mesh density along the length direction
     float m_densityU;         // Mesh density across width/circumference
@@ -94,6 +133,7 @@ public:
 
     PlantDesc& plant() { return m_plant; }
     const std::vector<LeafGeom>& leafGeoms() const { return m_leafGeoms; }
+    const l_system_plugin::TasselMesh& tasselMesh() const { return m_tasselMesh; }
 
     void rebuildGeometry();
     int getTriangleCount() const;
@@ -109,6 +149,7 @@ namespace Maize {
 
     PlantDesc& plant();
     const std::vector<LeafGeom>& leafGeoms();
+    const l_system_plugin::TasselMesh& tasselMesh();
     void rebuildGeometry();
     int getTriangleCount();
     // Cubic B-spline evaluation used for both stems and leaf control splines

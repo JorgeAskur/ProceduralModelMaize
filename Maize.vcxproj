@@ -22,6 +22,9 @@
     <ClCompile Include="Descriptor.cpp" />
     <ClCompile Include="Maize.cpp" />
     <ClCompile Include="MaizeExport.cpp" />
+    <ClCompile Include="src\lsystem\TasselGrowthModel.cpp" />
+    <ClCompile Include="src\lsystem\TasselDescriptorDefaults.cpp" />
+    <ClCompile Include="src\lsystem\TasselMesh.cpp" />
     <ClCompile Include="MaizeGenerator.cpp" />
     <ClCompile Include="src\imgui.cpp" />
     <ClCompile Include="src\imgui_demo.cpp" />
@@ -127,7 +130,7 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\jorge\Documents\Research\MaizeProceduralModel\include;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\ImGUI;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\stb_image;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\jorge\Documents\Research\MaizeProceduralModel\include;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\ImGUI;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\lsystem;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\stb_image;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -160,7 +163,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\jorge\Documents\Research\MaizeProceduralModel\include;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\ImGUI;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\stb_image;C:\Users\jorge\Documents\Research\MaizeProceduralModel;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\jorge\Documents\Research\MaizeProceduralModel\include;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\ImGUI;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\lsystem;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\stb_image;C:\Users\jorge\Documents\Research\MaizeProceduralModel;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -176,7 +179,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>C:\Users\jorge\Documents\Research\MaizeProceduralModel\include;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\ImGUI;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\stb_image;C:\Users\jorge\Documents\Research\MaizeProceduralModel;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\jorge\Documents\Research\MaizeProceduralModel\include;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\ImGUI;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\lsystem;C:\Users\jorge\Documents\Research\MaizeProceduralModel\include\stb_image;C:\Users\jorge\Documents\Research\MaizeProceduralModel;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>

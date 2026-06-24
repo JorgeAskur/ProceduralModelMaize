@@ -17,7 +17,7 @@ events:
       - "CMakeLists.txt:2 (project)"
     message: |
       Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
-      Compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/cl.exe 
+      Compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe 
       Build flags: /nologo;/DWIN32;/D_WINDOWS;/utf-8;/MP
       Id flags:  
       
@@ -55,7 +55,7 @@ events:
       - "CMakeLists.txt:2 (project)"
     message: |
       Compiling the CXX compiler identification source file "CMakeCXXCompilerId.cpp" succeeded.
-      Compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/cl.exe 
+      Compiler: C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe 
       Build flags: /nologo;/DWIN32;/D_WINDOWS;/utf-8;/GR;/EHsc;/MP
       Id flags:  
       
@@ -93,8 +93,8 @@ events:
     checks:
       - "Detecting C compiler ABI info"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-89z150"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-89z150"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-z9rfaj"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-z9rfaj"
     cmakeVariables:
       CMAKE_C_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /MP "
       CMAKE_C_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
@@ -123,11 +123,11 @@ events:
       variable: "CMAKE_C_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-89z150'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-z9rfaj'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_2a3be
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd /showIncludes /FoCMakeFiles\\cmTC_2a3be.dir\\CMakeCCompilerABI.c.obj /FdCMakeFiles\\cmTC_2a3be.dir\\ /FS -c C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\share\\cmake-3.31\\Modules\\CMakeCCompilerABI.c
-        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_2a3be.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_2a3be.dir\\CMakeCCompilerABI.c.obj  /out:cmTC_2a3be.exe /implib:cmTC_2a3be.lib /pdb:cmTC_2a3be.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_dda24
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo   /nologo /DWIN32 /D_WINDOWS /utf-8 /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd /showIncludes /FoCMakeFiles\\cmTC_dda24.dir\\CMakeCCompilerABI.c.obj /FdCMakeFiles\\cmTC_dda24.dir\\ /FS -c C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\share\\cmake-3.31\\Modules\\CMakeCCompilerABI.c
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_dda24.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_dda24.dir\\CMakeCCompilerABI.c.obj  /out:cmTC_dda24.exe /implib:cmTC_dda24.lib /pdb:cmTC_dda24.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
         
       exitCode: 0
   -
@@ -140,7 +140,7 @@ events:
       Parsed C implicit link information:
         link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
         linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
-        linker tool for 'C': C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1450~1.357/bin/Hostx64/x64/link.exe
+        linker tool for 'C': C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1451~1.362/bin/Hostx64/x64/link.exe
         implicit libs: []
         implicit objs: []
         implicit dirs: []
@@ -155,8 +155,8 @@ events:
       - "C:/Users/jorge/AppData/Local/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
       - "CMakeLists.txt:2 (project)"
     message: |
-      Running the C compiler's linker: "C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1450~1.357/bin/Hostx64/x64/link.exe" "-v"
-      Microsoft (R) Incremental Linker Version 14.50.35730.0
+      Running the C compiler's linker: "C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1451~1.362/bin/Hostx64/x64/link.exe" "-v"
+      Microsoft (R) Incremental Linker Version 14.51.36247.0
       Copyright (C) Microsoft Corporation.  All rights reserved.
   -
     kind: "try_compile-v1"
@@ -167,8 +167,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-dujfn0"
-      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-dujfn0"
+      source: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-g4ongj"
+      binary: "C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-g4ongj"
     cmakeVariables:
       CMAKE_CXX_FLAGS: " /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP "
       CMAKE_CXX_FLAGS_DEBUG: "/MDd /Z7 /Ob0 /Od /RTC1 "
@@ -198,11 +198,11 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-dujfn0'
+        Change Dir: 'C:/Users/jorge/Documents/Research/MaizeProceduralModel/vcpkg_installed/x64-windows/vcpkg/blds/tinyxml2/x64-windows-dbg/CMakeFiles/CMakeScratch/TryCompile-g4ongj'
         
-        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_fa97e
-        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP   /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd /showIncludes /FoCMakeFiles\\cmTC_fa97e.dir\\CMakeCXXCompilerABI.cpp.obj /FdCMakeFiles\\cmTC_fa97e.dir\\ /FS -c C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\share\\cmake-3.31\\Modules\\CMakeCXXCompilerABI.cpp
-        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1950 --intdir=CMakeFiles\\cmTC_fa97e.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1450~1.357\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_fa97e.dir\\CMakeCXXCompilerABI.cpp.obj  /out:cmTC_fa97e.exe /implib:cmTC_fa97e.lib /pdb:cmTC_fa97e.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
+        Run Build Command(s): C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\ninja-1.13.2-windows\\ninja.exe -v cmTC_20142
+        [1/2] C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\cl.exe  /nologo /TP   /nologo /DWIN32 /D_WINDOWS /utf-8 /GR /EHsc /MP   /MDd /Z7 /Ob0 /Od /RTC1  -MDd /showIncludes /FoCMakeFiles\\cmTC_20142.dir\\CMakeCXXCompilerABI.cpp.obj /FdCMakeFiles\\cmTC_20142.dir\\ /FS -c C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\share\\cmake-3.31\\Modules\\CMakeCXXCompilerABI.cpp
+        [2/2] C:\\Windows\\system32\\cmd.exe /C "cd . && C:\\Users\\jorge\\AppData\\Local\\vcpkg\\downloads\\tools\\cmake-3.31.10-windows\\cmake-3.31.10-windows-x86_64\\bin\\cmake.exe -E vs_link_exe --msvc-ver=1951 --intdir=CMakeFiles\\cmTC_20142.dir --rc=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\rc.exe --mt=C:\\PROGRA~2\\WI3CF2~1\\10\\bin\\100261~1.0\\x64\\mt.exe --manifests  -- C:\\PROGRA~1\\MIB055~1\\18\\COMMUN~1\\VC\\Tools\\MSVC\\1451~1.362\\bin\\Hostx64\\x64\\link.exe /nologo CMakeFiles\\cmTC_20142.dir\\CMakeCXXCompilerABI.cpp.obj  /out:cmTC_20142.exe /implib:cmTC_20142.lib /pdb:cmTC_20142.pdb /version:0.0 /machine:x64  /nologo    /debug /INCREMENTAL /subsystem:console  kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib && cd ."
         
       exitCode: 0
   -
@@ -215,7 +215,7 @@ events:
       Parsed CXX implicit link information:
         link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
         linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
-        linker tool for 'CXX': C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1450~1.357/bin/Hostx64/x64/link.exe
+        linker tool for 'CXX': C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1451~1.362/bin/Hostx64/x64/link.exe
         implicit libs: []
         implicit objs: []
         implicit dirs: []
@@ -230,7 +230,7 @@ events:
       - "C:/Users/jorge/AppData/Local/vcpkg/downloads/tools/cmake-3.31.10-windows/cmake-3.31.10-windows-x86_64/share/cmake-3.31/Modules/CMakeTestCXXCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
       - "CMakeLists.txt:2 (project)"
     message: |
-      Running the CXX compiler's linker: "C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1450~1.357/bin/Hostx64/x64/link.exe" "-v"
-      Microsoft (R) Incremental Linker Version 14.50.35730.0
+      Running the CXX compiler's linker: "C:/PROGRA~1/MIB055~1/18/COMMUN~1/VC/Tools/MSVC/1451~1.362/bin/Hostx64/x64/link.exe" "-v"
+      Microsoft (R) Incremental Linker Version 14.51.36247.0
       Copyright (C) Microsoft Corporation.  All rights reserved.
 ...

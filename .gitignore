@@ -387,6 +387,7 @@ FodyWeavers.xsd
 # Runtime artifacts written by the app on close / on export
 app_settings.xml
 maize.mtl
+maize_tassel.png
 /plant_spline*.obj
 /plant_spline*.xml
 /plant_skeleton*.obj
