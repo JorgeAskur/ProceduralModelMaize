@@ -392,3 +392,5 @@ maize_tassel.png
 /plant_spline*.xml
 /plant_skeleton*.obj
 /plant_skeleton*.xml
+/plant_export_holdout
+/plant_export_sorghum
