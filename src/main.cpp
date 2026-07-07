@@ -961,6 +961,10 @@ static void RenderGlobalTraitsPanel(bool& needRegen) {
 }
 
 static bool gExportSkeleton = false;
+// Shared by the manual "Save Skeleton OBJ" and the batch "Export Skeleton":
+// when false, the tassel is omitted from skeleton exports (the full mesh always
+// keeps the tassel).
+static bool gSkeletonIncludeTassel = true;
 
 static void JoinBatchThreadIfFinished() {
     if (!gBatchRunning.load(std::memory_order_acquire) && gBatchThread.joinable()) {
@@ -982,6 +986,9 @@ static void RenderSetGenerationPanel() {
     ImGui::InputInt("Start Index", &gBatchStartIndex);
     if (gBatchStartIndex < 0) gBatchStartIndex = 0;
     ImGui::Checkbox("Export Skeleton", &gExportSkeleton);
+    if (gExportSkeleton) {
+        ImGui::Checkbox("Include Tassel in Skeleton", &gSkeletonIncludeTassel);
+    }
 
     // Global identity parameters applied to every plant in this set
     {
@@ -1036,6 +1043,7 @@ static void RenderSetGenerationPanel() {
             std::string leafTex = gTexPath;
             std::string stemTex = gStemTexPath;
             bool exportSkel = gExportSkeleton;
+            bool skelIncludeTassel = gSkeletonIncludeTassel;
             MaizeGenerator genCopy = gGen;
 
             gBatchTotalSnapshot = count;
@@ -1043,8 +1051,8 @@ static void RenderSetGenerationPanel() {
             gBatchCancelRequested.store(false, std::memory_order_relaxed);
             gBatchRunning.store(true, std::memory_order_release);
 
-            gBatchThread = std::thread([genCopy, count, startIndex, basePath, leafTex, stemTex, exportSkel]() mutable {
-                genCopy.generateBatch(count, basePath, leafTex, stemTex, false, exportSkel, &gBatchProgress, startIndex, &gBatchCancelRequested);
+            gBatchThread = std::thread([genCopy, count, startIndex, basePath, leafTex, stemTex, exportSkel, skelIncludeTassel]() mutable {
+                genCopy.generateBatch(count, basePath, leafTex, stemTex, false, exportSkel, &gBatchProgress, startIndex, &gBatchCancelRequested, skelIncludeTassel);
                 gBatchRunning.store(false, std::memory_order_release);
             });
         }
@@ -1352,8 +1360,9 @@ static void RenderExportPanel() {
     }
 
     PathInputWithBrowseButton("Skeleton OBJ Path", gSkeletonObjPath, sizeof(gSkeletonObjPath), "Browse...", "Save skeleton OBJ", kObjFilesFilter, true, "obj");
+    ImGui::Checkbox("Include Tassel in Skeleton", &gSkeletonIncludeTassel);
     if (ImGui::Button("Save Skeleton OBJ")) {
-        if (Maize::saveSkeletonOBJ(gSkeletonObjPath)) {
+        if (Maize::saveSkeletonOBJ(gSkeletonObjPath, gSkeletonIncludeTassel)) {
             sExportStatus = "Skeleton OBJ saved.";
             sExportStatusColor = ImVec4(0.2f, 1.0f, 0.4f, 1.0f);
         } else {

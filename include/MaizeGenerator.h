@@ -241,7 +241,7 @@ public:
     // If outProgress is non-null, it is incremented once per completed plant
     // so a UI thread can display progress while the batch runs on a worker
     // thread.
-    void generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath = "", bool useMeansOnly = false, bool exportSkeleton = false, std::atomic<int>* outProgress = nullptr, int startIndex = 0, std::atomic<bool>* cancelFlag = nullptr);
+    void generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath = "", bool useMeansOnly = false, bool exportSkeleton = false, std::atomic<int>* outProgress = nullptr, int startIndex = 0, std::atomic<bool>* cancelFlag = nullptr, bool skeletonIncludeTassel = true);
 
     // Persistence for the generator UI state
     bool saveConfig(const std::string& path) const;

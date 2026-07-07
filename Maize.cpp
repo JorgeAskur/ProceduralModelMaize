@@ -579,7 +579,7 @@ namespace Maize {
     void rebuildGeometry() { getModel().rebuildGeometry(); }
     int getTriangleCount() { return getModel().getTriangleCount(); }
     bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath) { return getModel().savePlantOBJ(path, leafTextureFullPath, stemTextureFullPath); }
-    bool saveSkeletonOBJ(const char* path) { return getModel().saveSkeletonOBJ(path); }
+    bool saveSkeletonOBJ(const char* path, bool includeTassel) { return getModel().saveSkeletonOBJ(path, includeTassel); }
     bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly) { return getModel().saveMTL(mtlPath, leafTextureFileNameOnly, stemTextureFileNameOnly); }
 
     // Evaluate a cubic open-uniform B-spline via de Boor's algorithm
@@ -697,22 +697,23 @@ namespace Maize {
         return (pos == std::string::npos) ? std::string() : p.substr(0, pos);
     }
 
-    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath, const std::string& stemTexturePath, bool exportSkeleton) {
+    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath, const std::string& stemTexturePath, bool exportSkeleton, bool skeletonIncludeTassel) {
         Maize::plant() = plantDesc;
         Maize::rebuildGeometry();
         std::string xmlPath = baseFileName + ".xml";
         std::string objPath = baseFileName + ".obj";
         Descriptor::savePlantXML(xmlPath.c_str());
+        // Full mesh always includes the tassel; only the skeleton is optional.
         Maize::savePlantOBJ(objPath.c_str(), leafTexturePath.c_str(), stemTexturePath.empty() ? nullptr : stemTexturePath.c_str());
         if (exportSkeleton) {
             std::string skelObjPath = baseFileName + "_skeleton.obj";
             std::string skelXmlPath = baseFileName + "_skeleton.xml";
-            Maize::saveSkeletonOBJ(skelObjPath.c_str());
+            Maize::saveSkeletonOBJ(skelObjPath.c_str(), skeletonIncludeTassel);
             Descriptor::saveSkeletonXML(skelXmlPath.c_str());
         }
     }
 
-    void GeneratePlantWith(MaizeModel& model, const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath, const std::string& stemTexturePath, bool exportSkeleton, bool writeMTL) {
+    void GeneratePlantWith(MaizeModel& model, const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath, const std::string& stemTexturePath, bool exportSkeleton, bool writeMTL, bool skeletonIncludeTassel) {
         // Thread-safe variant: mutates only the caller-supplied MaizeModel
         // and serializes the PlantDesc directly, so multiple workers can run
         // concurrently without touching the Maize singleton or racing on shared
@@ -723,11 +724,12 @@ namespace Maize {
         std::string xmlPath = baseFileName + ".xml";
         std::string objPath = baseFileName + ".obj";
         Descriptor::savePlantXML(plantDesc, xmlPath.c_str());
+        // Full mesh always includes the tassel; only the skeleton is optional.
         model.savePlantOBJ(objPath.c_str(), leafTexturePath.c_str(), stemTexturePath.empty() ? nullptr : stemTexturePath.c_str(), writeMTL);
         if (exportSkeleton) {
             std::string skelObjPath = baseFileName + "_skeleton.obj";
             std::string skelXmlPath = baseFileName + "_skeleton.xml";
-            model.saveSkeletonOBJ(skelObjPath.c_str());
+            model.saveSkeletonOBJ(skelObjPath.c_str(), skeletonIncludeTassel);
             Descriptor::saveSkeletonXML(plantDesc, skelXmlPath.c_str());
         }
     }

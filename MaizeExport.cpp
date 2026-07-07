@@ -201,7 +201,7 @@ bool MaizeModel::saveMTL(const char* mtlPath, const char* leafTextureFileNameOnl
     return true;
 }
 
-bool MaizeModel::saveSkeletonOBJ(const char* path) const {
+bool MaizeModel::saveSkeletonOBJ(const char* path, bool includeTassel) const {
     // Skeleton export uses stemCurve for both stem (smooth B-spline)
     // and leaves (stem exit point + blade center, sheath skipped).
     FILE* f = openWritableFile(path);
@@ -223,13 +223,15 @@ bool MaizeModel::saveSkeletonOBJ(const char* path) const {
         vertexOffset += (int)geom.stemCurve.size();
     }
 
-    // Tassel skeleton: centerline segments (consecutive vertex pairs).
-    const auto& tsk = m_tasselMesh.skeleton;
-    for (size_t i = 0; i + 1 < tsk.size(); i += 2) {
-        std::fprintf(f, "v %.9g %.9g %.9g\n", tsk[i].x(), tsk[i].y(), tsk[i].z());
-        std::fprintf(f, "v %.9g %.9g %.9g\n", tsk[i + 1].x(), tsk[i + 1].y(), tsk[i + 1].z());
-        std::fprintf(f, "l %d %d\n", vertexOffset, vertexOffset + 1);
-        vertexOffset += 2;
+    // Tassel skeleton: centerline segments (consecutive vertex pairs). Optional.
+    if (includeTassel) {
+        const auto& tsk = m_tasselMesh.skeleton;
+        for (size_t i = 0; i + 1 < tsk.size(); i += 2) {
+            std::fprintf(f, "v %.9g %.9g %.9g\n", tsk[i].x(), tsk[i].y(), tsk[i].z());
+            std::fprintf(f, "v %.9g %.9g %.9g\n", tsk[i + 1].x(), tsk[i + 1].y(), tsk[i + 1].z());
+            std::fprintf(f, "l %d %d\n", vertexOffset, vertexOffset + 1);
+            vertexOffset += 2;
+        }
     }
 
     std::fclose(f);

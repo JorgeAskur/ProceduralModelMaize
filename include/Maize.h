@@ -138,7 +138,7 @@ public:
     void rebuildGeometry();
     int getTriangleCount() const;
     bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath = nullptr, bool writeMTL = true);
-    bool saveSkeletonOBJ(const char* path) const;
+    bool saveSkeletonOBJ(const char* path, bool includeTassel = true) const;
     bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly);
 };
 
@@ -160,13 +160,13 @@ namespace Maize {
     // Wraps an azimuth angle (degrees) into [0, 360)
     float normalizeAzimuthDeg(float deg);
     bool savePlantOBJ(const char* path, const char* leafTextureFullPath, const char* stemTextureFullPath = nullptr);
-    bool saveSkeletonOBJ(const char* path);
+    bool saveSkeletonOBJ(const char* path, bool includeTassel = true);
     bool saveMTL(const char* mtlPath, const char* leafTextureFileNameOnly, const char* stemTextureFileNameOnly);
     std::string dirFromPath(const std::string& p);
-    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath = "", const std::string& stemTexturePath = "", bool exportSkeleton = false);
+    void GeneratePlant(const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath = "", const std::string& stemTexturePath = "", bool exportSkeleton = false, bool skeletonIncludeTassel = true);
     // Thread-safe export: operates on a caller-owned MaizeModel instead of the
     // global singleton so multiple worker threads can generate plants in parallel.
     // writeMTL should be false for workers (MTL is written once upfront by the
     // batch driver to avoid concurrent writes to maize.mtl).
-    void GeneratePlantWith(MaizeModel& model, const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath = "", const std::string& stemTexturePath = "", bool exportSkeleton = false, bool writeMTL = false);
+    void GeneratePlantWith(MaizeModel& model, const PlantDesc& plantDesc, const std::string& baseFileName, const std::string& leafTexturePath = "", const std::string& stemTexturePath = "", bool exportSkeleton = false, bool writeMTL = false, bool skeletonIncludeTassel = true);
 }

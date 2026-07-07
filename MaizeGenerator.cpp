@@ -423,7 +423,7 @@ PlantDesc MaizeGenerator::generate(unsigned int seed, bool useMeansOnly) {
     return buildPlantFromTraits(computeTraits(seed, useMeansOnly));
 }
 
-void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath, bool useMeansOnly, bool exportSkeleton, std::atomic<int>* outProgress, int startIndex, std::atomic<bool>* cancelFlag) {
+void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix, const std::string& leafTexPath, const std::string& stemTexPath, bool useMeansOnly, bool exportSkeleton, std::atomic<int>* outProgress, int startIndex, std::atomic<bool>* cancelFlag, bool skeletonIncludeTassel) {
     if (count <= 0) return;
     if (startIndex < 0) startIndex = 0;
     const int endIndex = startIndex + count;
@@ -504,7 +504,7 @@ void MaizeGenerator::generateBatch(int count, const std::string& basePathPrefix,
             suffix << "_" << std::setw(4) << std::setfill('0') << i;
             fs::path plantPath = outputDir / (fileStem.string() + suffix.str());
 
-            Maize::GeneratePlantWith(localModel, plant, plantPath.string(), leafTexFull, stemTexFull, exportSkeleton, /*writeMTL=*/false);
+            Maize::GeneratePlantWith(localModel, plant, plantPath.string(), leafTexFull, stemTexFull, exportSkeleton, /*writeMTL=*/false, skeletonIncludeTassel);
 
             if (outProgress) outProgress->fetch_add(1, std::memory_order_relaxed);
         }
