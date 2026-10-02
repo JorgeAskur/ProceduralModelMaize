@@ -339,13 +339,42 @@ static void appendInterpolatedBaseSection(const LeafSplineBaseState& base, const
 //
 // Along the blade: a quasi-periodic sum of three incommensurate sines (wavelengths vary
 // from wave to wave instead of repeating exactly), keeping the descriptor's meaning of
-// waveFreq (phase = s * freq * pi/2) and waveAmp (peak margin displacement, metres).
+// waveFreq (phase = s * freq * pi/2) and waveAmp (requested peak margin displacement, m).
 //
-// Each component is band-limited by its physical wavelength: margin buckles are not much
-// shorter than ~2 cm, so faster components fade out instead of producing fine ripples
-// (and the mesh only has to resolve what remains).
-static const float kMarginMinWavelength = 0.02f;   // metres, main ruffle
-static const float kCrinkleMinWavelength = 0.018f; // metres, fine edge crinkle
+// The descriptor values are made physically plausible here rather than trusted blindly
+// (generated plants can request waves that are far too tall and too short for a blade):
+//  * wavelength: margin buckles scale with the width of the blade, so the shortest
+//    allowed wavelength is max(2.5 cm, 1.6 x half-width). A too-high waveFreq is clamped
+//    to that wavelength (the leaf stays wavy, just not crinkled like kale); faster
+//    harmonics fade out by band-limiting;
+//  * amplitude: soft-saturated at ~12% of the half-width (tanh, so small requests pass
+//    unchanged) and slope-limited so the steepest flank stays under ~30 degrees;
+//  * patchiness: a slow modulation makes some stretches of the margin wavy and others
+//    nearly flat, as on real leaves, instead of a uniform ruffle tip to tip.
+struct MarginWaveSide {
+    float amp = 0.0f;            // effective peak displacement (m), 0 = no waves
+    float freq = 0.0f;           // effective waveFreq after the wavelength clamp
+    float phase = 0.0f;
+    float seed = 0.0f;
+    float minWavelength = 1.0f;  // m
+};
+
+static MarginWaveSide makeMarginWaveSide(float amp, float freq, float phase, float seed, const LeafDesc& leaf) {
+    MarginWaveSide w;
+    if (amp <= 0.0f || leaf.leafLength <= 0.0f || std::fabs(freq) < 1e-4f) return w;
+    float halfW = 0.5f * leaf.leafWidth;
+    w.minWavelength = std::max(0.025f, 1.6f * halfW);
+    float maxFreq = 4.0f * leaf.leafLength / w.minWavelength;      // main component at minWavelength
+    w.freq = (freq < 0.0f ? -1.0f : 1.0f) * std::min(std::fabs(freq), maxFreq);
+    w.phase = phase;
+    w.seed = seed;
+    float aMax = 0.12f * halfW;
+    float a = aMax * std::tanh(amp / aMax);
+    float lambda = leaf.leafLength / (0.25f * std::fabs(w.freq));
+    a = std::min(a, 0.09f * lambda);                               // 2*pi*A/lambda <= ~0.57
+    w.amp = a;
+    return w;
+}
 
 static float bandWeight(float cyclesPerBlade, float leafLength, float minWavelength) {
     float lambda = leafLength / std::max(1e-3f, std::fabs(cyclesPerBlade));
@@ -353,12 +382,25 @@ static float bandWeight(float cyclesPerBlade, float leafLength, float minWavelen
     return w * w * (3.0f - 2.0f * w);
 }
 
-static float marginWave(float s, float freq, float phase, float seed, float leafLength) {
-    float phi = s * freq * static_cast<float>(M_PI) * 0.5f + phase;
-    float c1 = freq * 0.25f;                                         // cycles per blade
-    return 0.62f * bandWeight(c1, leafLength, kMarginMinWavelength) * std::sin(phi)
-         + 0.26f * bandWeight(2.13f * c1, leafLength, kMarginMinWavelength) * std::sin(2.13f * phi + seed * 1.7f)
-         + 0.12f * bandWeight(3.71f * c1, leafLength, kMarginMinWavelength) * std::sin(3.71f * phi + seed * 4.3f);
+// Ruffle (along the blade) for one side at blade position s, in metres.
+static float marginWave(float s, const MarginWaveSide& w, float leafLength) {
+    if (w.amp <= 0.0f) return 0.0f;
+    float phi = s * w.freq * static_cast<float>(M_PI) * 0.5f + w.phase;
+    float c1 = std::fabs(w.freq) * 0.25f;                          // cycles per blade
+    float shape = 0.66f * std::sin(phi)
+                + 0.24f * bandWeight(2.13f * c1, leafLength, w.minWavelength) * std::sin(2.13f * phi + w.seed * 1.7f)
+                + 0.10f * bandWeight(3.71f * c1, leafLength, w.minWavelength) * std::sin(3.71f * phi + w.seed * 4.3f);
+    float p = 0.5f + 0.5f * std::sin(s * 7.3f + w.seed * 2.3f) * std::cos(s * 2.9f + w.seed * 0.9f);
+    p = clampf((p - 0.15f) / 0.7f, 0.0f, 1.0f);
+    float patch = 0.2f + 0.8f * p * p * (3.0f - 2.0f * p);
+    return w.amp * patch * shape;
+}
+
+// Small crinkle right at the margin, a bit shorter than the shortest main wave.
+static float marginCrinkle(float s, const MarginWaveSide& w, float leafLength) {
+    if (w.amp <= 0.0f) return 0.0f;
+    float cycles = leafLength / (0.75f * w.minWavelength);
+    return 0.12f * w.amp * std::sin(s * cycles * 2.0f * static_cast<float>(M_PI) + w.seed * 3.1f);
 }
 
 // Fades waves in after the collar and out toward the pinched tip.
@@ -430,19 +472,18 @@ static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& blade
     LeafGeom bladeGeom;
     bladeGeom.type = LeafGeom::GEOM_BLADE;
     bladeGeom.rows = std::max(6, (int)(leaf.leafLength * densityV));
-    // Resolve the fastest margin-wave components that survive band-limiting with >= 6 rows
-    // per cycle (main ruffle up to ~0.93*freq cycles, crinkle ~0.73*freq cycles per blade)
-    float waveFreqMax = std::max(leaf.waveLAmp > 0.0f ? std::fabs(leaf.waveLFreq) : 0.0f,
-                                 leaf.waveRAmp > 0.0f ? std::fabs(leaf.waveRFreq) : 0.0f);
-    if (waveFreqMax > 0.0f) {
-        float ruffleCycles = std::min(0.93f * waveFreqMax, leaf.leafLength / kMarginMinWavelength);
-        float crinkleCycles = std::min(0.73f * waveFreqMax, leaf.leafLength / kCrinkleMinWavelength);
-        bladeGeom.rows = std::max(bladeGeom.rows, (int)std::ceil(6.0f * std::max(ruffleCycles, crinkleCycles)));
+    const MarginWaveSide waveSideL = makeMarginWaveSide(leaf.waveLAmp, leaf.waveLFreq, leaf.waveLPhase,
+                                                        (float)leaf.id * 0.618f + leaf.waveLPhase, leaf);
+    const MarginWaveSide waveSideR = makeMarginWaveSide(0.9f * leaf.waveRAmp, leaf.waveRFreq, leaf.waveRPhase + 0.37f,
+                                                        (float)leaf.id * 0.618f + leaf.waveRPhase + 2.4f, leaf);
+    // >= 6 rows per cycle of the shortest margin component (the crinkle, 0.75 x minWavelength)
+    if (waveSideL.amp > 0.0f || waveSideR.amp > 0.0f) {
+        float minWl = std::min(waveSideL.amp > 0.0f ? waveSideL.minWavelength : 1.0f,
+                               waveSideR.amp > 0.0f ? waveSideR.minWavelength : 1.0f);
+        bladeGeom.rows = std::max(bladeGeom.rows, (int)std::ceil(6.0f * leaf.leafLength / (0.75f * minWl)));
     }
     bladeGeom.cols = 2 * std::max(9, (int)std::ceil(leaf.leafWidth * densityU * 0.6f)) + 1;
     const std::vector<float> columnU = bladeColumnLayout(bladeGeom.cols);
-    const float seedL = (float)leaf.id * 0.618f + leaf.waveLPhase;
-    const float seedR = (float)leaf.id * 0.618f + leaf.waveRPhase + 2.4f;
 
     bladeGeom.pos.resize(bladeGeom.rows * bladeGeom.cols);
     bladeGeom.col.resize(bladeGeom.rows * bladeGeom.cols);
@@ -495,13 +536,11 @@ static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& blade
         // proportionally less, so the waves never fold the margin back over the blade.
         float rowWidthFrac = clampf((pR - pL).Length() / std::max(1e-6f, leaf.leafWidth), 0.0f, 1.0f);
         float waveEnv = marginWaveEnvelope(sBlade) * rowWidthFrac * rowWidthFrac * shapeBlend;
-        float waveL = (leaf.waveLAmp > 0.0f) ? leaf.waveLAmp * waveEnv * marginWave(sBlade, leaf.waveLFreq, leaf.waveLPhase, seedL, leaf.leafLength) : 0.0f;
-        float waveR = (leaf.waveRAmp > 0.0f) ? 0.9f * leaf.waveRAmp * waveEnv * marginWave(sBlade, leaf.waveRFreq, leaf.waveRPhase + 0.37f, seedR, leaf.leafLength) : 0.0f;
+        float waveL = waveEnv * marginWave(sBlade, waveSideL, leaf.leafLength);
+        float waveR = waveEnv * marginWave(sBlade, waveSideR, leaf.leafLength);
         // fine crinkle right at the margin, about three times shorter than the main waves
-        float crinkleWL = bandWeight(0.73f * leaf.waveLFreq, leaf.leafLength, kCrinkleMinWavelength);
-        float crinkleWR = bandWeight(0.73f * leaf.waveRFreq, leaf.leafLength, kCrinkleMinWavelength);
-        float crinkleL = (leaf.waveLAmp > 0.0f) ? 0.22f * crinkleWL * leaf.waveLAmp * waveEnv * std::sin(sBlade * leaf.waveLFreq * 4.6f + seedL * 3.1f) : 0.0f;
-        float crinkleR = (leaf.waveRAmp > 0.0f) ? 0.22f * crinkleWR * leaf.waveRAmp * waveEnv * std::sin(sBlade * leaf.waveRFreq * 4.6f + seedR * 3.1f) : 0.0f;
+        float crinkleL = waveEnv * marginCrinkle(sBlade, waveSideL, leaf.leafLength);
+        float crinkleR = waveEnv * marginCrinkle(sBlade, waveSideR, leaf.leafLength);
 
         for (int j = 0; j < bladeGeom.cols; ++j) {
             float u01 = columnU[j];
