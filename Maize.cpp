@@ -331,31 +331,42 @@ static void appendInterpolatedBaseSection(const LeafSplineBaseState& base, const
     emitter.append(leftX, rightX, y, centerPos.z(), 0.0f, 0.0f, centerPos, tangent);
 }
 
-static std::pair<float, float> sampleLeafWaveOffsets(const LeafDesc& leaf, float t, float currentHalfWidth, float halfWidth) {
-    float tipMask = 1.0f;
-    if (t > 0.8f) tipMask = (1.0f - t) / 0.2f;
-    else if (t < 0.1f) tipMask = t / 0.1f;
-    tipMask = tipMask * tipMask * tipMask;
+// Margin waviness. Grass-blade margins grow slightly longer than the midrib and buckle out
+// of plane, so the waves live on the outer part of each half-blade and die out toward the
+// rib. They are applied per mesh vertex in buildBladeGeometry (not to the edge control
+// points, which tilted the whole half-blade about the midrib like a hinged panel and were
+// too sparse to carry the detail).
+//
+// Along the blade: a quasi-periodic sum of three incommensurate sines (wavelengths vary
+// from wave to wave instead of repeating exactly), keeping the descriptor's meaning of
+// waveFreq (phase = s * freq * pi/2) and waveAmp (peak margin displacement, metres).
+//
+// Each component is band-limited by its physical wavelength: margin buckles are not much
+// shorter than ~2 cm, so faster components fade out instead of producing fine ripples
+// (and the mesh only has to resolve what remains).
+static const float kMarginMinWavelength = 0.02f;   // metres, main ruffle
+static const float kCrinkleMinWavelength = 0.018f; // metres, fine edge crinkle
 
-    float baseMask = clampf((t - 0.1f) / 0.2f, 0.0f, 1.0f);
-    baseMask = baseMask * baseMask * (3.0f - 2.0f * baseMask);
-    float edgeMask = baseMask * tipMask;
-    float widthMask = clampf(currentHalfWidth / std::max(halfWidth, 1e-6f), 0.0f, 1.0f);
-    edgeMask *= (widthMask * widthMask);
+static float bandWeight(float cyclesPerBlade, float leafLength, float minWavelength) {
+    float lambda = leafLength / std::max(1e-3f, std::fabs(cyclesPerBlade));
+    float w = clampf((lambda - minWavelength) / (0.6f * minWavelength), 0.0f, 1.0f);
+    return w * w * (3.0f - 2.0f * w);
+}
 
-    float noiseL = 0.0f;
-    float noiseR = 0.0f;
-    if (leaf.waveLAmp > 0.0f) {
-        float lowFreq = std::sin(t * leaf.waveLFreq * static_cast<float>(M_PI) * 0.5f + leaf.waveLPhase);
-        float highFreq = hashNoise(t * leaf.waveLFreq, (float)leaf.id + leaf.waveLPhase);
-        noiseL = (0.6f * lowFreq + 0.4f * highFreq) * leaf.waveLAmp * edgeMask;
-    }
-    if (leaf.waveRAmp > 0.0f) {
-        float lowFreq = std::sin(t * leaf.waveRFreq * static_cast<float>(M_PI) * 0.5f + leaf.waveRPhase + 0.37f);
-        float highFreq = hashNoise(t * leaf.waveRFreq, (float)leaf.id + 100.0f + leaf.waveRPhase);
-        noiseR = (0.55f * lowFreq + 0.45f * highFreq) * (leaf.waveRAmp * 0.9f) * edgeMask;
-    }
-    return { noiseL, noiseR };
+static float marginWave(float s, float freq, float phase, float seed, float leafLength) {
+    float phi = s * freq * static_cast<float>(M_PI) * 0.5f + phase;
+    float c1 = freq * 0.25f;                                         // cycles per blade
+    return 0.62f * bandWeight(c1, leafLength, kMarginMinWavelength) * std::sin(phi)
+         + 0.26f * bandWeight(2.13f * c1, leafLength, kMarginMinWavelength) * std::sin(2.13f * phi + seed * 1.7f)
+         + 0.12f * bandWeight(3.71f * c1, leafLength, kMarginMinWavelength) * std::sin(3.71f * phi + seed * 4.3f);
+}
+
+// Fades waves in after the collar and out toward the pinched tip.
+static float marginWaveEnvelope(float s) {
+    float base = clampf((s - 0.06f) / 0.16f, 0.0f, 1.0f);
+    base = base * base * (3.0f - 2.0f * base);
+    float tip = clampf((1.0f - s) / 0.2f, 0.0f, 1.0f);
+    return base * tip * tip * tip;
 }
 
 static void finalizeLeafSplineTip(std::vector<Vect3d>& outCenter, std::vector<Vect3d>& outLeft, std::vector<Vect3d>& outRight) {
@@ -386,15 +397,32 @@ static void computeGridNormals(LeafGeom& geom) {
     }
 }
 
-// Cross-blade parameter of column j. Columns are graded toward the midrib (|t|^1.6), and
-// the count is odd, so there is always a vertex exactly on the midrib and the rib, only a
-// few percent of the blade width, is resolved by several vertices instead of falling
-// between two of them.
-static float bladeColumnU(int j, int cols) {
+// Cross-blade parameter u in [0,1] for each of `cols` columns (odd, so one sits exactly on
+// the midrib at u = 0.5). Columns are placed by inverting a density over the distance from
+// the rib that is raised at the rib (resolves the midrib keel, only a few percent of the
+// width) and at the margins (resolves the margin ruffle), and uniform in between.
+static std::vector<float> bladeColumnLayout(int cols) {
+    const int N = 512;
+    std::vector<float> cdf(N + 1, 0.0f);
+    for (int k = 1; k <= N; ++k) {
+        float a = (k - 0.5f) / N;                                    // 0 = midrib, 1 = margin
+        float edge = clampf((a - 0.55f) / 0.45f, 0.0f, 1.0f);
+        float rho = 1.0f + 2.2f * std::exp(-(a / 0.18f) * (a / 0.18f)) + 1.6f * edge * edge;
+        cdf[k] = cdf[k - 1] + rho / N;
+    }
+    for (float& c : cdf) c /= cdf[N];
     int half = (cols - 1) / 2;
-    float t = (float)(j - half) / (float)half;
-    float g = std::pow(std::fabs(t), 1.6f);
-    return 0.5f + 0.5f * (t < 0.0f ? -g : g);
+    std::vector<float> u(cols);
+    for (int j = 0; j < cols; ++j) {
+        float t = (float)(j - half) / (float)half;                  // -1..1
+        float target = std::fabs(t);
+        int k = (int)(std::lower_bound(cdf.begin(), cdf.end(), target) - cdf.begin());
+        k = std::max(1, std::min(N, k));
+        float f = (target - cdf[k - 1]) / std::max(1e-9f, cdf[k] - cdf[k - 1]);
+        float a = ((float)(k - 1) + clampf(f, 0.0f, 1.0f)) / N;
+        u[j] = 0.5f + 0.5f * (t < 0.0f ? -a : a);
+    }
+    return u;
 }
 
 static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& bladeFrame, const Vect3d& rhat, float globalRadius, float densityV, float densityU, float ct, float st, const std::vector<Vect3d>& localCtrlC, const std::vector<Vect3d>& localCtrlL, const std::vector<Vect3d>& localCtrlR) {
@@ -402,7 +430,19 @@ static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& blade
     LeafGeom bladeGeom;
     bladeGeom.type = LeafGeom::GEOM_BLADE;
     bladeGeom.rows = std::max(6, (int)(leaf.leafLength * densityV));
-    bladeGeom.cols = 2 * std::max(7, (int)std::ceil(leaf.leafWidth * densityU * 0.5f)) + 1;
+    // Resolve the fastest margin-wave components that survive band-limiting with >= 6 rows
+    // per cycle (main ruffle up to ~0.93*freq cycles, crinkle ~0.73*freq cycles per blade)
+    float waveFreqMax = std::max(leaf.waveLAmp > 0.0f ? std::fabs(leaf.waveLFreq) : 0.0f,
+                                 leaf.waveRAmp > 0.0f ? std::fabs(leaf.waveRFreq) : 0.0f);
+    if (waveFreqMax > 0.0f) {
+        float ruffleCycles = std::min(0.93f * waveFreqMax, leaf.leafLength / kMarginMinWavelength);
+        float crinkleCycles = std::min(0.73f * waveFreqMax, leaf.leafLength / kCrinkleMinWavelength);
+        bladeGeom.rows = std::max(bladeGeom.rows, (int)std::ceil(6.0f * std::max(ruffleCycles, crinkleCycles)));
+    }
+    bladeGeom.cols = 2 * std::max(9, (int)std::ceil(leaf.leafWidth * densityU * 0.6f)) + 1;
+    const std::vector<float> columnU = bladeColumnLayout(bladeGeom.cols);
+    const float seedL = (float)leaf.id * 0.618f + leaf.waveLPhase;
+    const float seedR = (float)leaf.id * 0.618f + leaf.waveRPhase + 2.4f;
 
     bladeGeom.pos.resize(bladeGeom.rows * bladeGeom.cols);
     bladeGeom.col.resize(bladeGeom.rows * bladeGeom.cols);
@@ -451,8 +491,20 @@ static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& blade
         float shapeBlend = clampf(arcLen / blendLength, 0.f, 1.f);
         shapeBlend = 1.0f - (1.0f - shapeBlend) * (1.0f - shapeBlend);
 
+        // Per-row margin ruffle for each side. Narrow parts of the blade (taper, tip) carry
+        // proportionally less, so the waves never fold the margin back over the blade.
+        float rowWidthFrac = clampf((pR - pL).Length() / std::max(1e-6f, leaf.leafWidth), 0.0f, 1.0f);
+        float waveEnv = marginWaveEnvelope(sBlade) * rowWidthFrac * rowWidthFrac * shapeBlend;
+        float waveL = (leaf.waveLAmp > 0.0f) ? leaf.waveLAmp * waveEnv * marginWave(sBlade, leaf.waveLFreq, leaf.waveLPhase, seedL, leaf.leafLength) : 0.0f;
+        float waveR = (leaf.waveRAmp > 0.0f) ? 0.9f * leaf.waveRAmp * waveEnv * marginWave(sBlade, leaf.waveRFreq, leaf.waveRPhase + 0.37f, seedR, leaf.leafLength) : 0.0f;
+        // fine crinkle right at the margin, about three times shorter than the main waves
+        float crinkleWL = bandWeight(0.73f * leaf.waveLFreq, leaf.leafLength, kCrinkleMinWavelength);
+        float crinkleWR = bandWeight(0.73f * leaf.waveRFreq, leaf.leafLength, kCrinkleMinWavelength);
+        float crinkleL = (leaf.waveLAmp > 0.0f) ? 0.22f * crinkleWL * leaf.waveLAmp * waveEnv * std::sin(sBlade * leaf.waveLFreq * 4.6f + seedL * 3.1f) : 0.0f;
+        float crinkleR = (leaf.waveRAmp > 0.0f) ? 0.22f * crinkleWR * leaf.waveRAmp * waveEnv * std::sin(sBlade * leaf.waveRFreq * 4.6f + seedR * 3.1f) : 0.0f;
+
         for (int j = 0; j < bladeGeom.cols; ++j) {
-            float u01 = bladeColumnU(j, bladeGeom.cols);
+            float u01 = columnU[j];
             Vect3d splineP = (u01 < 0.5f) ? lerp_v3(pL, pC, u01 * 2.f) : lerp_v3(pC, pR, (u01 - 0.5f) * 2.f);
 
             float fromCenter = (u01 - 0.5f) * 2.0f;
@@ -481,6 +533,16 @@ static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& blade
             float foldDepth = 0.035f * leaf.leafWidth * (1.0f - 0.6f * sBlade);    // leaf curl already cups the blade
             float keelDepth = 0.02f * leaf.leafWidth * midribMask * midribTipFade;
             float bladeDepth = 0.008f * leaf.leafWidth * curveAmt + foldDepth * vFold - keelDepth;
+
+            // Margin ruffle: zero over the inner 30% of each half-blade, growing
+            // quadratically to the full wave at the margin; the crinkle hugs the edge
+            float distFromRib = std::fabs(fromCenter);
+            float ruffle = clampf((distFromRib - 0.3f) / 0.7f, 0.0f, 1.0f);
+            ruffle *= ruffle;
+            float edgeOnly = distFromRib * distFromRib * distFromRib * distFromRib;
+            edgeOnly *= edgeOnly;                                           // |x|^8
+            bladeDepth += (fromCenter < 0.0f) ? (waveL * ruffle + crinkleL * edgeOnly)
+                                              : (waveR * ruffle + crinkleR * edgeOnly);
             float sheathDepth = sagitta * (1.0f - curveAmt);
 
             Vect3d sheathN = bladeFrame.zAxis;
@@ -691,10 +753,9 @@ namespace Maize {
                 current_halfWidth_x = halfWidth * taperVal;
                 y_s = base.currentPos.y();
 
-                // Waves are strongest in the mid blade and suppressed near the
-                // base/tip where the mesh naturally pinches together
-                auto waveOffsets = sampleLeafWaveOffsets(L, t, current_halfWidth_x, halfWidth);
-                emitter.append(-current_halfWidth_x, current_halfWidth_x, y_s, z_s, waveOffsets.first, waveOffsets.second, base.currentPos, currentDir);
+                // Margin waviness is no longer baked into the edge control points: it is
+                // a per-vertex ruffle in buildBladeGeometry (see marginWave)
+                emitter.append(-current_halfWidth_x, current_halfWidth_x, y_s, z_s, 0.0f, 0.0f, base.currentPos, currentDir);
             }
         }
 
