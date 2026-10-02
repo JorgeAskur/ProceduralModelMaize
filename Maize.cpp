@@ -148,8 +148,10 @@ static StemBuildData buildStemData(const TillerDesc& td) {
     return data;
 }
 
-static void applyLeafTwist(std::vector<Vect3d>& ctrl, const std::vector<Vect3d>& centerCtrl, float leafTwistDeg) {
+static void applyLeafTwist(std::vector<Vect3d>& ctrl, const std::vector<Vect3d>& centerCtrl, float leafTwistDeg,
+                           const std::vector<float>* sectionYawRad = nullptr) {
     if (leafTwistDeg == 0.0f || ctrl.empty()) return;
+    const bool haveYaw = sectionYawRad && sectionYawRad->size() == ctrl.size();
 
     // Twist is applied progressively from base to tip by rotating the left/right splines around the center spline
     for (size_t i = 0; i < ctrl.size(); ++i) {
@@ -159,11 +161,47 @@ static void applyLeafTwist(std::vector<Vect3d>& ctrl, const std::vector<Vect3d>&
         float sT = std::sin(twistRad);
         Vect3d p = ctrl[i];
         Vect3d center = centerCtrl[i];
+        float yaw = haveYaw ? (*sectionYawRad)[i] : 0.0f;
+        if (yaw != 0.0f) {
+            // Section turned sideways by sideBend: its width axis is (cos, -sin, 0) and its
+            // own radial axis (sin, cos, 0). Twist within the turned (width, vertical) plane,
+            // i.e. about the turned radial axis, so the twist still spins the edges about the
+            // blade rather than skewing them out of the cross-section.
+            Vect3d w(std::cos(yaw), -std::sin(yaw), 0.0f);
+            Vect3d f(std::sin(yaw), std::cos(yaw), 0.0f);
+            Vect3d d = p - center;
+            float u = d.Dot(w);
+            float v = d.Dot(f);
+            float z = d.z();
+            float u2 = u * cT - z * sT;
+            float z2 = u * sT + z * cT;
+            ctrl[i] = center + w * u2 + f * v + Vect3d(0.0f, 0.0f, z2);
+            continue;
+        }
         float localX = p.x() - center.x();
         float localZ = p.z() - center.z();
         ctrl[i].SetX(center.x() + localX * cT - localZ * sT);
         ctrl[i].SetZ(center.z() + localX * sT + localZ * cT);
     }
+}
+
+// Sideways turn (radians) of each edge-control section, matching the order in which
+// generateLeafSplines emits them: the collar section, the two interpolated base sections
+// (when splinePoints > 2) and the first blade section are unturned; section i = 2..n-1 is
+// turned by sideBend * i/(n-1). Empty when the leaf is not bent sideways or uses
+// explicit control overrides (applyLeafTwist then keeps its original behaviour).
+static std::vector<float> leafSectionYaws(const LeafDesc& L, size_t sectionCount) {
+    std::vector<float> yaw;
+    if (L.sideBend == 0.0f || L.splinePoints < 3 || L.useCtrlOverrides) return yaw;
+    const int n = L.splinePoints;
+    const size_t baseSections = 1 + 2 + 1;
+    if (sectionCount != baseSections + (size_t)(n - 2)) return yaw;
+    yaw.assign(sectionCount, 0.0f);
+    for (int i = 2; i < n; ++i) {
+        float t = (float)i / (n - 1);
+        yaw[baseSections + (size_t)(i - 2)] = radiansf(L.sideBend * t);
+    }
+    return yaw;
 }
 
 static BladeFrame buildBladeFrame(const Vect3d& sheathExitPos, const Vect3d& stemTangent, const Vect3d& rhat) {
@@ -948,8 +986,9 @@ void MaizeModel::rebuildGeometry() {
             if (L.leafTwist != 0.0f && L.splinePoints > 1) {
                 // Twist is applied after the local splines are built so it can
                 // rotate the left/right edges around the centerline
-                applyLeafTwist(localCtrlL, localCtrlC, L.leafTwist);
-                applyLeafTwist(localCtrlR, localCtrlC, L.leafTwist);
+                const std::vector<float> sectionYaw = leafSectionYaws(L, localCtrlL.size());
+                applyLeafTwist(localCtrlL, localCtrlC, L.leafTwist, &sectionYaw);
+                applyLeafTwist(localCtrlR, localCtrlC, L.leafTwist, &sectionYaw);
             }
 
             // Build a local orthonormal frame at the stem exit point so the leaf
