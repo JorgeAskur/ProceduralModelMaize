@@ -1604,6 +1604,11 @@ static void SaveAppSettings() {
 //             [--seed-start K] [--leaf-tex LEAF.png] [--stem-tex STEM.png]
 //             [--export-skeleton]
 //
+// or, to mesh an existing descriptor with this engine's geometry:
+//   Maize.exe --headless --from-xml PLANT.xml --output PATH_PREFIX
+//             [--leaf-tex LEAF.png] [--stem-tex STEM.png]
+// which writes PATH_PREFIX.obj (+ .mtl) and leaves the XML untouched.
+//
 // Skips glutInit / window / ImGui entirely so it works on headless machines
 // (CI, scripts, Python subprocess invocations from notebooks). The plant
 // XMLs end up at <output>_<seed>.xml in PyMaize-compatible format.
@@ -1616,6 +1621,7 @@ static int RunHeadless(int argc, char** argv) {
     int count = 1;
     int seedStart = 0;
     bool exportSkeleton = false;
+    std::string fromXml;
 
     auto needArg = [&](int& i, const char* flag) -> const char* {
         if (i + 1 >= argc) {
@@ -1633,11 +1639,24 @@ static int RunHeadless(int argc, char** argv) {
         else if (a == "--leaf-tex")        leafTex       = needArg(i, "--leaf-tex");
         else if (a == "--stem-tex")        stemTex       = needArg(i, "--stem-tex");
         else if (a == "--export-skeleton") exportSkeleton = true;
+        else if (a == "--from-xml")        fromXml       = needArg(i, "--from-xml");
         else if (a == "--headless")        {} // already detected
         else { std::cerr << "Maize.exe: unknown flag " << a << "\n"; std::exit(2); }
     }
+    if (!fromXml.empty()) {
+        std::string err;
+        if (!Descriptor::loadPlantXML(fromXml, &err)) {
+            std::cerr << "Failed to load descriptor '" << fromXml << "': " << err << "\n";
+            return 1;
+        }
+        Maize::rebuildGeometry();
+        std::string objPath = outputPrefix + ".obj";
+        Maize::savePlantOBJ(objPath.c_str(), leafTex.c_str(), stemTex.empty() ? nullptr : stemTex.c_str());
+        std::cout << "[headless] meshed " << fromXml << " -> " << objPath << "\n";
+        return 0;
+    }
     if (configPath.empty()) {
-        std::cerr << "Maize.exe --headless: --config CONFIG.xml is required\n";
+        std::cerr << "Maize.exe --headless: --config CONFIG.xml (or --from-xml PLANT.xml) is required\n";
         return 2;
     }
 
