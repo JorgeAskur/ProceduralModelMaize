@@ -386,12 +386,23 @@ static void computeGridNormals(LeafGeom& geom) {
     }
 }
 
+// Cross-blade parameter of column j. Columns are graded toward the midrib (|t|^1.6), and
+// the count is odd, so there is always a vertex exactly on the midrib and the rib, only a
+// few percent of the blade width, is resolved by several vertices instead of falling
+// between two of them.
+static float bladeColumnU(int j, int cols) {
+    int half = (cols - 1) / 2;
+    float t = (float)(j - half) / (float)half;
+    float g = std::pow(std::fabs(t), 1.6f);
+    return 0.5f + 0.5f * (t < 0.0f ? -g : g);
+}
+
 static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& bladeFrame, const Vect3d& rhat, float globalRadius, float densityV, float densityU, float ct, float st, const std::vector<Vect3d>& localCtrlC, const std::vector<Vect3d>& localCtrlL, const std::vector<Vect3d>& localCtrlR) {
     // This converts the local left/center/right splines into the final render surface
     LeafGeom bladeGeom;
     bladeGeom.type = LeafGeom::GEOM_BLADE;
     bladeGeom.rows = std::max(6, (int)(leaf.leafLength * densityV));
-    bladeGeom.cols = std::max(5, (int)(leaf.leafWidth * densityU));
+    bladeGeom.cols = 2 * std::max(7, (int)std::ceil(leaf.leafWidth * densityU * 0.5f)) + 1;
 
     bladeGeom.pos.resize(bladeGeom.rows * bladeGeom.cols);
     bladeGeom.col.resize(bladeGeom.rows * bladeGeom.cols);
@@ -441,13 +452,35 @@ static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& blade
         shapeBlend = 1.0f - (1.0f - shapeBlend) * (1.0f - shapeBlend);
 
         for (int j = 0; j < bladeGeom.cols; ++j) {
-            float u01 = (float)j / (float)(bladeGeom.cols - 1);
+            float u01 = bladeColumnU(j, bladeGeom.cols);
             Vect3d splineP = (u01 < 0.5f) ? lerp_v3(pL, pC, u01 * 2.f) : lerp_v3(pC, pR, (u01 - 0.5f) * 2.f);
 
             float fromCenter = (u01 - 0.5f) * 2.0f;
             float curveAmt = fromCenter * fromCenter;
             float sagitta = globalRadius * (1.0f - std::cos(openAngle * 0.5f));
-            float bladeDepth = 0.02f * leaf.leafWidth * curveAmt;
+
+            // Midrib footprint: wider at the base, narrowing toward the tip, then fading
+            // out entirely so the blade can still resolve to a point
+            float ribSigma = std::max(0.01f, leaf.midribWidth * (1.2f - 0.6f * sBlade));
+            float midribMask = std::exp(-std::pow((u01 - 0.5f) / ribSigma, 2.0f));
+            float midribTipStart = clampf(leaf.midribTipTaperStart, 0.2f, 0.98f);
+            float midribTipFade = 1.0f;
+            if (sBlade > midribTipStart) {
+                midribTipFade = clampf((1.0f - sBlade) / std::max(0.01f, 1.0f - midribTipStart), 0.0f, 1.0f);
+                midribTipFade = midribTipFade * midribTipFade * (3.0f - 2.0f * midribTipFade);
+            }
+
+            // Blade cross-section (finalN is the adaxial/upper side). A grass blade is
+            // folded along its midrib: the two halves rise from it in a shallow V that is
+            // strongest near the collar and relaxes toward the tip, on top of a gentle
+            // camber. The midrib is a thick rib that bulges on the abaxial side, so it is
+            // pushed *down*: from above it reads as a pale channel, from below as a keel.
+            // (The previous version raised a ridge on the upper side, which is inverted.)
+            const float foldEps = 0.08f;                                     // rounds the V at the rib
+            float vFold = std::sqrt(curveAmt + foldEps * foldEps) - foldEps;  // smooth |fromCenter|
+            float foldDepth = 0.035f * leaf.leafWidth * (1.0f - 0.6f * sBlade);    // leaf curl already cups the blade
+            float keelDepth = 0.02f * leaf.leafWidth * midribMask * midribTipFade;
+            float bladeDepth = 0.008f * leaf.leafWidth * curveAmt + foldDepth * vFold - keelDepth;
             float sheathDepth = sagitta * (1.0f - curveAmt);
 
             Vect3d sheathN = bladeFrame.zAxis;
@@ -458,18 +491,6 @@ static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& blade
             // blade-facing orientation
             float displacement = lerp_v3(Vect3d(sheathDepth, 0, 0), Vect3d(bladeDepth, 0, 0), shapeBlend).x();
             splineP = splineP + finalN * displacement;
-
-            // Midrib is a narrow Gaussian ridge centered at u=0.5. It tapers
-            // out near the tip so the blade can still resolve to a point
-            float midribMask = std::exp(-std::pow((u01 - 0.5f) / leaf.midribWidth, 2.0f));
-            float midribTipStart = clampf(leaf.midribTipTaperStart, 0.2f, 0.98f);
-            float midribTipFade = 1.0f;
-            if (sBlade > midribTipStart) {
-                midribTipFade = clampf((1.0f - sBlade) / std::max(0.01f, 1.0f - midribTipStart), 0.0f, 1.0f);
-                midribTipFade = midribTipFade * midribTipFade * (3.0f - 2.0f * midribTipFade);
-            }
-            float midribHeight = (0.045f * leaf.leafWidth) * (0.35f + 0.65f * shapeBlend) * midribMask * midribTipFade;
-            splineP = splineP + finalN * midribHeight;
 
             float surfaceNoiseFreq = std::max(0.1f, leaf.surfaceNoiseFreq);
             float surfaceNoiseAmp = std::max(0.0f, leaf.surfaceNoiseAmp);
@@ -542,8 +563,10 @@ static LeafGeom buildBladeGeometry(const LeafDesc& leaf, const BladeFrame& blade
             Vect3d bladeColor = getColor(LeafGeom::GEOM_BLADE, sBlade);
             float midribTipFadeColor = clampf((1.0f - sBlade) / std::max(0.01f, 1.0f - midribTipStart), 0.0f, 1.0f);
             midribTipFadeColor = midribTipFadeColor * midribTipFadeColor * (3.0f - 2.0f * midribTipFadeColor);
-            float midribColorBoost = 0.16f * midribMask * (0.25f + 0.75f * shapeBlend) * midribTipFadeColor;
-            bladeColor = bladeColor + Vect3d(midribColorBoost, midribColorBoost, midribColorBoost * 0.9f);
+            // The rib is paler and slightly yellower than the lamina (less chlorophyll,
+            // more sclerenchyma), most visibly toward the base
+            float midribColorBoost = 0.2f * midribMask * (0.25f + 0.75f * shapeBlend) * midribTipFadeColor * (1.1f - 0.4f * sBlade);
+            bladeColor = bladeColor + Vect3d(midribColorBoost, midribColorBoost * 1.05f, midribColorBoost * 0.7f);
             bladeColor.SetX(clampf(bladeColor.x(), 0.0f, 1.0f));
             bladeColor.SetY(clampf(bladeColor.y(), 0.0f, 1.0f));
             bladeColor.SetZ(clampf(bladeColor.z(), 0.0f, 1.0f));
