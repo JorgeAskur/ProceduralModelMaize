@@ -21,6 +21,8 @@ struct LeafDesc {
     float azimuthDeg = 0.0f;            // absolute leaf azimuth around the stem
     float leafAngle = 45.0f;            // leaf angle 
     float droopiness = 0.5f;            // bending strength along the blade
+    float droopExponent = 2.0f;         // droop turn grows as droopiness * t^droopExponent (2 = classic t^2; clamped to [0.25, 8])
+    float sideBend = 0.0f;              // sideways turn of the heading, degrees at the tip, linear in t (0 = none)
     float stemInclinationDeg = 0.0f;    // stem bend 
     int   splinePoints = 20;            // number of control points
     float widthTaper = 1.0f;            // narrowing of blade towards the tip

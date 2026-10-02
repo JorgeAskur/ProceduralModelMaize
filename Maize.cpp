@@ -259,7 +259,11 @@ struct LeafSectionEmitter {
     std::vector<Vect3d>& outRight;
     float curlAmount = 0.0f;
 
-    void append(float leftX, float rightX, float baseY, float baseZ, float waveOffsetL, float waveOffsetR, const Vect3d& centerP, const Vect3d& tangentHint) const {
+    void append(float leftX, float rightX, float baseY, float baseZ, float waveOffsetL, float waveOffsetR, const Vect3d& centerP, const Vect3d& tangentHint, float yawRad = 0.0f) const {
+        if (yawRad != 0.0f) {
+            appendTurned(leftX, rightX, waveOffsetL, waveOffsetR, centerP, tangentHint, yawRad);
+            return;
+        }
         // Build one local cross-section around the center spline
         Vect3d leftP(leftX, baseY, baseZ);
         Vect3d rightP(rightX, baseY, baseZ);
@@ -289,6 +293,22 @@ struct LeafSectionEmitter {
         outLeft.push_back(leftP);
         outRight.push_back(rightP);
     }
+
+    // The same cross-section with the width axis turned by the sideways bend (about
+    // local z, the vertical of the leaf frame), so a leaf turning sideways keeps its width.
+    void appendTurned(float leftX, float rightX, float waveOffsetL, float waveOffsetR, const Vect3d& centerP, const Vect3d& tangentHint, float yawRad) const {
+        Vect3d widthAxis(std::cos(yawRad), -std::sin(yawRad), 0.0f);
+        float half = 0.5f * (rightX - leftX);
+        Vect3d tangent = tangentHint.GetNormalized();
+        Vect3d normalAxis = widthAxis.Cross(tangent);
+        if (normalAxis.Length() < 1e-6f) normalAxis = Vect3d(0.0f, 0.0f, 1.0f);
+        normalAxis = normalAxis.GetNormalized();
+        float widthShrink = 1.0f - 0.35f * std::abs(curlAmount);
+        float offset = half * widthShrink;
+        float curlLift = offset * curlAmount;
+        outLeft.push_back(centerP - widthAxis * offset + normalAxis * (curlLift + waveOffsetL));
+        outRight.push_back(centerP + widthAxis * offset + normalAxis * (curlLift + waveOffsetR));
+    }
 };
 
 static LeafSplineBaseState initializeLeafSplineBase(float stemRadiusAtExit, std::vector<Vect3d>& outCenter, std::vector<Vect3d>& outLeft, std::vector<Vect3d>& outRight) {
@@ -309,16 +329,28 @@ static LeafSplineBaseState initializeLeafSplineBase(float stemRadiusAtExit, std:
     return base;
 }
 
-static Vect3d computeDroppedLeafDirection(const Vect3d& targetDir, float gravityFactor, float t) {
+static Vect3d computeDroppedLeafDirection(const Vect3d& targetDir, float gravityFactor, float t,
+                                          float droopExponent = 2.0f, float sideBendDeg = 0.0f) {
     // droopiness is applied as a rotation in the local y/z plane
     Vect3d baseDir = targetDir.GetNormalized();
-    float droopinessFactor = t * t;
+    // droop turn = droopiness * t^droopExponent; the classic t * t is kept bit for bit at
+    // the default 2. Exponents are clamped to [0.25, 8]: 0 would apply the full droop from
+    // the first segment and negative values blow up like 1/t near the base
+    float droopinessFactor = (droopExponent == 2.0f) ? t * t
+                           : std::pow(t, std::min(8.0f, std::max(0.25f, droopExponent)));
     float rotAmt = radiansf(gravityFactor * droopinessFactor);
     float cy = baseDir.y();
     float cz = baseDir.z();
     Vect3d dropped = baseDir;
     dropped.SetY(cy * std::cos(rotAmt) - cz * std::sin(rotAmt));
     dropped.SetZ(cy * std::sin(rotAmt) + cz * std::cos(rotAmt));
+    if (sideBendDeg != 0.0f) {
+        // turn the heading sideways (about local z, the leaf frame's vertical) by sideBend * t degrees
+        float yaw = radiansf(sideBendDeg * t);
+        float dx = dropped.x(), dy = dropped.y();
+        dropped.SetX(dx * std::cos(yaw) + dy * std::sin(yaw));
+        dropped.SetY(-dx * std::sin(yaw) + dy * std::cos(yaw));
+    }
     return dropped.GetNormalized();
 }
 
@@ -751,7 +783,7 @@ namespace Maize {
         const bool insertExtra = L.splinePoints > 2;
         const int extraCtrlPoints = 2;
         float t_first = (L.splinePoints > 1) ? 1.0f / (L.splinePoints - 1) : 1.0f;
-        Vect3d firstDir = computeDroppedLeafDirection(targetDir, gravityFactor, t_first);
+        Vect3d firstDir = computeDroppedLeafDirection(targetDir, gravityFactor, t_first, L.droopExponent, L.sideBend);
         Vect3d firstPos = base.currentPos + firstDir * segmentLen;
 
         if (insertExtra) {
@@ -769,7 +801,7 @@ namespace Maize {
         for (int i = 2; i < L.splinePoints; ++i) {
             float t = (float)i / (L.splinePoints - 1);
 
-            Vect3d targetStepDir = computeDroppedLeafDirection(targetDir, gravityFactor, t);
+            Vect3d targetStepDir = computeDroppedLeafDirection(targetDir, gravityFactor, t, L.droopExponent, L.sideBend);
             currentDir = lerp_v3(currentDir, targetStepDir, 0.5f).GetNormalized();
 
             base.currentPos = base.currentPos + currentDir * segmentLen;
@@ -794,7 +826,8 @@ namespace Maize {
 
                 // Margin waviness is no longer baked into the edge control points: it is
                 // a per-vertex ruffle in buildBladeGeometry (see marginWave)
-                emitter.append(-current_halfWidth_x, current_halfWidth_x, y_s, z_s, 0.0f, 0.0f, base.currentPos, currentDir);
+                emitter.append(-current_halfWidth_x, current_halfWidth_x, y_s, z_s, 0.0f, 0.0f, base.currentPos, currentDir,
+                               radiansf(L.sideBend * t));
             }
         }
 

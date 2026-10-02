@@ -111,6 +111,9 @@ namespace Descriptor {
                 leaf_elem->SetAttribute("leafAzimuthDeg", Maize::normalizeAzimuthDeg(L.azimuthDeg));
                 leaf_elem->SetAttribute("leafAngle", L.leafAngle);
                 leaf_elem->SetAttribute("droopiness", L.droopiness);
+                // written only when used, so descriptors without them save unchanged
+                if (L.droopExponent != 2.0f) leaf_elem->SetAttribute("droopExponent", L.droopExponent);
+                if (L.sideBend != 0.0f) leaf_elem->SetAttribute("sideBend", L.sideBend);
                 leaf_elem->SetAttribute("stemInclinationDeg", L.stemInclinationDeg);
                 leaf_elem->SetAttribute("splinePoints", L.splinePoints);
                 leaf_elem->SetAttribute("widthTaper", L.widthTaper);
@@ -244,6 +247,8 @@ namespace Descriptor {
                     L.azimuthDeg = 0.0f;
                     L.leafAngle = 45.0f;
                     L.droopiness = 0.5f;
+                    L.droopExponent = 2.0f;
+                    L.sideBend = 0.0f;
                     L.stemInclinationDeg = 0.0f;
                     L.splinePoints = 4; 
                     L.widthTaper = 1.0f;
@@ -272,6 +277,8 @@ namespace Descriptor {
                     L.azimuthDeg = Maize::normalizeAzimuthDeg(L.azimuthDeg);
                     lf->QueryFloatAttribute("leafAngle", &L.leafAngle);
                     lf->QueryFloatAttribute("droopiness", &L.droopiness);
+                    lf->QueryFloatAttribute("droopExponent", &L.droopExponent);
+                    lf->QueryFloatAttribute("sideBend", &L.sideBend);
                     lf->QueryFloatAttribute("stemInclinationDeg", &L.stemInclinationDeg);
                     lf->QueryIntAttribute("splinePoints", &L.splinePoints);
                     lf->QueryFloatAttribute("widthTaper", &L.widthTaper);
