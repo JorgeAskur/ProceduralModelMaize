@@ -1653,6 +1653,12 @@ static int RunHeadless(int argc, char** argv) {
         std::string objPath = outputPrefix + ".obj";
         Maize::savePlantOBJ(objPath.c_str(), leafTex.c_str(), stemTex.empty() ? nullptr : stemTex.c_str());
         std::cout << "[headless] meshed " << fromXml << " -> " << objPath << "\n";
+        if (exportSkeleton) {
+            // Centerlines as in batch export, with the tassel's segments (consecutive vertex pairs) last.
+            std::string skelPath = outputPrefix + "_skeleton.obj";
+            Maize::saveSkeletonOBJ(skelPath.c_str(), true);
+            std::cout << "[headless] skeleton -> " << skelPath << "\n";
+        }
         return 0;
     }
     if (configPath.empty()) {
